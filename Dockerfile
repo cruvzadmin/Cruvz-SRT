@@ -14,11 +14,8 @@ ARG 	STRIP=TRUE
 ENV     PREFIX=/opt/cruvzstreaming
 ENV     TEMP_DIR=/tmp/cs
 
-## Download Cruvz Streaming
-RUN \
-        mkdir -p ${TEMP_DIR} && \
-        cd ${TEMP_DIR} && \
-        git clone --branch ${CS_VERSION} --single-branch --depth 1 https://github.com/techfixind/Cruvz-SRT .
+## Copy Cruvz Streaming source
+COPY . ${TEMP_DIR}
 
 ## Install dependencies
 RUN \

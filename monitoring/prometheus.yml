@@ -12,21 +12,15 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  - job_name: 'cruvz-streaming-origin'
+  - job_name: 'cruvz-streaming-demo'
     static_configs:
-      - targets: ['origin:8080']
-    metrics_path: /metrics
-    scrape_interval: 10s
-
-  - job_name: 'cruvz-streaming-edge'
-    static_configs:
-      - targets: ['edge:8080']
+      - targets: ['cruvz-streaming:80']
     metrics_path: /metrics
     scrape_interval: 10s
 
   - job_name: 'node-exporter'
     static_configs:
-      - targets: ['localhost:9100']
+      - targets: ['node-exporter:9100']
 
 alerting:
   alertmanagers:
