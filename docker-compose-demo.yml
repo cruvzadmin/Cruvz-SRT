@@ -1,0 +1,131 @@
+version: '3.8'
+
+# Cruvz Streaming Six Sigma Demo Configuration
+# This demonstrates the rebranded application with monitoring
+services:
+  # Mock Cruvz Streaming Service for demonstration
+  cruvz-streaming:
+    image: nginx:alpine
+    container_name: cruvz-streaming-demo
+    restart: unless-stopped
+    
+    # healthcheck:
+    #   test: ["CMD", "nc", "-z", "localhost", "80"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 10s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    ports:
+    - "1935:80"    # Demo port mapping
+    - "3333:80"    # WebRTC Signaling demo
+    - "9999:80"    # SRT demo
+    
+    environment:
+    - NGINX_HOST=localhost
+    - NGINX_PORT=80
+    
+    volumes:
+    - ./demo/nginx.conf:/etc/nginx/nginx.conf:ro
+    - ./demo/index.html:/usr/share/nginx/html/index.html:ro
+    - cs-logs:/var/log/nginx
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+        labels: "service=cruvz-streaming-demo"
+
+  # Prometheus monitoring for Six Sigma compliance
+  monitoring:
+    image: prom/prometheus:latest
+    container_name: cruvz-monitoring
+    restart: unless-stopped
+    ports:
+    - "9090:9090"
+    volumes:
+    - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    - prometheus-data:/prometheus
+    command:
+    - '--config.file=/etc/prometheus/prometheus.yml'
+    - '--storage.tsdb.path=/prometheus'
+    - '--web.console.libraries=/etc/prometheus/console_libraries'
+    - '--web.console.templates=/etc/prometheus/consoles'
+    - '--storage.tsdb.retention.time=30d'
+    - '--web.enable-lifecycle'
+    depends_on:
+      - cruvz-streaming
+
+  # Log aggregation for comprehensive analysis
+  log-aggregator:
+    image: grafana/loki:latest
+    container_name: cruvz-logs
+    restart: unless-stopped
+    ports:
+    - "3100:3100"
+    volumes:
+    - ./monitoring/loki.yml:/etc/loki/loki.yml:ro
+    - loki-data:/loki
+    command: -config.file=/etc/loki/loki.yml
+
+  # Dashboard for real-time monitoring
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cruvz-dashboard
+    restart: unless-stopped
+    ports:
+    - "3000:3000"
+    environment:
+    - GF_SECURITY_ADMIN_PASSWORD=cruvz123
+    - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+    - grafana-data:/var/lib/grafana
+    - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+    - ./monitoring/grafana-datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+    - monitoring
+    - log-aggregator
+
+  # Node exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: cruvz-node-exporter
+    restart: unless-stopped
+    ports:
+    - "9100:9100"
+    volumes:
+    - /proc:/host/proc:ro
+    - /sys:/host/sys:ro
+    - /:/rootfs:ro
+    command:
+    - '--path.procfs=/host/proc'
+    - '--path.rootfs=/rootfs'
+    - '--path.sysfs=/host/sys'
+    - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+volumes:
+  cs-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  loki-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 172.20.0.0/16

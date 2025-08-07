@@ -8,7 +8,7 @@
 //==============================================================================
 #include "config_manager.h"
 
-#include <base/info/ome_version.h>
+#include <base/info/cruvz_version.h>
 #include <monitoring/monitoring.h>
 #include <sys/utsname.h>
 

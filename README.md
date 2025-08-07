@@ -1,18 +1,18 @@
-# OvenMediaEngine
+# Cruvz Streaming
 
-## What is OvenMediaEngine?
+## What is Cruvz Streaming?
 <img src="dist/OME_LLHLS_220610.svg" style="max-width: 100%; height: auto;">
 
-OvenMediaEngine (OME) is a Sub-Second Latency Streaming Server that can stream Large-scale and High-definition live streams over Low Latency HLS (LLHLS) and WebRTC to hundreds of thousands of viewers.
+Cruvz Streaming (CS) is a Sub-Second Latency Streaming Server that can stream Large-scale and High-definition live streams over Low Latency HLS (LLHLS) and WebRTC to hundreds of thousands of viewers.
 
-OME can ingest live streams over WebRTC, SRT, RTMP, RTSP, and MPEG2-TS protocols, encode them to ABR with the embedded live transcoder, and stream them to viewers over LLHLS and WebRTC.
+CS can ingest live streams over WebRTC, SRT, RTMP, RTSP, and MPEG2-TS protocols, encode them to ABR with the embedded live transcoder, and stream them to viewers over LLHLS and WebRTC.
 
-With OvenMediaEngine, you can build your powerful and sub-second latency media service very easily.
+With Cruvz Streaming, you can build your powerful and sub-second latency media service very easily.
 
-## Demo https://space.ovenplayer.com/
+## Demo https://space.cruvzstreaming.com/
 <img src="dist/05_OvenSpace_230214.png" style="max-width: 100%; height: auto;">
 
-OvenSpace is a sub-second latency streaming demo service using [OvenMediaEngine](https://github.com/AirenSoft/OvenMediaEngine), [OvenPlayer](https://github.com/AirenSoft/OvenPlayer) and [OvenLiveKit](https://github.com/AirenSoft/OvenLiveKit-Web). You can experience OvenMediaEngine in the **[OvenSpace Demo](https://space.ovenplayer.com/)** and see examples of applying in [OvenSpace Repository](https://github.com/AirenSoft/OvenSpace).
+CruvzSpace is a sub-second latency streaming demo service using [Cruvz Streaming](https://github.com/techfixind/Cruvz-SRT), [CruvzPlayer](https://github.com/techfixind/CruvzPlayer) and [CruvzLiveKit](https://github.com/techfixind/CruvzLiveKit-Web). You can experience Cruvz Streaming in the **[CruvzSpace Demo](https://space.cruvzstreaming.com/)** and see examples of applying in [CruvzSpace Repository](https://github.com/techfixind/CruvzSpace).
 
 ## Features
 * Ingest
@@ -56,10 +56,10 @@ OvenSpace is a sub-second latency streaming demo service using [OvenMediaEngine]
 * REST API
 
 ## Supported Platforms
-We have tested OvenMediaEngine on the platforms listed below.
-Although we have tested OvenMediaEngine on the platforms listed below, it may work with other Linux packages as well:
+We have tested Cruvz Streaming on the platforms listed below.
+Although we have tested Cruvz Streaming on the platforms listed below, it may work with other Linux packages as well:
 
-* [Docker](https://hub.docker.com/r/airensoft/ovenmediaengine)
+* [Docker](https://hub.docker.com/r/cruvz/cruvzstreaming)
 * Ubuntu 18+
 * Rocky Linux 8+
 * AlmaLinux 8+
@@ -67,37 +67,37 @@ Although we have tested OvenMediaEngine on the platforms listed below, it may wo
 
 ## Quick Start
 
-* [Quick Start Guide](https://airensoft.gitbook.io/ovenmediaengine/quick-start)
-* [Manual](https://airensoft.gitbook.io/ovenmediaengine/)
+* [Quick Start Guide](https://cruvz.gitbook.io/cruvzstreaming/quick-start)
+* [Manual](https://cruvz.gitbook.io/cruvzstreaming/)
 
 ### Docker
 ```bash
-docker run --name ome -d -e OME_HOST_IP=Your.HOST.IP.Address \
+docker run --name cs -d -e CS_HOST_IP=Your.HOST.IP.Address \
 -p 1935:1935 -p 9999:9999/udp -p 9000:9000 -p 3333:3333 -p 3478:3478 -p 10000-10009:10000-10009/udp \
-airensoft/ovenmediaengine:latest
+cruvz/cruvzstreaming:latest
 ```
 
 You can also store the configuration files on your host:
 
 ```bash
-docker run --name ome -d -e OME_HOST_IP=Your.HOST.IP.Address \
+docker run --name cs -d -e CS_HOST_IP=Your.HOST.IP.Address \
 -p 1935:1935 -p 9999:9999/udp -p 9000:9000 -p 3333:3333 -p 3478:3478 -p 10000-10009:10000-10009/udp \
--v ome-origin-conf:/opt/ovenmediaengine/bin/origin_conf \
--v ome-edge-conf:/opt/ovenmediaengine/bin/edge_conf \
-airensoft/ovenmediaengine:latest
+-v cs-origin-conf:/opt/cruvzstreaming/bin/origin_conf \
+-v cs-edge-conf:/opt/cruvzstreaming/bin/edge_conf \
+cruvz/cruvzstreaming:latest
 ```
 
 The configuration files are now accessible under `/var/lib/docker/volumes/<volume_name>/_data`.
 
-Following the above example, you will find them under `/var/lib/docker/volumes/ome-origin-conf/_data` and `/var/lib/docker/volumes/ome-edge-conf/_data`.
+Following the above example, you will find them under `/var/lib/docker/volumes/cs-origin-conf/_data` and `/var/lib/docker/volumes/cs-edge-conf/_data`.
 
 If you want to put them in a different location, the easiest way is to create a link:
 ```bash
-ln -s /var/lib/docker/volumes/ome-origin-conf/_data/ /my/new/path/to/ome-origin-conf \
-&& ln -s /var/lib/docker/volumes/ome-edge-conf/_data/ /my/new/path/to/ome-edge-conf
+ln -s /var/lib/docker/volumes/cs-origin-conf/_data/ /my/new/path/to/cs-origin-conf \
+&& ln -s /var/lib/docker/volumes/cs-edge-conf/_data/ /my/new/path/to/cs-edge-conf
 ```
 
-Please read the [Getting Started](https://airensoft.gitbook.io/ovenmediaengine/getting-started) for more information.
+Please read the [Getting Started](https://cruvz.gitbook.io/cruvzstreaming/getting-started) for more information.
 
 ### WebRTC Live Encoder for Testing
 * https://demo.ovenplayer.com/demo_input.html

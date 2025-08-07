@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Server version="8">
-	<Name>OvenMediaEngine</Name>
+	<Name>Cruvz Streaming</Name>
 	<!-- Host type (origin/edge) -->
 	<Type>origin</Type>
 	<!-- Specify IP address to bind ("*" means all IPv4 IPs, "::" means all IPv6 IPs) -->

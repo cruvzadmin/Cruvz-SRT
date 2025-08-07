@@ -1,16 +1,16 @@
 //==============================================================================
 //
-//  OvenMediaEngine
+//  Cruvz Streaming
 //
 //  Created by Hyunjun Jang
-//  Copyright (c) 2022 AirenSoft. All rights reserved.
+//  Copyright (c) 2022 Cruvz. All rights reserved.
 //
 //==============================================================================
-#include "ome_version.h"
+#include "cruvz_version.h"
 
 namespace info
 {
-	void OmeVersion::SetVersion(const ov::String &version, const ov::String &git_version)
+	void CruvzVersion::SetVersion(const ov::String &version, const ov::String &git_version)
 	{
 		_version = version;
 		_git_extra = git_version;

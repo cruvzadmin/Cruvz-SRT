@@ -1,0 +1,29 @@
+# Docker ignore file for Cruvz Streaming
+.git
+.gitignore
+README.md
+.github
+docs
+.vscode
+.idea
+*.log
+*.tmp
+node_modules
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Build artifacts  
+src/bin
+*.o
+*.a
+*.so
+*.dylib
+
+# Test files
+test-results
+coverage
+
+# Temporary files
+/tmp
+temp
