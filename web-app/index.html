@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cruvz Streaming - Sub-Second Latency Streaming Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img src="assets/logo.png" alt="Cruvz Streaming" class="logo-img">
+                <span class="logo-text">Cruvz Streaming</span>
+            </div>
+            <div class="nav-menu">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#pricing" class="nav-link">Pricing</a>
+                <a href="#docs" class="nav-link">Documentation</a>
+                <a href="pages/dashboard.html" class="nav-link dashboard-link">Dashboard</a>
+                <button class="btn btn-primary" onclick="showAuthModal('signin')">Sign In</button>
+                <button class="btn btn-secondary" onclick="showAuthModal('signup')">Sign Up</button>
+            </div>
+            <div class="nav-toggle">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">Sub-Second Latency Streaming Platform</h1>
+                <p class="hero-subtitle">Stream to hundreds of thousands of viewers with ultra-low latency using WebRTC, LLHLS, and cutting-edge technology.</p>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <span class="stat-number">&lt;100ms</span>
+                        <span class="stat-label">Latency</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">99.99%</span>
+                        <span class="stat-label">Uptime</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">1M+</span>
+                        <span class="stat-label">Concurrent Viewers</span>
+                    </div>
+                </div>
+                <div class="hero-actions">
+                    <button class="btn btn-primary btn-large" onclick="showAuthModal('signup')">
+                        Start Free Trial
+                    </button>
+                    <button class="btn btn-outline btn-large" onclick="showDemo()">
+                        Live Demo
+                    </button>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="streaming-demo">
+                    <div class="demo-player">
+                        <div class="player-header">
+                            <div class="player-controls">
+                                <span class="control-btn play"></span>
+                                <span class="control-btn pause"></span>
+                                <span class="control-btn stop"></span>
+                            </div>
+                            <div class="player-status">
+                                <span class="status-indicator live"></span>
+                                <span class="status-text">LIVE</span>
+                            </div>
+                        </div>
+                        <div class="player-content">
+                            <div class="streaming-visualization">
+                                <div class="stream-line"></div>
+                                <div class="stream-line"></div>
+                                <div class="stream-line"></div>
+                                <div class="latency-indicator">
+                                    <span class="latency-value">42ms</span>
+                                    <span class="latency-label">Ultra Low Latency</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <h2 class="section-title">Powerful Streaming Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Sub-Second Latency</h3>
+                    <p>Stream with under 100ms latency using WebRTC and LLHLS technologies for real-time interaction.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📡</div>
+                    <h3>Multiple Protocols</h3>
+                    <p>Support for WebRTC, SRT, RTMP, RTSP, and MPEG2-TS ingestion with seamless protocol conversion.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Adaptive Bitrate</h3>
+                    <p>Automatic bitrate adaptation ensures optimal quality for every viewer's connection.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Enterprise Security</h3>
+                    <p>DRM support, token authentication, and secure streaming protocols protect your content.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Real-time Analytics</h3>
+                    <p>Comprehensive monitoring and analytics with Prometheus and Grafana integration.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h3>Live Transcoding</h3>
+                    <p>Hardware-accelerated live transcoding with support for H.264, H.265, VP8, and AV1.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Authentication Modal -->
+    <div id="authModal" class="modal hidden">
+        <div class="modal-overlay" onclick="hideAuthModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="authTitle">Sign In</h3>
+                <button class="modal-close" onclick="hideAuthModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="authForm">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <div class="form-group" id="confirmPasswordGroup" style="display: none;">
+                        <label for="confirmPassword">Confirm Password</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword">
+                    </div>
+                    <div class="form-group" id="nameGroup" style="display: none;">
+                        <label for="fullName">Full Name</label>
+                        <input type="text" id="fullName" name="fullName">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full" id="authSubmitBtn">Sign In</button>
+                </form>
+                <div class="auth-switch">
+                    <span id="authSwitchText">Don't have an account?</span>
+                    <button class="btn-link" id="authSwitchBtn" onclick="toggleAuthMode()">Sign Up</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Demo Modal -->
+    <div id="demoModal" class="modal hidden">
+        <div class="modal-overlay" onclick="hideDemoModal()"></div>
+        <div class="modal-content demo-modal">
+            <div class="modal-header">
+                <h3>Live Streaming Demo</h3>
+                <button class="modal-close" onclick="hideDemoModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="demo-player-container">
+                    <div class="demo-info">
+                        <div class="demo-stat">
+                            <span class="demo-label">Latency:</span>
+                            <span class="demo-value" id="demoLatency">42ms</span>
+                        </div>
+                        <div class="demo-stat">
+                            <span class="demo-label">Viewers:</span>
+                            <span class="demo-value" id="demoViewers">1,234</span>
+                        </div>
+                        <div class="demo-stat">
+                            <span class="demo-label">Quality:</span>
+                            <span class="demo-value" id="demoQuality">1080p</span>
+                        </div>
+                    </div>
+                    <div class="demo-controls">
+                        <button class="btn btn-primary" onclick="startDemo()">Start Stream</button>
+                        <button class="btn btn-secondary" onclick="stopDemo()">Stop Stream</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="#api">API</a></li>
+                        <li><a href="#docs">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#about">About</a></li>
+                        <li><a href="#careers">Careers</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                        <li><a href="#support">Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="#blog">Blog</a></li>
+                        <li><a href="#tutorials">Tutorials</a></li>
+                        <li><a href="#community">Community</a></li>
+                        <li><a href="#status">Status</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Connect</h4>
+                    <ul>
+                        <li><a href="#twitter">Twitter</a></li>
+                        <li><a href="#github">GitHub</a></li>
+                        <li><a href="#discord">Discord</a></li>
+                        <li><a href="#linkedin">LinkedIn</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Cruvz Technologies. All rights reserved.</p>
+                <div class="footer-links">
+                    <a href="#privacy">Privacy Policy</a>
+                    <a href="#terms">Terms of Service</a>
+                    <a href="#cookies">Cookie Policy</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

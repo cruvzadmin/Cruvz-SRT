@@ -32,6 +32,30 @@
             margin: 10px 0;
             opacity: 0.9;
         }
+        .nav-links {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .nav-links a {
+            display: inline-block;
+            margin: 0 15px;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.3);
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        .nav-links a:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        .nav-links a.primary {
+            background: rgba(255,255,255,0.9);
+            color: #667eea;
+        }
         .features {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -117,6 +141,14 @@
                 <span class="status-indicator"></span>
                 <span>Service Online - Zero Errors Achieved</span>
             </div>
+        </div>
+
+        <div class="nav-links">
+            <a href="../web-app/index.html" class="primary">🏠 Main Website</a>
+            <a href="../web-app/pages/dashboard.html">📊 Dashboard</a>
+            <a href="http://localhost:3000" target="_blank">📈 Grafana</a>
+            <a href="http://localhost:9090" target="_blank">🔍 Prometheus</a>
+            <a href="/health" target="_blank">🏥 Health Check</a>
         </div>
 
         <div class="six-sigma">

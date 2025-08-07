@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Cruvz Streaming</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="icon" href="../assets/favicon.ico" type="image/x-icon">
+</head>
+<body class="dashboard-body">
+    <!-- Navigation -->
+    <nav class="navbar dashboard-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img src="../assets/logo.png" alt="Cruvz Streaming" class="logo-img">
+                <span class="logo-text">Cruvz Streaming</span>
+            </div>
+            <div class="nav-menu">
+                <a href="../index.html" class="nav-link">Home</a>
+                <a href="#streams" class="nav-link">Streams</a>
+                <a href="#analytics" class="nav-link">Analytics</a>
+                <a href="#settings" class="nav-link">Settings</a>
+                <div class="user-menu">
+                    <div class="user-info" onclick="toggleUserDropdown()">
+                        <img src="../assets/default-avatar.png" alt="User" class="user-avatar" id="userAvatar">
+                        <span class="user-name" id="userName">Loading...</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="#profile" class="dropdown-item">Profile</a>
+                        <a href="#settings" class="dropdown-item">Settings</a>
+                        <a href="#billing" class="dropdown-item">Billing</a>
+                        <button onclick="signOut()" class="dropdown-item">Sign Out</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard Content -->
+    <main class="dashboard-main">
+        <!-- Sidebar -->
+        <aside class="dashboard-sidebar">
+            <div class="sidebar-menu">
+                <div class="menu-section">
+                    <h3 class="menu-title">Overview</h3>
+                    <a href="#overview" class="menu-item active" data-section="overview">
+                        <span class="menu-icon">📊</span>
+                        Dashboard
+                    </a>
+                    <a href="#analytics" class="menu-item" data-section="analytics">
+                        <span class="menu-icon">📈</span>
+                        Analytics
+                    </a>
+                </div>
+                
+                <div class="menu-section">
+                    <h3 class="menu-title">Streaming</h3>
+                    <a href="#streams" class="menu-item" data-section="streams">
+                        <span class="menu-icon">🎥</span>
+                        Live Streams
+                    </a>
+                    <a href="#create" class="menu-item" data-section="create">
+                        <span class="menu-icon">➕</span>
+                        Create Stream
+                    </a>
+                    <a href="#recordings" class="menu-item" data-section="recordings">
+                        <span class="menu-icon">💾</span>
+                        Recordings
+                    </a>
+                </div>
+                
+                <div class="menu-section">
+                    <h3 class="menu-title">Management</h3>
+                    <a href="#settings" class="menu-item" data-section="settings">
+                        <span class="menu-icon">⚙️</span>
+                        Settings
+                    </a>
+                    <a href="#api" class="menu-item" data-section="api">
+                        <span class="menu-icon">🔧</span>
+                        API Keys
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Dashboard Content -->
+        <div class="dashboard-content">
+            <!-- Overview Section -->
+            <section id="overview-section" class="content-section active">
+                <div class="section-header">
+                    <h1>Dashboard Overview</h1>
+                    <button class="btn btn-primary" onclick="showCreateStreamModal()">
+                        ➕ Create New Stream
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🎥</div>
+                        <div class="stat-content">
+                            <h3 class="stat-number" id="activeStreams">0</h3>
+                            <p class="stat-label">Active Streams</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-content">
+                            <h3 class="stat-number" id="totalViewers">0</h3>
+                            <p class="stat-label">Total Viewers</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⚡</div>
+                        <div class="stat-content">
+                            <h3 class="stat-number" id="avgLatency">0ms</h3>
+                            <p class="stat-label">Avg Latency</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-content">
+                            <h3 class="stat-number" id="bandwidth">0 Gbps</h3>
+                            <p class="stat-label">Bandwidth</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Streams -->
+                <div class="dashboard-widget">
+                    <div class="widget-header">
+                        <h2>Recent Streams</h2>
+                        <a href="#streams" class="btn btn-outline btn-small">View All</a>
+                    </div>
+                    <div class="stream-list" id="recentStreams">
+                        <!-- Streams will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="dashboard-widget">
+                    <div class="widget-header">
+                        <h2>Quick Actions</h2>
+                    </div>
+                    <div class="quick-actions">
+                        <button class="action-card" onclick="showCreateStreamModal()">
+                            <div class="action-icon">🎥</div>
+                            <h3>Create Stream</h3>
+                            <p>Start a new live stream</p>
+                        </button>
+                        <button class="action-card" onclick="showSection('analytics')">
+                            <div class="action-icon">📈</div>
+                            <h3>View Analytics</h3>
+                            <p>Check performance metrics</p>
+                        </button>
+                        <button class="action-card" onclick="showSection('api')">
+                            <div class="action-icon">🔧</div>
+                            <h3>API Setup</h3>
+                            <p>Configure API access</p>
+                        </button>
+                        <button class="action-card" onclick="openMonitoring()">
+                            <div class="action-icon">📊</div>
+                            <h3>Monitoring</h3>
+                            <p>Real-time system status</p>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Streams Section -->
+            <section id="streams-section" class="content-section">
+                <div class="section-header">
+                    <h1>Live Streams</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-outline" onclick="refreshStreams()">🔄 Refresh</button>
+                        <button class="btn btn-primary" onclick="showCreateStreamModal()">➕ Create Stream</button>
+                    </div>
+                </div>
+
+                <div class="streams-grid" id="streamsGrid">
+                    <!-- Streams will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Create Stream Section -->
+            <section id="create-section" class="content-section">
+                <div class="section-header">
+                    <h1>Create New Stream</h1>
+                </div>
+
+                <div class="create-stream-form">
+                    <form id="createStreamForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="streamTitle">Stream Title</label>
+                                <input type="text" id="streamTitle" name="title" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="streamCategory">Category</label>
+                                <select id="streamCategory" name="category">
+                                    <option value="gaming">Gaming</option>
+                                    <option value="music">Music</option>
+                                    <option value="education">Education</option>
+                                    <option value="business">Business</option>
+                                    <option value="entertainment">Entertainment</option>
+                                    <option value="sports">Sports</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="streamDescription">Description</label>
+                            <textarea id="streamDescription" name="description" rows="3"></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="streamQuality">Quality Settings</label>
+                                <select id="streamQuality" name="quality">
+                                    <option value="720p">720p (HD)</option>
+                                    <option value="1080p" selected>1080p (Full HD)</option>
+                                    <option value="1440p">1440p (2K)</option>
+                                    <option value="4k">4K (Ultra HD)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="streamBitrate">Bitrate</label>
+                                <select id="streamBitrate" name="bitrate">
+                                    <option value="2500">2.5 Mbps</option>
+                                    <option value="5000" selected>5 Mbps</option>
+                                    <option value="8000">8 Mbps</option>
+                                    <option value="12000">12 Mbps</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="recordStream" name="record">
+                                Record this stream for later viewing
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="enableChat" name="chat" checked>
+                                Enable live chat
+                            </label>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-outline" onclick="resetCreateForm()">Reset</button>
+                            <button type="submit" class="btn btn-primary">Create Stream</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics-section" class="content-section">
+                <div class="section-header">
+                    <h1>Analytics</h1>
+                    <div class="header-actions">
+                        <select id="analyticsTimeframe" onchange="updateAnalytics()">
+                            <option value="24h">Last 24 Hours</option>
+                            <option value="7d" selected>Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="90d">Last 90 Days</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <h3>Viewer Metrics</h3>
+                        <div class="chart-placeholder" id="viewerChart">
+                            <p>Loading viewer analytics...</p>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <h3>Stream Performance</h3>
+                        <div class="chart-placeholder" id="performanceChart">
+                            <p>Loading performance metrics...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="content-section">
+                <div class="section-header">
+                    <h1>Settings</h1>
+                </div>
+
+                <div class="settings-tabs">
+                    <button class="tab-button active" onclick="showSettingsTab('general')">General</button>
+                    <button class="tab-button" onclick="showSettingsTab('streaming')">Streaming</button>
+                    <button class="tab-button" onclick="showSettingsTab('security')">Security</button>
+                </div>
+
+                <div class="settings-content">
+                    <div id="general-settings" class="settings-tab active">
+                        <form id="generalSettingsForm">
+                            <div class="form-group">
+                                <label for="displayName">Display Name</label>
+                                <input type="text" id="displayName" name="displayName">
+                            </div>
+                            <div class="form-group">
+                                <label for="streamKey">Stream Key</label>
+                                <div class="input-group">
+                                    <input type="password" id="streamKey" name="streamKey" readonly>
+                                    <button type="button" class="btn btn-outline" onclick="toggleStreamKey()">Show</button>
+                                    <button type="button" class="btn btn-outline" onclick="regenerateStreamKey()">Regenerate</button>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </form>
+                    </div>
+
+                    <div id="streaming-settings" class="settings-tab">
+                        <form id="streamingSettingsForm">
+                            <div class="form-group">
+                                <label for="defaultQuality">Default Stream Quality</label>
+                                <select id="defaultQuality" name="defaultQuality">
+                                    <option value="720p">720p (HD)</option>
+                                    <option value="1080p">1080p (Full HD)</option>
+                                    <option value="1440p">1440p (2K)</option>
+                                    <option value="4k">4K (Ultra HD)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="defaultBitrate">Default Bitrate</label>
+                                <select id="defaultBitrate" name="defaultBitrate">
+                                    <option value="2500">2.5 Mbps</option>
+                                    <option value="5000">5 Mbps</option>
+                                    <option value="8000">8 Mbps</option>
+                                    <option value="12000">12 Mbps</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="autoRecord" name="autoRecord">
+                                    Automatically record all streams
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </form>
+                    </div>
+
+                    <div id="security-settings" class="settings-tab">
+                        <form id="securitySettingsForm">
+                            <div class="form-group">
+                                <label for="currentPassword">Current Password</label>
+                                <input type="password" id="currentPassword" name="currentPassword">
+                            </div>
+                            <div class="form-group">
+                                <label for="newPassword">New Password</label>
+                                <input type="password" id="newPassword" name="newPassword">
+                            </div>
+                            <div class="form-group">
+                                <label for="confirmNewPassword">Confirm New Password</label>
+                                <input type="password" id="confirmNewPassword" name="confirmNewPassword">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Update Password</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- API Keys Section -->
+            <section id="api-section" class="content-section">
+                <div class="section-header">
+                    <h1>API Keys</h1>
+                    <button class="btn btn-primary" onclick="generateAPIKey()">Generate New Key</button>
+                </div>
+
+                <div class="api-keys-list" id="apiKeysList">
+                    <!-- API keys will be loaded here -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Create Stream Modal -->
+    <div id="createStreamModal" class="modal hidden">
+        <div class="modal-overlay" onclick="hideCreateStreamModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Quick Stream Setup</h3>
+                <button class="modal-close" onclick="hideCreateStreamModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="quick-setup">
+                    <p>Start streaming in seconds with our quick setup:</p>
+                    <div class="rtmp-info">
+                        <div class="info-group">
+                            <label>RTMP URL:</label>
+                            <div class="copy-field">
+                                <input type="text" value="rtmp://localhost:1935/app/" readonly>
+                                <button class="btn btn-outline btn-small" onclick="copyToClipboard(this.previousElementSibling.value)">Copy</button>
+                            </div>
+                        </div>
+                        <div class="info-group">
+                            <label>Stream Key:</label>
+                            <div class="copy-field">
+                                <input type="text" id="modalStreamKey" value="loading..." readonly>
+                                <button class="btn btn-outline btn-small" onclick="copyToClipboard(document.getElementById('modalStreamKey').value)">Copy</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-outline" onclick="showSection('create')">Advanced Setup</button>
+                        <button class="btn btn-primary" onclick="startQuickStream()">Start Streaming</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/dashboard.js"></script>
+</body>
+</html>

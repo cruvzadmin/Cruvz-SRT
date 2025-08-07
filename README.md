@@ -10,9 +10,42 @@ CS can ingest live streams over WebRTC, SRT, RTMP, RTSP, and MPEG2-TS protocols,
 With Cruvz Streaming, you can build your powerful and sub-second latency media service very easily.
 
 ## Demo https://space.cruvzstreaming.com/
+
 <img src="dist/05_OvenSpace_230214.png" style="max-width: 100%; height: auto;">
 
 CruvzSpace is a sub-second latency streaming demo service using [Cruvz Streaming](https://github.com/techfixind/Cruvz-SRT), [CruvzPlayer](https://github.com/techfixind/CruvzPlayer) and [CruvzLiveKit](https://github.com/techfixind/CruvzLiveKit-Web). You can experience Cruvz Streaming in the **[CruvzSpace Demo](https://space.cruvzstreaming.com/)** and see examples of applying in [CruvzSpace Repository](https://github.com/techfixind/CruvzSpace).
+
+## 🌟 Complete Web Application - NEW!
+
+Cruvz Streaming now includes a **complete production-ready web application** with all the essential features for a modern streaming platform:
+
+### 🔐 User Authentication
+- **Sign Up/Sign In** - Complete user registration and login system
+- **Session Management** - Secure JWT-based authentication
+- **User Profiles** - Profile management and settings
+
+### 📊 Stream Management Dashboard
+- **Live Stream Control** - Start, stop, and manage streams
+- **Stream Creation** - Easy-to-use stream setup wizard
+- **Real-time Analytics** - Live viewer metrics and performance data
+- **Stream Settings** - Quality, bitrate, and recording options
+
+### 🎛️ Admin Console
+- **System Configuration** - Server settings and preferences
+- **API Key Management** - Generate and manage API keys
+- **User Management** - Admin controls for user accounts
+- **Security Settings** - Password management and security options
+
+### 📈 Analytics & Monitoring
+- **Dashboard Overview** - Key metrics and statistics
+- **Performance Charts** - Historical data and trends
+- **System Health** - Real-time server monitoring
+- **Viewer Analytics** - Detailed audience insights
+
+**Access the Web Application:**
+- 🏠 **Main Website**: `http://localhost` (after deployment)
+- 📊 **Dashboard**: `http://localhost/pages/dashboard.html`
+- 🎥 **Demo Page**: `http://localhost/demo/`
 
 ## Features
 * Ingest
@@ -75,29 +108,39 @@ Although we have tested Cruvz Streaming on the platforms listed below, it may wo
 
 **DEPLOYMENT ISSUES RESOLVED**: All docker-compose and deployment problems have been fixed!
 
+**🌟 NEW: Complete Web Application Included!**
+
 ```bash
-# OPTION 1: Simple deployment (RECOMMENDED - FASTEST)
+# OPTION 1: Complete setup with web application (RECOMMENDED)
 git clone https://github.com/techfixind/Cruvz-SRT.git
 cd Cruvz-SRT
+./setup-webapp.sh  # Setup complete web UI
+./deploy.sh        # Deploy all services
+
+# OPTION 2: Simple deployment (streaming engine only)
 ./deploy.sh simple
 
-# OPTION 2: Full build deployment (builds from source)
+# OPTION 3: Full build deployment (builds from source)
 ./deploy.sh full
-
-# OPTION 3: Traditional docker-compose (now working)
-docker compose -f docker-compose-simple.yml up -d
 
 # Verify deployment
 ./scripts/e2e-test.sh
 
 # Access services:
-# Grafana: http://localhost:3000 (admin/cruvz123)  
-# Prometheus: http://localhost:9090
-# RTMP: rtmp://localhost:1935/app/
-# WebRTC: http://localhost:3333
+# 🏠 Main Website: http://localhost
+# 📊 Dashboard: http://localhost/pages/dashboard.html  
+# 📈 Grafana: http://localhost:3000 (admin/cruvz123)  
+# 🔍 Prometheus: http://localhost:9090
+# 🎥 RTMP: rtmp://localhost:1935/app/
+# 📡 WebRTC: http://localhost:3333
 ```
 
 **NEW FEATURES:**
+- ✅ **Complete Web Application** - Landing page, dashboard, authentication
+- ✅ **User Management** - Signup, signin, profile management  
+- ✅ **Stream Creation Interface** - Easy stream setup and configuration
+- ✅ **Admin Dashboard** - Full control panel with analytics
+- ✅ **Real-time Monitoring** - Live metrics and performance data
 - ✅ Zero deployment errors guaranteed  
 - ✅ Comprehensive deployment script (`deploy.sh`)
 - ✅ End-to-end testing and validation
