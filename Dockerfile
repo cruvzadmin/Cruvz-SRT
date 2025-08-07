@@ -21,6 +21,9 @@ ARG 	STRIP=TRUE
 ENV     PREFIX=/opt/cruvzstreaming
 ENV     TEMP_DIR=/tmp/cs
 
+# Set PKG_CONFIG_PATH so pkg-config can find custom .pc files for built dependencies
+ENV     PKG_CONFIG_PATH=/opt/cruvzstreaming/lib/pkgconfig:/opt/cruvzstreaming/lib64/pkgconfig:$PKG_CONFIG_PATH
+
 ## Copy Cruvz Streaming source
 COPY . ${TEMP_DIR}
 
