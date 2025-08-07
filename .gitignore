@@ -42,6 +42,19 @@ misc/openh264*
 misc/opt/20*
 misc/opt/22*
 
+# Backend Node.js Dependencies
+backend/node_modules/
+backend/package-lock.json
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+
+# Backend Runtime
+backend/data/
+backend/logs/
+backend/uploads/
+backend/recordings/
+
 # Six Sigma Build and Deployment Artifacts
 *.log
 *.tmp
