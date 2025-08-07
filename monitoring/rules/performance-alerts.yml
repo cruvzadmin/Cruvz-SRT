@@ -89,7 +89,7 @@ groups:
 
   # Throughput Monitoring
   - alert: ThroughputDegraded
-    expr: rate(requests_total[5m]) < 100 and rate(requests_total[5m]) offset 10m > 200
+    expr: rate(requests_total[5m]) < 100 and rate(requests_total[5m] offset 10m) > 200
     for: 2m
     labels:
       severity: warning

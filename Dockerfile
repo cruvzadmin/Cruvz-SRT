@@ -55,8 +55,10 @@ RUN \
         cp ../misc/install_nvidia_driver.sh ${PREFIX}/bin/install_nvidia_driver.sh && \
         cp ../scripts/validate-config.sh ${PREFIX}/bin/validate-config.sh && \
         cp ../scripts/wait-for-origin.sh ${PREFIX}/bin/wait-for-origin.sh && \
+        cp ../scripts/six-sigma-entrypoint.sh ${PREFIX}/bin/six-sigma-entrypoint.sh && \
         chmod +x ${PREFIX}/bin/validate-config.sh && \
         chmod +x ${PREFIX}/bin/wait-for-origin.sh && \
+        chmod +x ${PREFIX}/bin/six-sigma-entrypoint.sh && \
         rm -rf ${TEMP_DIR}
 
 FROM	base AS release
