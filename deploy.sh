@@ -224,13 +224,18 @@ check_port_availability() {
 deploy_services() {
     log "STEP" "Deploying Cruvz Streaming services..."
     
+    local compose_file=${COMPOSE_FILE:-docker-compose.yml}
+    local compose_cmd="docker compose -f $compose_file"
+    
+    log "INFO" "Using compose file: $compose_file"
+    
     # Stop any existing deployment
     log "INFO" "Stopping any existing deployment..."
-    docker compose down -v 2>/dev/null || true
+    $compose_cmd down -v 2>/dev/null || true
     
-    # Start deployment with build
+    # Start deployment
     log "INFO" "Starting service deployment..."
-    if ! docker compose up --build -d 2>&1 | tee -a "$DEPLOYMENT_LOG"; then
+    if ! $compose_cmd up --build -d 2>&1 | tee -a "$DEPLOYMENT_LOG"; then
         log "ERROR" "Service deployment failed"
         return 1
     fi
@@ -517,6 +522,16 @@ case "${1:-deploy}" in
     "deploy"|"--deploy")
         main
         ;;
+    "simple"|"--simple")
+        log "INFO" "Using simple deployment (known-good images)"
+        export COMPOSE_FILE="docker-compose-simple.yml"
+        main
+        ;;
+    "full"|"--full")
+        log "INFO" "Using full build deployment (local Dockerfile)"
+        export COMPOSE_FILE="docker-compose-fixed.yml"
+        main
+        ;;
     "validate"|"--validate")
         print_banner
         validate_prerequisites
@@ -534,6 +549,8 @@ case "${1:-deploy}" in
         print_banner
         log "INFO" "Cleaning up deployment..."
         docker compose down -v 2>/dev/null || true
+        docker compose -f docker-compose-simple.yml down -v 2>/dev/null || true
+        docker compose -f docker-compose-fixed.yml down -v 2>/dev/null || true
         docker system prune -f 2>/dev/null || true
         log "SUCCESS" "Cleanup completed"
         ;;
@@ -543,7 +560,9 @@ case "${1:-deploy}" in
         echo "Usage: $0 [COMMAND]"
         echo ""
         echo "Commands:"
-        echo "  deploy     Deploy the complete Cruvz Streaming stack (default)"
+        echo "  deploy     Deploy using the default docker-compose.yml"
+        echo "  simple     Deploy using simple configuration (known-good images)"
+        echo "  full       Deploy using full build configuration (local Dockerfile)"
         echo "  validate   Validate prerequisites and configuration only"
         echo "  build      Test build process only"
         echo "  clean      Clean up existing deployment and Docker resources"
@@ -551,9 +570,12 @@ case "${1:-deploy}" in
         echo ""
         echo "Environment Variables:"
         echo "  FORCE_DEPLOY=1    Skip interactive confirmations"
+        echo "  COMPOSE_FILE      Override docker-compose file to use"
         echo ""
         echo "Examples:"
-        echo "  $0                 # Deploy everything"
+        echo "  $0                 # Deploy using default configuration"
+        echo "  $0 simple          # Deploy using simple/tested configuration"
+        echo "  $0 full            # Deploy using full local build"
         echo "  $0 validate        # Check prerequisites"
         echo "  FORCE_DEPLOY=1 $0  # Deploy without prompts"
         exit 0
