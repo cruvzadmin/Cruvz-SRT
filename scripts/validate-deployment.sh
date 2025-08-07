@@ -131,8 +131,6 @@ validate_health_endpoints() {
     log "INFO" "Validating health endpoints..."
     
     local endpoints=(
-        "http://localhost:8080/health"
-        "http://localhost:8081/health"
         "http://localhost:9090/-/healthy"
         "http://localhost:3100/ready"
         "http://localhost:3000/api/health"

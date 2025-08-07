@@ -9,7 +9,7 @@ services:
 
     # Six Sigma Health Check - Multi-layer validation
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || pgrep -f OvenMediaEngine > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "pgrep -f OvenMediaEngine > /dev/null || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -109,7 +109,7 @@ services:
 
     # Six Sigma Health Check - Multi-layer validation
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || pgrep -f OvenMediaEngine > /dev/null && nc -z ${DEFAULT_ORIGIN_SERVER} ${DEFAULT_ORIGIN_PORT} || exit 1"]
+      test: ["CMD-SHELL", "pgrep -f OvenMediaEngine > /dev/null && nc -z origin 9000 || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -360,13 +360,12 @@ services:
     - "9093:9093/tcp"
 
     volumes:
-    - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    - ./monitoring/alertmanager-simple.yml:/etc/alertmanager/alertmanager.yml:ro
     - alertmanager-data:/alertmanager:rw
 
     command:
     - '--config.file=/etc/alertmanager/alertmanager.yml'
     - '--storage.path=/alertmanager'
-    - '--web.enable-lifecycle'
     - '--cluster.listen-address=0.0.0.0:9094'
 
     networks:

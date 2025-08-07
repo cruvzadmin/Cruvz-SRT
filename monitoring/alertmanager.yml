@@ -71,15 +71,6 @@ receivers:
       
       This is a critical defect that violates Six Sigma quality standards.
       Immediate action required to maintain 99.99966% availability target.
-  slack_configs:
-  - api_url: 'YOUR_SLACK_WEBHOOK_URL'
-    channel: '#critical-alerts'
-    title: 'CRITICAL SIX SIGMA DEFECT'
-    text: |
-      {{ range .Alerts }}
-      Alert: {{ .Annotations.summary }}
-      Description: {{ .Annotations.description }}
-      {{ end }}
 
 - name: 'executive-team'
   email_configs:
@@ -111,10 +102,6 @@ receivers:
       {{ end }}
       
       Please investigate and implement preventive measures.
-  slack_configs:
-  - api_url: 'YOUR_SLACK_WEBHOOK_URL'
-    channel: '#dev-alerts'
-    title: 'Potential Six Sigma Defect'
 
 - name: 'ops-team'
   email_configs:
