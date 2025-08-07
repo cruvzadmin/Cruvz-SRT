@@ -98,7 +98,7 @@ test_containers() {
     log "SUCCESS" "$healthy_count/$total_count containers are healthy"
     
     # Check specific streaming processes
-    if docker compose exec -T origin pgrep -f OvenMediaEngine > /dev/null; then
+    if docker compose exec -T origin pgrep -f CruvzStreaming > /dev/null; then
         log "SUCCESS" "Origin streaming engine is running"
     else
         log "ERROR" "Origin streaming engine is not running"
