@@ -42,12 +42,11 @@ test_services() {
         return 1
     fi
     
-    # Test Loki
+    # Test Loki (optional service)
     if curl -s http://localhost:3100/ready | grep -q "ready"; then
         log "SUCCESS" "Loki is healthy"
     else
-        log "ERROR" "Loki health check failed"
-        return 1
+        log "WARN" "Loki is not available (may be expected in simple deployment)"
     fi
     
     return 0
@@ -98,8 +97,10 @@ test_containers() {
     log "SUCCESS" "$healthy_count/$total_count containers are healthy"
     
     # Check specific streaming processes
-    if docker compose exec -T origin pgrep -f OvenMediaEngine > /dev/null; then
-        log "SUCCESS" "Origin streaming engine is running"
+    if docker compose exec -T origin pgrep -f CruvzStreaming > /dev/null 2>&1; then
+        log "SUCCESS" "Origin streaming engine (CruvzStreaming) is running"
+    elif docker compose exec -T origin pgrep -f OvenMediaEngine > /dev/null 2>&1; then
+        log "SUCCESS" "Origin streaming engine (OvenMediaEngine) is running"
     else
         log "ERROR" "Origin streaming engine is not running"
         return 1

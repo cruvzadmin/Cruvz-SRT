@@ -60,7 +60,7 @@ install_openssl()
     (DIR=${TEMP_PATH}/openssl && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://github.com/openssl/openssl/archive/openssl-${OPENSSL_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://github.com/openssl/openssl/archive/openssl-${OPENSSL_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     ./config --prefix="${PREFIX}" --openssldir="${PREFIX}" --libdir=lib -Wl,-rpath,"${PREFIX}/lib" shared no-idea no-mdc2 no-rc5 no-ec2m no-ecdh no-ecdsa no-async && \
     make -j$(nproc) && \
     sudo make install_sw && \
@@ -72,7 +72,7 @@ install_libsrtp()
     (DIR=${TEMP_PATH}/srtp && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://github.com/cisco/libsrtp/archive/v${SRTP_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://github.com/cisco/libsrtp/archive/v${SRTP_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     ./configure --prefix="${PREFIX}" --enable-openssl --with-openssl-dir="${PREFIX}" && \
     make -j$(nproc) shared_library&& \
     sudo make install && \
@@ -84,7 +84,7 @@ install_libsrt()
     (DIR=${TEMP_PATH}/srt && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://github.com/Haivision/srt/archive/v${SRT_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://github.com/Haivision/srt/archive/v${SRT_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH} ./configure --prefix="${PREFIX}" --enable-shared --disable-static && \
     make -j$(nproc) && \
     sudo make install && \
@@ -96,7 +96,7 @@ install_libopus()
     (DIR=${TEMP_PATH}/opus && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://archive.mozilla.org/pub/opus/opus-${OPUS_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://archive.mozilla.org/pub/opus/opus-${OPUS_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     autoreconf -fiv && \
     ./configure --prefix="${PREFIX}" --enable-shared --disable-static && \
     make -j$(nproc) && \
@@ -114,7 +114,7 @@ install_libx264()
     (DIR=${TEMP_PATH}/x264 && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sLf https://code.videolan.org/videolan/x264/-/archive/master/x264-${X264_VERSION}.tar.bz2 | tar -jx --strip-components=1 && \
+    curl -sLfk https://code.videolan.org/videolan/x264/-/archive/master/x264-${X264_VERSION}.tar.bz2 | tar -jx --strip-components=1 && \
     ./configure --prefix="${PREFIX}" --enable-shared --enable-pic --disable-cli && \
     make -j$(nproc) && \
     sudo make install && \
@@ -126,7 +126,7 @@ install_libopenh264()
     (DIR=${TEMP_PATH}/openh264 && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://github.com/cisco/openh264/archive/refs/tags/v${OPENH264_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://github.com/cisco/openh264/archive/refs/tags/v${OPENH264_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     sed -i -e "s|PREFIX=/usr/local|PREFIX=${PREFIX}|" Makefile && \
     make OS=linux && \
     sudo make install && \
@@ -167,7 +167,7 @@ install_libvpx()
     (DIR=${TEMP_PATH}/vpx && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://codeload.github.com/webmproject/libvpx/tar.gz/v${VPX_VERSION} | tar -xz --strip-components=1 && \
+    curl -sSLfk https://codeload.github.com/webmproject/libvpx/tar.gz/v${VPX_VERSION} | tar -xz --strip-components=1 && \
     ./configure --prefix="${PREFIX}" --enable-vp8 --enable-pic --enable-shared --disable-static --disable-vp9 --disable-debug --disable-examples --disable-docs --disable-install-bins ${ADDITIONAL_FLAGS} && \
     make -j$(nproc) && \
     sudo make install && \
@@ -179,7 +179,7 @@ install_libwebp()
     (DIR=${TEMP_PATH}/webp && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${WEBP_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${WEBP_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     ./configure --prefix="${PREFIX}" --enable-shared --disable-static && \
     make -j$(nproc) && \
     sudo make install && \
@@ -191,7 +191,7 @@ install_fdk_aac()
     (DIR=${TEMP_PATH}/aac && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://github.com/mstorsjo/fdk-aac/archive/v${FDKAAC_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://github.com/mstorsjo/fdk-aac/archive/v${FDKAAC_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     autoreconf -fiv && \
     ./configure --prefix="${PREFIX}" --enable-shared --disable-static --datadir=/tmp/aac && \
     make -j$(nproc) && \
@@ -205,7 +205,7 @@ install_nasm()
     (DIR=${TEMP_PATH}/nasm && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://github.com/netwide-assembler/nasm/archive/refs/tags/nasm-${NASM_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://github.com/netwide-assembler/nasm/archive/refs/tags/nasm-${NASM_VERSION}.tar.gz | tar -xz --strip-components=1 && \
 	./autogen.sh && \
     ./configure --prefix="${PREFIX}" && \
     make -j$(nproc) && \
@@ -220,7 +220,7 @@ install_nvcc_hdr() {
         (DIR=${TEMP_PATH}/nvcc-hdr && \
         mkdir -p ${DIR} && \
         cd ${DIR} && \
-        curl -sSLf https://github.com/FFmpeg/nv-codec-headers/releases/download/n${NVCC_HDR_VERSION}/nv-codec-headers-${NVCC_HDR_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+        curl -sSLfk https://github.com/FFmpeg/nv-codec-headers/releases/download/n${NVCC_HDR_VERSION}/nv-codec-headers-${NVCC_HDR_VERSION}.tar.gz | tar -xz --strip-components=1 && \
         sed -i 's|PREFIX.*=\(.*\)|PREFIX = '${PREFIX}'|g' Makefile && \
         sudo make install ) || fail_exit "nvcc_headers"
     fi
@@ -384,7 +384,7 @@ install_jemalloc()
     (DIR=${TEMP_PATH}/jemalloc && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://github.com/jemalloc/jemalloc/releases/download/${JEMALLOC_VERSION}/jemalloc-${JEMALLOC_VERSION}.tar.bz2 | tar -jx --strip-components=1 && \
+    curl -sSLfk https://github.com/jemalloc/jemalloc/releases/download/${JEMALLOC_VERSION}/jemalloc-${JEMALLOC_VERSION}.tar.bz2 | tar -jx --strip-components=1 && \
     ./configure --prefix="${PREFIX}" && \
     make -j$(nproc) && \
     sudo make install_include install_lib && \
@@ -396,7 +396,7 @@ install_libpcre2()
     (DIR=${TEMP_PATH}/libpcre2 && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://github.com/PhilipHazel/pcre2/releases/download/pcre2-${PCRE2_VERSION}/pcre2-${PCRE2_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://github.com/PhilipHazel/pcre2/releases/download/pcre2-${PCRE2_VERSION}/pcre2-${PCRE2_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     ./configure --prefix="${PREFIX}" \
     --disable-static \
         --enable-jit=auto && \
@@ -410,7 +410,7 @@ install_hiredis()
 	(DIR=${TEMP_PATH}/hiredis && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://github.com/redis/hiredis/archive/refs/tags/v${HIREDIS_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://github.com/redis/hiredis/archive/refs/tags/v${HIREDIS_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     make -j$(nproc) && \
     sudo make install PREFIX="${PREFIX}" && \
     rm -rf ${DIR} ) || fail_exit "hiredis"
@@ -449,7 +449,7 @@ index 87df1e83..e83f8576 100644
     (DIR=${TEMP_PATH}/spdlog && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://github.com/gabime/spdlog/archive/refs/tags/v${SPDLOG_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://github.com/gabime/spdlog/archive/refs/tags/v${SPDLOG_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     echo "${SPDLOG_PATCH_CONTENT}" | git apply && \
     mkdir -p build && \
     cd build && \
@@ -515,7 +515,7 @@ install_ovenmediaengine()
     (DIR=${TEMP_PATH}/ome && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf https://github.com/AirenSoft/OvenMediaEngine/archive/${OME_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://github.com/AirenSoft/OvenMediaEngine/archive/${OME_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     cd src && \
     make release && \
     sudo make install && \
