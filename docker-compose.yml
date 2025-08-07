@@ -24,11 +24,6 @@ services:
         reservations:
           cpus: '2.0'
           memory: 2G
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 10
-        window: 120s
     
     # Six Sigma Port Management - Explicit and documented
     ports:
@@ -129,11 +124,6 @@ services:
         reservations:
           cpus: '1.5'
           memory: 1G
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 10
-        window: 120s
     
     # Six Sigma Edge Ports - Non-conflicting configuration
     ports:
@@ -302,8 +292,6 @@ services:
     restart: always
     depends_on:
       monitoring:
-        condition: service_healthy
-      log-aggregator:
         condition: service_healthy
     
     healthcheck:
