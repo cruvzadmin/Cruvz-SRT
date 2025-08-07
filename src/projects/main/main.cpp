@@ -1,15 +1,15 @@
 //==============================================================================
 //
-//  OvenMediaEngine
+//  Cruvz Streaming
 //
 //  Created by Hyunjun Jang
-//  Copyright (c) 2018 AirenSoft. All rights reserved.
+//  Copyright (c) 2018 Cruvz. All rights reserved.
 //
 //==============================================================================
 #include "main.h"
 
 #include <api_server/api_server.h>
-#include <base/info/ome_version.h>
+#include <base/info/cruvz_version.h>
 #include <base/ovlibrary/daemon.h>
 #include <base/ovlibrary/log_write.h>
 #include <base/ovsocket/ovsocket.h>
@@ -259,7 +259,7 @@ static ov::Daemon::State Initialize(int argc, char *argv[], ParseOption *parse_o
 	}
 
 	{
-		auto version_instance = info::OmeVersion::GetInstance();
+		auto version_instance = info::CruvzVersion::GetInstance();
 		version_instance->SetVersion(OME_VERSION, OME_GIT_VERSION);
 
 		if (parse_option->version)

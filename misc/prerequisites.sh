@@ -2,10 +2,10 @@
 
 # set -x
 
-PREFIX=/opt/ovenmediaengine
+PREFIX=/opt/cruvzstreaming
 TEMP_PATH=/tmp
 
-OME_VERSION=dev
+CS_VERSION=dev
 OPENSSL_VERSION=3.0.7
 SRTP_VERSION=2.4.2
 SRT_VERSION=1.5.2

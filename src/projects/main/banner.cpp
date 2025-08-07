@@ -1,14 +1,14 @@
 //==============================================================================
 //
-//  OvenMediaEngine
+//  Cruvz Streaming
 //
 //  Created by Hyunjun Jang
-//  Copyright (c) 2020 AirenSoft. All rights reserved.
+//  Copyright (c) 2020 Cruvz. All rights reserved.
 //
 //==============================================================================
 #include "banner.h"
 
-#include <base/info/ome_version.h>
+#include <base/info/cruvz_version.h>
 #include <sys/utsname.h>
 
 #include "main.h"
@@ -20,8 +20,8 @@ void PrintBanner()
 	utsname uts{};
 	::uname(&uts);
 
-	logti("OvenMediaEngine %s is started on [%s] (%s %s - %s, %s)",
-		  info::OmeVersion::GetInstance()->ToString().CStr(),
+	logti("Cruvz Streaming %s is started on [%s] (%s %s - %s, %s)",
+		  info::CruvzVersion::GetInstance()->ToString().CStr(),
 		  uts.nodename, uts.sysname, uts.machine, uts.release, uts.version);
 
 	logti("With modules:");

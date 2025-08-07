@@ -131,7 +131,7 @@ endif
 LOCAL_CFLAGS += -DSPDLOG_COMPILED_LIB -Iprojects/third_party/spdlog-1.15.1/include
 LOCAL_CXXFLAGS += -DSPDLOG_COMPILED_LIB -Iprojects/third_party/spdlog-1.15.1/include
 
-LOCAL_TARGET := OvenMediaEngine
+LOCAL_TARGET := CruvzStreaming
 
 # Update git information
 PRIVATE_MAIN_PATH := $(LOCAL_PATH)

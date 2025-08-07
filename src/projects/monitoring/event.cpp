@@ -1,6 +1,6 @@
 #include "event.h"
 
-#include <base/info/ome_version.h>
+#include <base/info/cruvz_version.h>
 #include <main/git_info.h>
 #include <main/main.h>
 #include <modules/json_serdes/converters.h>
@@ -250,7 +250,7 @@ namespace mon
 	{
 		json_server["serverID"] = _server_metric->GetConfig()->GetID().CStr();
 		json_server["serverName"] = _server_metric->GetConfig()->GetName().CStr();
-		json_server["serverVersion"] = info::OmeVersion::GetInstance()->ToString().CStr();
+		json_server["serverVersion"] = info::CruvzVersion::GetInstance()->ToString().CStr();
 		json_server["startedTime"] = ov::Converter::ToISO8601String(std::chrono::system_clock::now()).CStr();	
 		json_server["bind"] = _server_metric->GetConfig()->GetBind().ToJson();
 

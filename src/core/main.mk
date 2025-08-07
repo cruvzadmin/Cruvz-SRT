@@ -4,9 +4,9 @@
 SHELL := /bin/bash
 BUILD_ROOT := .
 BUILD_SYSTEM_DIRECTORY := core
-OME := OvenMediaEngine
-OME_SERVICE := ovenmediaengine.service
-INSTALL_DIRECTORY := /usr/share/ovenmediaengine
+CS := CruvzStreaming
+CS_SERVICE := cruvzstreaming.service
+INSTALL_DIRECTORY := /usr/share/cruvzstreaming
 INSTALL_CONF_DIRECTORY := $(INSTALL_DIRECTORY)/conf
 LINK_BIN_DIRECTORY := /usr/bin
 INSTALL_SERVICE_DIRECTORY := /lib/systemd/system

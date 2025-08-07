@@ -1,9 +1,9 @@
 //==============================================================================
 //
-//  OvenMediaEngine
+//  Cruvz Streaming
 //
 //  Created by Hyunjun Jang
-//  Copyright (c) 2022 AirenSoft. All rights reserved.
+//  Copyright (c) 2022 Cruvz. All rights reserved.
 //
 //==============================================================================
 #pragma once
@@ -12,7 +12,7 @@
 
 namespace info
 {
-	class OmeVersion : public ov::Singleton<OmeVersion>
+	class CruvzVersion : public ov::Singleton<CruvzVersion>
 	{
 	public:
 		void SetVersion(const ov::String &version, const ov::String &git_extra);

@@ -10,4 +10,4 @@
 
 #include "application.h"
 
-#include "ome_version.h"
+#include "cruvz_version.h"

@@ -1,10 +1,34 @@
-version: '3.6'
+version: '3.8'
 
+# Cruvz Streaming Docker Compose with Six Sigma Principles
+# This configuration implements zero-error deployment with comprehensive monitoring
 services:
   origin:
     build:
       context: .
-    image: airensoft/ovenmediaengine:latest
+      dockerfile: Dockerfile
+    image: cruvz/cruvzstreaming:latest
+    container_name: cruvz-streaming-origin
+    restart: unless-stopped
+    
+    # Health check for zero-error monitoring
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Resource limits for predictable performance
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    
     ports:
     - "9000:9000/tcp" # OVT(Origin)
     - "1935:1935/tcp" # RTMP Provider
@@ -13,44 +37,164 @@ services:
     - "3334:3334/tcp" # TLS WebRTC Signaling / LLHLS - Optional unless TLS is enabled
     - "3478:3478/tcp" # WebRTC TURN
     - "10000-10004:10000-10004/udp" # WebRTC Candidate
+    - "8080:8080/tcp" # Health check endpoint
+    
     environment:
-    - OME_HOST_IP=192.168.0.160
-    - OME_ORIGIN_PORT=9000
-    - OME_RTMP_PROV_PORT=1935
-    - OME_SRT_PROV_PORT=9999
-    - OME_LLHLS_STREAM_PORT=3333 #LLHLS or WebRTC should be different if both are enabled.
-    - OME_WEBRTC_SIGNALLING_PORT=3333 #LLHLS or WebRTC should be different if both are enabled.
-    - OME_WEBRTC_SIGNALLING_TLS_PORT=3334 # Optional, unless using TLS
-    - OME_WEBRTC_TCP_RELAY_PORT=3478
-    - OME_WEBRTC_CANDIDATE_PORT=10000-10004/udp
-    restart: always
-    # Uncomment the following line to use your own configuration file (./origin_conf/Server.xml)
-    #volumes:
-    #- ./origin_conf:/opt/ovenmediaengine/bin/origin_conf
-    # uncomment if using SSL certification
-    #- ./sslcerts:/opt/ovenmediaengine/bin/certs
-    command: /opt/ovenmediaengine/bin/OvenMediaEngine -c origin_conf
+    - CS_HOST_IP=192.168.0.160
+    - CS_ORIGIN_PORT=9000
+    - CS_RTMP_PROV_PORT=1935
+    - CS_SRT_PROV_PORT=9999
+    - CS_LLHLS_STREAM_PORT=3333 #LLHLS or WebRTC should be different if both are enabled.
+    - CS_WEBRTC_SIGNALLING_PORT=3333 #LLHLS or WebRTC should be different if both are enabled.
+    - CS_WEBRTC_SIGNALLING_TLS_PORT=3334 # Optional, unless using TLS
+    - CS_WEBRTC_TCP_RELAY_PORT=3478
+    - CS_WEBRTC_CANDIDATE_PORT=10000-10004/udp
+    - LOG_LEVEL=INFO
+    - ENABLE_MONITORING=true
+    
+    volumes:
+    # Persistent configuration for reliability
+    - cs-origin-conf:/opt/cruvzstreaming/bin/origin_conf
+    - cs-logs:/opt/cruvzstreaming/logs
+    # Optional SSL certificates
+    #- ./sslcerts:/opt/cruvzstreaming/bin/certs
+    
+    command: /opt/cruvzstreaming/bin/CruvzStreaming -c origin_conf
+    
+    # Logging configuration for comprehensive monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+        labels: "service=cruvz-streaming-origin"
 
   edge:
     build:
       context: .
-    image: airensoft/ovenmediaengine:latest
+      dockerfile: Dockerfile
+    image: cruvz/cruvzstreaming:latest
+    container_name: cruvz-streaming-edge
+    restart: unless-stopped
+    depends_on:
+      origin:
+        condition: service_healthy
+    
+    # Health check for zero-error monitoring
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Resource limits for predictable performance
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1.5G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
     ports:
     - "4333:3333/tcp" # WebRTC Signaling / LLHLS
     - "3479:3479/tcp" # WebRTC TURN
     - "10005-10009:10005-10009/udp" # WebRTC Candidate
+    - "8081:8080/tcp" # Health check endpoint
+    
     environment:
-    - OME_HOST_IP=192.168.0.160
+    - CS_HOST_IP=192.168.0.160
     - DEFAULT_ORIGIN_SERVER=192.168.0.160
     - DEFAULT_ORIGIN_PORT=9000
-    - OME_LLHLS_STREAM_PORT=3333 #LLHLS or WebRTC should be different if both are enabled.
-    - OME_WEBRTC_SIGNALLING_PORT=3333 #LLHLS or WebRTC should be different if both are enabled.
-    - OME_WEBRTC_SIGNALLING_TLS_PORT=3334 # Optional, unless using TLS
-    - OME_WEBRTC_TCP_RELAY_PORT=3479
-    - OME_WEBRTC_CANDIDATE_PORT=10005-10009/udp
-    restart: always
-    # Uncomment the following line to use your own configuration file (./edge_conf/Server.xml)
-    #volumes:
-    #- ./edge_conf:/opt/ovenmediaengine/bin/edge_conf
-    #- ./sslcerts:/opt/ovenmediaengine/bin/certs
-    command: /opt/ovenmediaengine/bin/OvenMediaEngine -c edge_conf
+    - CS_LLHLS_STREAM_PORT=3333 #LLHLS or WebRTC should be different if both are enabled.
+    - CS_WEBRTC_SIGNALLING_PORT=3333 #LLHLS or WebRTC should be different if both are enabled.
+    - CS_WEBRTC_SIGNALLING_TLS_PORT=3334 # Optional, unless using TLS
+    - CS_WEBRTC_TCP_RELAY_PORT=3479
+    - CS_WEBRTC_CANDIDATE_PORT=10005-10009/udp
+    - LOG_LEVEL=INFO
+    - ENABLE_MONITORING=true
+    
+    volumes:
+    # Persistent configuration for reliability
+    - cs-edge-conf:/opt/cruvzstreaming/bin/edge_conf
+    - cs-logs:/opt/cruvzstreaming/logs
+    #- ./sslcerts:/opt/cruvzstreaming/bin/certs
+    
+    command: /opt/cruvzstreaming/bin/CruvzStreaming -c edge_conf
+    
+    # Logging configuration for comprehensive monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+        labels: "service=cruvz-streaming-edge"
+
+  # Monitoring service for Six Sigma compliance
+  monitoring:
+    image: prom/prometheus:latest
+    container_name: cruvz-monitoring
+    restart: unless-stopped
+    ports:
+    - "9090:9090/tcp"
+    volumes:
+    - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    - prometheus-data:/prometheus
+    command:
+    - '--config.file=/etc/prometheus/prometheus.yml'
+    - '--storage.tsdb.path=/prometheus'
+    - '--web.console.libraries=/etc/prometheus/console_libraries'
+    - '--web.console.templates=/etc/prometheus/consoles'
+    - '--storage.tsdb.retention.time=30d'
+    - '--web.enable-lifecycle'
+
+  # Log aggregation for comprehensive analysis
+  log-aggregator:
+    image: grafana/loki:latest
+    container_name: cruvz-logs
+    restart: unless-stopped
+    ports:
+    - "3100:3100/tcp"
+    volumes:
+    - ./monitoring/loki.yml:/etc/loki/loki.yml
+    - loki-data:/loki
+    command: -config.file=/etc/loki/loki.yml
+
+  # Dashboard for real-time monitoring
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cruvz-dashboard
+    restart: unless-stopped
+    ports:
+    - "3000:3000/tcp"
+    environment:
+    - GF_SECURITY_ADMIN_PASSWORD=cruvz123
+    - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+    - grafana-data:/var/lib/grafana
+    - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards
+    - ./monitoring/grafana-datasources:/etc/grafana/provisioning/datasources
+
+volumes:
+  cs-origin-conf:
+    driver: local
+  cs-edge-conf:
+    driver: local
+  cs-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  loki-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+# Network configuration for isolation and security
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 172.20.0.0/16

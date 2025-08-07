@@ -396,7 +396,7 @@ bool InitializeSignals()
 	g_is_terminated = false;
 
 	::memset(g_ome_version, 0, sizeof(g_ome_version));
-	::strncpy(g_ome_version, info::OmeVersion::GetInstance()->ToString().CStr(), OV_COUNTOF(g_ome_version) - 1);
+	::strncpy(g_ome_version, info::CruvzVersion::GetInstance()->ToString().CStr(), OV_COUNTOF(g_ome_version) - 1);
 
 	::SetDumpFallbackPath(::ov_log_get_path());
 
