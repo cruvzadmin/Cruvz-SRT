@@ -1,12 +1,13 @@
 apiVersion: 1
 
+# Six Sigma Dashboards Configuration
 providers:
-  - name: 'Cruvz Streaming Dashboards'
+  - name: 'Six Sigma Quality Dashboards'
     orgId: 1
-    folder: ''
-    folderUid: ''
+    folder: 'Six Sigma Quality'
     type: file
     disableDeletion: false
+    editable: true
     updateIntervalSeconds: 10
     allowUiUpdates: true
     options:

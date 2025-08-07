@@ -1,29 +1,83 @@
-# Prometheus configuration for Cruvz Streaming Six Sigma monitoring
+# Prometheus Configuration for Cruvz Streaming Six Sigma Monitoring
+# Target: 99.99966% uptime (3.4 defects per million opportunities)
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  external_labels:
+    monitor: 'cruvz-streaming-six-sigma'
+    environment: 'production'
 
+# Six Sigma Quality Rules - Zero tolerance for defects
 rule_files:
-  # - "first_rules.yml"
-  # - "second_rules.yml"
+  - "/etc/prometheus/rules/six-sigma-alerts.yml"
+  - "/etc/prometheus/rules/performance-alerts.yml"
+  - "/etc/prometheus/rules/availability-alerts.yml"
 
+# Six Sigma Comprehensive Monitoring Configuration
 scrape_configs:
+  # Self-monitoring
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
-
-  - job_name: 'cruvz-streaming-demo'
-    static_configs:
-      - targets: ['cruvz-streaming:80']
+    scrape_interval: 30s
     metrics_path: /metrics
-    scrape_interval: 10s
 
+  # Cruvz Streaming Origin Server Monitoring
+  - job_name: 'cruvz-streaming-origin'
+    static_configs:
+      - targets: ['origin:9091']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    scrape_timeout: 5s
+    params:
+      format: ['prometheus']
+
+  # Cruvz Streaming Edge Server Monitoring  
+  - job_name: 'cruvz-streaming-edge'
+    static_configs:
+      - targets: ['edge:9092']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    scrape_timeout: 5s
+    params:
+      format: ['prometheus']
+
+  # System-level metrics
   - job_name: 'node-exporter'
     static_configs:
       - targets: ['node-exporter:9100']
+    scrape_interval: 15s
 
+  # Docker container metrics
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['172.17.0.1:9323']
+    scrape_interval: 15s
+
+  # Application health checks
+  - job_name: 'health-checks'
+    static_configs:
+      - targets: ['origin:8080', 'edge:8081']
+    scrape_interval: 5s
+    metrics_path: /health/metrics
+
+  # Monitoring infrastructure
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+    scrape_interval: 30s
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+# Six Sigma Alerting Configuration - Zero tolerance
 alerting:
   alertmanagers:
     - static_configs:
         - targets:
-          # - alertmanager:9093
+          - alertmanager:9093
+      scheme: http
+      timeout: 10s

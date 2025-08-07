@@ -1,0 +1,138 @@
+# Availability Alerting Rules for Six Sigma Quality
+# Target: 99.99966% availability (3.4 defects per million)
+
+groups:
+- name: availability-monitoring
+  interval: 10s
+  rules:
+  
+  # Service Availability SLA Monitoring
+  - alert: SLAViolation
+    expr: (1 - (rate(up[1h]))) > 0.00034
+    for: 0m
+    labels:
+      severity: critical
+      six_sigma: sla_violation
+      category: availability
+    annotations:
+      summary: "SLA violation - availability below Six Sigma target"
+      description: "Service availability {{ $value }} is below 99.99966% Six Sigma target"
+
+  # Origin Server Availability
+  - alert: OriginServerDown
+    expr: up{job="cruvz-streaming-origin"} == 0
+    for: 0m
+    labels:
+      severity: critical
+      six_sigma: critical_defect
+      category: origin_availability
+    annotations:
+      summary: "Origin server is down"
+      description: "Cruvz Streaming Origin server is not responding - critical service interruption"
+
+  # Edge Server Availability
+  - alert: EdgeServerDown
+    expr: up{job="cruvz-streaming-edge"} == 0
+    for: 30s
+    labels:
+      severity: warning
+      six_sigma: defect
+      category: edge_availability
+    annotations:
+      summary: "Edge server is down"
+      description: "Cruvz Streaming Edge server is not responding - degraded service capacity"
+
+  # Health Check Endpoint Availability
+  - alert: HealthEndpointDown
+    expr: up{job="health-checks"} == 0
+    for: 0m
+    labels:
+      severity: critical
+      six_sigma: defect
+      category: health_monitoring
+    annotations:
+      summary: "Health check endpoint is down"
+      description: "Health check endpoint {{ $labels.instance }} is not responding"
+
+  # Monitoring Infrastructure Availability
+  - alert: PrometheusDown
+    expr: up{job="prometheus"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      six_sigma: monitoring_defect
+      category: monitoring_availability
+    annotations:
+      summary: "Prometheus monitoring is down"
+      description: "Prometheus monitoring system is not available - blind to system state"
+
+  - alert: GrafanaDown
+    expr: up{job="grafana"} == 0
+    for: 2m
+    labels:
+      severity: warning
+      six_sigma: monitoring_defect
+      category: monitoring_availability
+    annotations:
+      summary: "Grafana dashboard is down"
+      description: "Grafana dashboard system is not available - visualization unavailable"
+
+  # Network Connectivity Issues
+  - alert: NetworkPartition
+    expr: up == 0 and (up offset 5m) == 1
+    for: 0m
+    labels:
+      severity: critical
+      six_sigma: network_defect
+      category: network_availability
+    annotations:
+      summary: "Network partition detected"
+      description: "Service {{ $labels.instance }} appears to have network connectivity issues"
+
+  # Load Balancer Health
+  - alert: LoadBalancerFailure
+    expr: sum(up{job="cruvz-streaming-edge"}) < 1
+    for: 1m
+    labels:
+      severity: critical
+      six_sigma: defect
+      category: load_balancer
+    annotations:
+      summary: "No healthy edge servers available"
+      description: "All edge servers are down - load balancing is not possible"
+
+  # Database/Storage Availability
+  - alert: StorageUnavailable
+    expr: up{job="storage"} == 0
+    for: 30s
+    labels:
+      severity: critical
+      six_sigma: storage_defect
+      category: storage_availability
+    annotations:
+      summary: "Storage system is unavailable"
+      description: "Storage backend is not responding - data persistence at risk"
+
+  # External Dependency Monitoring
+  - alert: ExternalDependencyDown
+    expr: probe_success{job="external-deps"} == 0
+    for: 1m
+    labels:
+      severity: warning
+      six_sigma: dependency_defect
+      category: external_availability
+    annotations:
+      summary: "External dependency is down"
+      description: "External dependency {{ $labels.instance }} is not available"
+
+  # SSL Certificate Expiry
+  - alert: SSLCertificateExpiring
+    expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 7
+    for: 0m
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: ssl_certificates
+    annotations:
+      summary: "SSL certificate expiring soon"
+      description: "SSL certificate for {{ $labels.instance }} expires in less than 7 days"
