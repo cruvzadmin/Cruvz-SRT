@@ -34,7 +34,7 @@ log() {
 validate_prerequisites() {
     log "INFO" "Validating prerequisites..."
     
-    local required_commands=("docker" "docker-compose" "curl")
+    local required_commands=("docker" "curl")
     local missing_commands=()
     
     for cmd in "${required_commands[@]}"; do
@@ -42,6 +42,11 @@ validate_prerequisites() {
             missing_commands+=("$cmd")
         fi
     done
+    
+    # Check for docker compose (new syntax)
+    if ! docker compose version &> /dev/null; then
+        missing_commands+=("docker compose")
+    fi
     
     if [ ${#missing_commands[@]} -gt 0 ]; then
         log "ERROR" "Missing required commands: ${missing_commands[*]}"
@@ -77,7 +82,7 @@ validate_configuration() {
 validate_docker_build() {
     log "INFO" "Validating Docker build..."
     
-    if ! docker-compose build --no-cache origin 2>&1 | tee /tmp/build.log; then
+    if ! docker compose build --no-cache origin 2>&1 | tee /tmp/build.log; then
         log "ERROR" "Docker build failed"
         log "ERROR" "Build log:"
         cat /tmp/build.log
@@ -92,7 +97,7 @@ validate_services_startup() {
     log "INFO" "Starting services and validating startup..."
     
     # Start services
-    if ! docker-compose up -d; then
+    if ! docker compose up -d; then
         log "ERROR" "Failed to start services"
         return 1
     fi
@@ -105,7 +110,7 @@ validate_services_startup() {
     for service in "${services[@]}"; do
         log "INFO" "Waiting for service: $service"
         while [ $waited -lt $max_wait ]; do
-            if docker-compose ps "$service" | grep -q "Up"; then
+            if docker compose ps "$service" | grep -q "Up\|running"; then
                 log "SUCCESS" "Service $service is running"
                 break
             fi
@@ -228,7 +233,7 @@ validate_logging() {
 
 cleanup_on_failure() {
     log "WARN" "Cleaning up failed deployment..."
-    docker-compose down -v 2>/dev/null || true
+    docker compose down -v 2>/dev/null || true
     log "INFO" "Cleanup completed"
 }
 
@@ -244,10 +249,10 @@ generate_validation_report() {
         echo "Validation Status: $1"
         echo ""
         echo "Docker Services Status:"
-        docker-compose ps 2>/dev/null || echo "Services not running"
+        docker compose ps 2>/dev/null || echo "Services not running"
         echo ""
         echo "Container Logs Summary:"
-        docker-compose logs --tail=20 2>/dev/null || echo "No logs available"
+        docker compose logs --tail=20 2>/dev/null || echo "No logs available"
     } > "$report_file"
     
     log "SUCCESS" "Validation report generated: $report_file"

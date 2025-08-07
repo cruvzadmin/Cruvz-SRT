@@ -41,3 +41,37 @@ misc/FFmpeg*
 misc/openh264*
 misc/opt/20*
 misc/opt/22*
+
+# Six Sigma Build and Deployment Artifacts
+*.log
+*.tmp
+*.bak
+*.old
+*.backup
+*.cache
+build.log
+deploy.log
+test.log
+
+# Docker and Container Artifacts
+.docker
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Runtime Data
+data/
+runtime/
+temp/
+cache/
+
+# Development and Testing
+.env.local
+.env.test
+.env.development
+test-results/
+coverage/
+
+# Distribution Artifacts
+dist/
+release/
+packages/
