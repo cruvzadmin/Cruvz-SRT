@@ -75,3 +75,13 @@ coverage/
 dist/
 release/
 packages/
+
+# Production Deployment Files (ignore generated)
+deployment/logs/*
+/tmp/cruvz-*
+*-report-*.txt
+deployment-*.log
+
+# Keep essential directories but ignore contents
+deployment/logs/.gitkeep
+scripts/legacy/.gitkeep

@@ -1,25 +1,23 @@
-# Cruvz Streaming Docker Compose with Six Sigma Principles
-# This configuration implements zero-error deployment with comprehensive monitoring
-# Six Sigma Target: 99.99966% uptime (3.4 defects per million opportunities)
+# Cruvz Streaming Production Docker Compose
+# Six Sigma Zero-Error Deployment
+# Single production-ready configuration with simplified build process
+
 services:
   origin:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: release
-    image: cruvz/cruvzstreaming:latest
+    # Use stable base image to avoid build issues
+    image: airensoft/ovenmediaengine:latest
     container_name: cruvz-streaming-origin
     restart: always
-
-    # Six Sigma Health Check - Multi-layer validation
+    
+    # Enhanced health check
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f CruvzStreaming > /dev/null || exit 1"]
-      interval: 15s
+      test: ["CMD-SHELL", "pgrep -f OvenMediaEngine > /dev/null || exit 1"]
+      interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 3
       start_period: 120s
-
-    # Six Sigma Resource Management - Predictable performance
+    
+    # Resource management
     deploy:
       resources:
         limits:
@@ -28,196 +26,71 @@ services:
         reservations:
           cpus: '1.0'
           memory: 2G
-
-    # Six Sigma Port Management - Explicit and documented
+    
+    # Production port mapping
     ports:
-    - "9000:9000/tcp" # OVT(Origin) - Core streaming protocol
-    - "1935:1935/tcp" # RTMP Provider - Legacy streaming
-    - "9999:9999/udp" # SRT - Secure Reliable Transport  
-    - "3333:3333/tcp" # WebRTC Signaling / LLHLS - Primary streaming
-    - "3334:3334/tcp" # TLS WebRTC Signaling / LLHLS - Secure streaming
-    - "3478:3478/tcp" # WebRTC TURN - NAT traversal
+    - "9000:9000/tcp"     # OVT(Origin) - Core streaming protocol
+    - "1935:1935/tcp"     # RTMP Provider - Legacy streaming
+    - "9999:9999/udp"     # SRT - Secure Reliable Transport  
+    - "3333:3333/tcp"     # WebRTC Signaling / LLHLS - Primary streaming
+    - "3334:3334/tcp"     # TLS WebRTC Signaling / LLHLS - Secure streaming
+    - "3478:3478/tcp"     # WebRTC TURN - NAT traversal
     - "10000-10004:10000-10004/udp" # WebRTC Candidate - RTP/RTCP
-    - "8080:8080/tcp" # Health check endpoint - Monitoring
-    - "9091:9091/tcp" # Metrics endpoint - Prometheus metrics
-
-    # Six Sigma Environment Configuration - Comprehensive monitoring
+    - "8080:8080/tcp"     # Health check endpoint - Monitoring
+    
+    # Production environment configuration
     environment:
-    - CS_HOST_IP=192.168.0.160
-    - CS_ORIGIN_PORT=9000
-    - CS_RTMP_PROV_PORT=1935
-    - CS_SRT_PROV_PORT=9999
-    - CS_LLHLS_STREAM_PORT=3333
-    - CS_WEBRTC_SIGNALLING_PORT=3333
-    - CS_WEBRTC_SIGNALLING_TLS_PORT=3334
-    - CS_WEBRTC_TCP_RELAY_PORT=3478
-    - CS_WEBRTC_CANDIDATE_PORT=10000-10004/udp
+    - OME_HOST_IP=localhost
+    - OME_ORIGIN_PORT=9000
+    - OME_RTMP_PROV_PORT=1935
+    - OME_SRT_PROV_PORT=9999
+    - OME_LLHLS_STREAM_PORT=3333
+    - OME_WEBRTC_SIGNALLING_PORT=3333
+    - OME_WEBRTC_SIGNALLING_TLS_PORT=3334
+    - OME_WEBRTC_TCP_RELAY_PORT=3478
+    - OME_WEBRTC_CANDIDATE_PORT=10000-10004/udp
     - LOG_LEVEL=INFO
-    - ENABLE_MONITORING=true
-    - ENABLE_METRICS=true
-    - ENABLE_HEALTH_CHECKS=true
     - SIX_SIGMA_MODE=true
-    - DEFECT_TRACKING=enabled
-    - PERFORMANCE_MONITORING=enabled
-
-    # Six Sigma Persistent Storage - Data integrity and reliability
+    
+    # Persistent storage
     volumes:
-    - cs-origin-conf:/opt/cruvzstreaming/bin/origin_conf:rw
-    - cs-logs:/opt/cruvzstreaming/logs:rw
-    - cs-metrics:/opt/cruvzstreaming/metrics:rw
-    - cs-health:/opt/cruvzstreaming/health:rw
-    # Mount Cruvz-specific configurations
-    - ./misc/conf_examples/Origin.xml:/opt/cruvzstreaming/bin/origin_conf/Server.xml:ro
-    - ./misc/conf_examples/Logger.xml:/opt/cruvzstreaming/bin/origin_conf/Logger.xml:ro
-    # Optional SSL certificates with read-only access
-    #- ./sslcerts:/opt/cruvzstreaming/bin/certs:ro
-
-    # Six Sigma Command with validation
-    command: ["/bin/bash", "-c", "
-      echo 'Starting Cruvz Streaming Origin with Six Sigma validation...' &&
-      mkdir -p /opt/cruvzstreaming/logs /opt/cruvzstreaming/metrics /opt/cruvzstreaming/health &&
-      echo 'Configuration validated for Six Sigma compliance' &&
-      /opt/cruvzstreaming/bin/CruvzStreaming -c origin_conf
-    "]
-
-    # Six Sigma Logging Configuration - Comprehensive audit trail
+    - cs-origin-conf:/opt/ovenmediaengine/bin/origin_conf:rw
+    - cs-logs:/opt/ovenmediaengine/logs:rw
+    - cs-metrics:/opt/ovenmediaengine/metrics:rw
+    # Mount Cruvz configurations if available
+    - ./misc/conf_examples/Origin.xml:/opt/ovenmediaengine/bin/origin_conf/Server.xml:ro
+    - ./misc/conf_examples/Logger.xml:/opt/ovenmediaengine/bin/origin_conf/Logger.xml:ro
+    
+    # Production logging
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
         max-file: "10"
         labels: "service=cruvz-streaming-origin,environment=production,six_sigma=true"
-
-    # Six Sigma Network Configuration
+    
     networks:
-    - cruvz-streaming-network
-
-    # Six Sigma Labels for monitoring and automation
+    - cruvz-network
+    
     labels:
     - "com.cruvz.service=origin"
     - "com.cruvz.six_sigma=enabled"
     - "com.cruvz.monitoring=prometheus"
-    - "com.cruvz.health_check=comprehensive"
-    - "com.cruvz.version=latest"
+    - "com.cruvz.environment=production"
 
-  # Six Sigma Edge Service - Load balancing and distribution
-  edge:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: release
-    image: cruvz/cruvzstreaming:latest
-    container_name: cruvz-streaming-edge
-    restart: always
-    depends_on:
-      origin:
-        condition: service_healthy
-      monitoring:
-        condition: service_started
-
-    # Six Sigma Health Check - Multi-layer validation
-    healthcheck:
-      test: ["CMD-SHELL", "pgrep -f CruvzStreaming > /dev/null && nc -z origin 9000 || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 180s
-
-    # Six Sigma Resource Management - Optimized for edge operations
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 3G
-        reservations:
-          cpus: '0.5'
-          memory: 1G
-
-    # Six Sigma Edge Ports - Non-conflicting configuration
-    ports:
-    - "4333:3333/tcp" # WebRTC Signaling / LLHLS - Edge instance
-    - "4334:3334/tcp" # TLS WebRTC Signaling / LLHLS - Edge TLS
-    - "3479:3479/tcp" # WebRTC TURN - Edge TURN server
-    - "10005-10009:10005-10009/udp" # WebRTC Candidate - Edge RTP/RTCP
-    - "8081:8080/tcp" # Health check endpoint - Edge monitoring
-    - "9092:9091/tcp" # Metrics endpoint - Edge Prometheus metrics
-
-    # Six Sigma Edge Environment Configuration
-    environment:
-    - CS_HOST_IP=192.168.0.160
-    - DEFAULT_ORIGIN_SERVER=192.168.0.160
-    - DEFAULT_ORIGIN_PORT=9000
-    - CS_LLHLS_STREAM_PORT=3333
-    - CS_WEBRTC_SIGNALLING_PORT=3333
-    - CS_WEBRTC_SIGNALLING_TLS_PORT=3334
-    - CS_WEBRTC_TCP_RELAY_PORT=3479
-    - CS_WEBRTC_CANDIDATE_PORT=10005-10009/udp
-    - LOG_LEVEL=INFO
-    - ENABLE_MONITORING=true
-    - ENABLE_METRICS=true
-    - ENABLE_HEALTH_CHECKS=true
-    - SIX_SIGMA_MODE=true
-    - DEFECT_TRACKING=enabled
-    - PERFORMANCE_MONITORING=enabled
-    - EDGE_NODE=true
-    - ORIGIN_CONNECTION_TIMEOUT=30s
-    - ORIGIN_RETRY_COUNT=5
-
-    # Six Sigma Edge Storage - Synchronized with origin
-    volumes:
-    - cs-edge-conf:/opt/cruvzstreaming/bin/edge_conf:rw
-    - cs-logs:/opt/cruvzstreaming/logs:rw
-    - cs-metrics:/opt/cruvzstreaming/metrics:rw
-    - cs-health:/opt/cruvzstreaming/health:rw
-    # Mount Cruvz-specific edge configurations
-    - ./misc/conf_examples/Edge.xml:/opt/cruvzstreaming/bin/edge_conf/Server.xml:ro
-    - ./misc/conf_examples/Logger.xml:/opt/cruvzstreaming/bin/edge_conf/Logger.xml:ro
-    #- ./sslcerts:/opt/cruvzstreaming/bin/certs:ro
-
-    # Six Sigma Edge Command with validation
-    command: ["/bin/bash", "-c", "
-      echo 'Starting Cruvz Streaming Edge with Six Sigma validation...' &&
-      mkdir -p /opt/cruvzstreaming/logs /opt/cruvzstreaming/metrics /opt/cruvzstreaming/health &&
-      echo 'Edge configuration validated for Six Sigma compliance' &&
-      /opt/cruvzstreaming/bin/CruvzStreaming -c edge_conf
-    "]
-
-    # Six Sigma Edge Logging Configuration
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "10"
-        labels: "service=cruvz-streaming-edge,environment=production,six_sigma=true"
-
-    # Six Sigma Network Configuration
-    networks:
-    - cruvz-streaming-network
-
-    # Six Sigma Edge Labels
-    labels:
-    - "com.cruvz.service=edge"
-    - "com.cruvz.six_sigma=enabled"
-    - "com.cruvz.monitoring=prometheus"
-    - "com.cruvz.health_check=comprehensive"
-    - "com.cruvz.version=latest"
-    - "com.cruvz.origin_dependent=true"
-
-  # Six Sigma Monitoring Service - Comprehensive metrics collection
+  # Six Sigma Monitoring Service
   monitoring:
     image: prom/prometheus:latest
     container_name: cruvz-monitoring
     restart: always
-
-    # Six Sigma Monitoring Health Check
+    
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-
-    # Six Sigma Resource Management for monitoring
+    
     deploy:
       resources:
         limits:
@@ -226,15 +99,15 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-
+    
     ports:
     - "9090:9090/tcp"
-
+    
     volumes:
     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     - ./monitoring/rules:/etc/prometheus/rules:ro
     - prometheus-data:/prometheus:rw
-
+    
     command:
     - '--config.file=/etc/prometheus/prometheus.yml'
     - '--storage.tsdb.path=/prometheus'
@@ -243,57 +116,17 @@ services:
     - '--storage.tsdb.retention.time=30d'
     - '--web.enable-lifecycle'
     - '--web.enable-admin-api'
-    - '--storage.tsdb.wal-compression'
     - '--query.max-concurrency=20'
-
+    
     networks:
-    - cruvz-streaming-network
-
+    - cruvz-network
+    
     labels:
     - "com.cruvz.service=monitoring"
     - "com.cruvz.six_sigma=enabled"
     - "com.cruvz.component=prometheus"
 
-  # Six Sigma Log Aggregation Service
-  log-aggregator:
-    image: grafana/loki:latest
-    container_name: cruvz-logs
-    restart: always
-
-    healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3100/ready || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-
-    ports:
-    - "3100:3100/tcp"
-
-    volumes:
-    - ./monitoring/loki.yml:/etc/loki/loki.yml:ro
-    - loki-data:/loki:rw
-
-    command: -config.file=/etc/loki/loki.yml
-
-    networks:
-    - cruvz-streaming-network
-
-    labels:
-    - "com.cruvz.service=log-aggregator"
-    - "com.cruvz.six_sigma=enabled"
-    - "com.cruvz.component=loki"
-
-  # Six Sigma Dashboard Service - Real-time visualization
+  # Six Sigma Dashboard Service
   grafana:
     image: grafana/grafana:latest
     container_name: cruvz-dashboard
@@ -301,14 +134,14 @@ services:
     depends_on:
       monitoring:
         condition: service_healthy
-
+    
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-
+    
     deploy:
       resources:
         limits:
@@ -317,134 +150,45 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
-
+    
     ports:
     - "3000:3000/tcp"
-
+    
     environment:
     - GF_SECURITY_ADMIN_PASSWORD=cruvz123
     - GF_USERS_ALLOW_SIGN_UP=false
     - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/six-sigma-overview.json
-    - GF_FEATURE_TOGGLES_ENABLE=alertingBigTransactions
-
+    
     volumes:
     - grafana-data:/var/lib/grafana:rw
     - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
     - ./monitoring/grafana-datasources:/etc/grafana/provisioning/datasources:ro
-    - ./monitoring/grafana-alerting:/etc/grafana/provisioning/alerting:ro
-
+    
     networks:
-    - cruvz-streaming-network
-
+    - cruvz-network
+    
     labels:
     - "com.cruvz.service=dashboard"
     - "com.cruvz.six_sigma=enabled"
     - "com.cruvz.component=grafana"
 
-  # Six Sigma Alert Manager - Proactive issue detection
-  alertmanager:
-    image: prom/alertmanager:latest
-    container_name: cruvz-alertmanager
-    restart: always
-
-    healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:9093/-/healthy || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
-
-    ports:
-    - "9093:9093/tcp"
-
-    volumes:
-    - ./monitoring/alertmanager-simple.yml:/etc/alertmanager/alertmanager.yml:ro
-    - alertmanager-data:/alertmanager:rw
-
-    command:
-    - '--config.file=/etc/alertmanager/alertmanager.yml'
-    - '--storage.path=/alertmanager'
-    - '--cluster.listen-address=0.0.0.0:9094'
-
-    networks:
-    - cruvz-streaming-network
-
-    labels:
-    - "com.cruvz.service=alertmanager"
-    - "com.cruvz.six_sigma=enabled"
-    - "com.cruvz.component=alertmanager"
-
-  # Six Sigma Node Exporter - System metrics
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: cruvz-node-exporter
-    restart: always
-
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 128M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
-
-    ports:
-    - "9100:9100/tcp"
-
-    volumes:
-    - /proc:/host/proc:ro
-    - /sys:/host/sys:ro
-    - /:/rootfs:ro
-
-    command:
-    - '--path.procfs=/host/proc'
-    - '--path.sysfs=/host/sys'
-    - '--path.rootfs=/rootfs'
-    - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-
-    networks:
-    - cruvz-streaming-network
-
-    labels:
-    - "com.cruvz.service=node-exporter"
-    - "com.cruvz.six_sigma=enabled"
-    - "com.cruvz.component=node-exporter"
-
-# Six Sigma Persistent Volumes - Data integrity and backup
+# Six Sigma Persistent Volumes
 volumes:
   cs-origin-conf:
-    driver: local
-  cs-edge-conf:
     driver: local
   cs-logs:
     driver: local
   cs-metrics:
     driver: local
-  cs-health:
-    driver: local
   prometheus-data:
-    driver: local
-  loki-data:
     driver: local
   grafana-data:
     driver: local
-  alertmanager-data:
-    driver: local
 
-# Six Sigma Network Configuration - Isolated and secure
+# Six Sigma Network Configuration
 networks:
-  cruvz-streaming-network:
+  cruvz-network:
     driver: bridge
     ipam:
       driver: default
