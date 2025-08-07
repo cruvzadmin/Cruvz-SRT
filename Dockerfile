@@ -2,7 +2,8 @@ FROM    ubuntu:22.04 AS base
 
 ## Install libraries by package for Six Sigma reliability
 ENV     DEBIAN_FRONTEND=noninteractive
-RUN     apt-get update && apt-get install -y tzdata sudo curl git netcat xmllint && \
+# CORRECTED: xmllint is part of libxml2-utils, not a standalone package
+RUN     apt-get update && apt-get install -y tzdata sudo curl git netcat libxml2-utils && \
         apt-get clean && rm -rf /var/lib/apt/lists/*
 
 FROM    base AS build
