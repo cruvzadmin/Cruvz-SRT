@@ -6,7 +6,7 @@ services:
     image: airensoft/ovenmediaengine:latest
     container_name: cruvz-streaming-origin
     restart: always
-    
+
     # Six Sigma Health Check - Multi-layer validation
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || pgrep -f OvenMediaEngine > /dev/null || exit 1"]
@@ -14,17 +14,17 @@ services:
       timeout: 10s
       retries: 5
       start_period: 120s
-    
+
     # Six Sigma Resource Management - Predictable performance
     deploy:
       resources:
         limits:
-          cpus: '4.0'
+          cpus: '2.0'
           memory: 4G
         reservations:
-          cpus: '2.0'
+          cpus: '1.0'
           memory: 2G
-    
+
     # Six Sigma Port Management - Explicit and documented
     ports:
     - "9000:9000/tcp" # OVT(Origin) - Core streaming protocol
@@ -36,7 +36,7 @@ services:
     - "10000-10004:10000-10004/udp" # WebRTC Candidate - RTP/RTCP
     - "8080:8080/tcp" # Health check endpoint - Monitoring
     - "9091:9091/tcp" # Metrics endpoint - Prometheus metrics
-    
+
     # Six Sigma Environment Configuration - Comprehensive monitoring
     environment:
     - CS_HOST_IP=192.168.0.160
@@ -55,7 +55,7 @@ services:
     - SIX_SIGMA_MODE=true
     - DEFECT_TRACKING=enabled
     - PERFORMANCE_MONITORING=enabled
-    
+
     # Six Sigma Persistent Storage - Data integrity and reliability
     volumes:
     - cs-origin-conf:/opt/ovenmediaengine/bin/origin_conf:rw
@@ -67,7 +67,7 @@ services:
     - ./misc/conf_examples/Logger.xml:/opt/ovenmediaengine/bin/origin_conf/Logger.xml:ro
     # Optional SSL certificates with read-only access
     #- ./sslcerts:/opt/ovenmediaengine/bin/certs:ro
-    
+
     # Six Sigma Command with validation
     command: ["/bin/bash", "-c", "
       echo 'Starting Cruvz Streaming Origin with Six Sigma validation...' &&
@@ -75,7 +75,7 @@ services:
       echo 'Configuration validated for Six Sigma compliance' &&
       /opt/ovenmediaengine/bin/OvenMediaEngine -c origin_conf
     "]
-    
+
     # Six Sigma Logging Configuration - Comprehensive audit trail
     logging:
       driver: "json-file"
@@ -83,11 +83,11 @@ services:
         max-size: "50m"
         max-file: "10"
         labels: "service=cruvz-streaming-origin,environment=production,six_sigma=true"
-        
+
     # Six Sigma Network Configuration
     networks:
     - cruvz-streaming-network
-    
+
     # Six Sigma Labels for monitoring and automation
     labels:
     - "com.cruvz.service=origin"
@@ -106,7 +106,7 @@ services:
         condition: service_healthy
       monitoring:
         condition: service_started
-    
+
     # Six Sigma Health Check - Multi-layer validation
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || pgrep -f OvenMediaEngine > /dev/null && nc -z ${DEFAULT_ORIGIN_SERVER} ${DEFAULT_ORIGIN_PORT} || exit 1"]
@@ -114,17 +114,17 @@ services:
       timeout: 10s
       retries: 5
       start_period: 180s
-    
+
     # Six Sigma Resource Management - Optimized for edge operations
     deploy:
       resources:
         limits:
-          cpus: '3.0'
+          cpus: '1.0'
           memory: 3G
         reservations:
-          cpus: '1.5'
+          cpus: '0.5'
           memory: 1G
-    
+
     # Six Sigma Edge Ports - Non-conflicting configuration
     ports:
     - "4333:3333/tcp" # WebRTC Signaling / LLHLS - Edge instance
@@ -133,7 +133,7 @@ services:
     - "10005-10009:10005-10009/udp" # WebRTC Candidate - Edge RTP/RTCP
     - "8081:8080/tcp" # Health check endpoint - Edge monitoring
     - "9092:9091/tcp" # Metrics endpoint - Edge Prometheus metrics
-    
+
     # Six Sigma Edge Environment Configuration
     environment:
     - CS_HOST_IP=192.168.0.160
@@ -154,7 +154,7 @@ services:
     - EDGE_NODE=true
     - ORIGIN_CONNECTION_TIMEOUT=30s
     - ORIGIN_RETRY_COUNT=5
-    
+
     # Six Sigma Edge Storage - Synchronized with origin
     volumes:
     - cs-edge-conf:/opt/ovenmediaengine/bin/edge_conf:rw
@@ -165,7 +165,7 @@ services:
     - ./misc/conf_examples/Edge.xml:/opt/ovenmediaengine/bin/edge_conf/Server.xml:ro
     - ./misc/conf_examples/Logger.xml:/opt/ovenmediaengine/bin/edge_conf/Logger.xml:ro
     #- ./sslcerts:/opt/ovenmediaengine/bin/certs:ro
-    
+
     # Six Sigma Edge Command with validation
     command: ["/bin/bash", "-c", "
       echo 'Starting Cruvz Streaming Edge with Six Sigma validation...' &&
@@ -173,7 +173,7 @@ services:
       echo 'Edge configuration validated for Six Sigma compliance' &&
       /opt/ovenmediaengine/bin/OvenMediaEngine -c edge_conf
     "]
-    
+
     # Six Sigma Edge Logging Configuration
     logging:
       driver: "json-file"
@@ -181,11 +181,11 @@ services:
         max-size: "50m"
         max-file: "10"
         labels: "service=cruvz-streaming-edge,environment=production,six_sigma=true"
-        
+
     # Six Sigma Network Configuration
     networks:
     - cruvz-streaming-network
-    
+
     # Six Sigma Edge Labels
     labels:
     - "com.cruvz.service=edge"
@@ -200,7 +200,7 @@ services:
     image: prom/prometheus:latest
     container_name: cruvz-monitoring
     restart: always
-    
+
     # Six Sigma Monitoring Health Check
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
@@ -208,7 +208,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-    
+
     # Six Sigma Resource Management for monitoring
     deploy:
       resources:
@@ -218,15 +218,15 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-    
+
     ports:
     - "9090:9090/tcp"
-    
+
     volumes:
     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     - ./monitoring/rules:/etc/prometheus/rules:ro
     - prometheus-data:/prometheus:rw
-    
+
     command:
     - '--config.file=/etc/prometheus/prometheus.yml'
     - '--storage.tsdb.path=/prometheus'
@@ -237,10 +237,10 @@ services:
     - '--web.enable-admin-api'
     - '--storage.tsdb.wal-compression'
     - '--query.max-concurrency=20'
-    
+
     networks:
     - cruvz-streaming-network
-    
+
     labels:
     - "com.cruvz.service=monitoring"
     - "com.cruvz.six_sigma=enabled"
@@ -251,14 +251,14 @@ services:
     image: grafana/loki:latest
     container_name: cruvz-logs
     restart: always
-    
+
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3100/ready || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    
+
     deploy:
       resources:
         limits:
@@ -267,19 +267,19 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
-    
+
     ports:
     - "3100:3100/tcp"
-    
+
     volumes:
     - ./monitoring/loki.yml:/etc/loki/loki.yml:ro
     - loki-data:/loki:rw
-    
+
     command: -config.file=/etc/loki/loki.yml
-    
+
     networks:
     - cruvz-streaming-network
-    
+
     labels:
     - "com.cruvz.service=log-aggregator"
     - "com.cruvz.six_sigma=enabled"
@@ -293,14 +293,14 @@ services:
     depends_on:
       monitoring:
         condition: service_healthy
-    
+
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    
+
     deploy:
       resources:
         limits:
@@ -309,26 +309,26 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
-    
+
     ports:
     - "3000:3000/tcp"
-    
+
     environment:
     - GF_SECURITY_ADMIN_PASSWORD=cruvz123
     - GF_USERS_ALLOW_SIGN_UP=false
     - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/six-sigma-overview.json
     - GF_FEATURE_TOGGLES_ENABLE=alertingBigTransactions
-    
+
     volumes:
     - grafana-data:/var/lib/grafana:rw
     - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
     - ./monitoring/grafana-datasources:/etc/grafana/provisioning/datasources:ro
     - ./monitoring/grafana-alerting:/etc/grafana/provisioning/alerting:ro
-    
+
     networks:
     - cruvz-streaming-network
-    
+
     labels:
     - "com.cruvz.service=dashboard"
     - "com.cruvz.six_sigma=enabled"
@@ -339,14 +339,14 @@ services:
     image: prom/alertmanager:latest
     container_name: cruvz-alertmanager
     restart: always
-    
+
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:9093/-/healthy || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    
+
     deploy:
       resources:
         limits:
@@ -355,23 +355,23 @@ services:
         reservations:
           cpus: '0.1'
           memory: 128M
-    
+
     ports:
     - "9093:9093/tcp"
-    
+
     volumes:
     - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     - alertmanager-data:/alertmanager:rw
-    
+
     command:
     - '--config.file=/etc/alertmanager/alertmanager.yml'
     - '--storage.path=/alertmanager'
     - '--web.enable-lifecycle'
     - '--cluster.listen-address=0.0.0.0:9094'
-    
+
     networks:
     - cruvz-streaming-network
-    
+
     labels:
     - "com.cruvz.service=alertmanager"
     - "com.cruvz.six_sigma=enabled"
@@ -382,7 +382,7 @@ services:
     image: prom/node-exporter:latest
     container_name: cruvz-node-exporter
     restart: always
-    
+
     deploy:
       resources:
         limits:
@@ -391,24 +391,24 @@ services:
         reservations:
           cpus: '0.1'
           memory: 64M
-    
+
     ports:
     - "9100:9100/tcp"
-    
+
     volumes:
     - /proc:/host/proc:ro
     - /sys:/host/sys:ro
     - /:/rootfs:ro
-    
+
     command:
     - '--path.procfs=/host/proc'
     - '--path.sysfs=/host/sys'
     - '--path.rootfs=/rootfs'
     - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    
+
     networks:
     - cruvz-streaming-network
-    
+
     labels:
     - "com.cruvz.service=node-exporter"
     - "com.cruvz.six_sigma=enabled"
