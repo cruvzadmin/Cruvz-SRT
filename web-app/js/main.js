@@ -4,6 +4,9 @@
 let currentUser = null;
 let authMode = 'signin'; // 'signin' or 'signup'
 
+// API Configuration
+const API_BASE_URL = window.location.origin + '/api';
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
@@ -28,6 +31,38 @@ function initializeApp() {
     
     // Initialize demo animations
     initializeDemoAnimations();
+}
+
+// API helper functions
+async function apiRequest(endpoint, options = {}) {
+    const token = localStorage.getItem('cruvz_auth_token');
+    
+    const config = {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        ...options
+    };
+
+    if (config.body && typeof config.body === 'object') {
+        config.body = JSON.stringify(config.body);
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Request failed');
+        }
+
+        return data;
+    } catch (error) {
+        console.error('API Request Error:', error);
+        throw error;
+    }
 }
 
 // Setup event listeners
@@ -160,6 +195,51 @@ function toggleAuthMode() {
     showAuthModal(authMode);
 }
 
+// Validate authentication token
+async function validateAuthToken(token) {
+    try {
+        const response = await apiRequest('/auth/me');
+        if (response.success) {
+            currentUser = response.data;
+            updateUIForAuthenticatedUser();
+        } else {
+            localStorage.removeItem('cruvz_auth_token');
+        }
+    } catch (error) {
+        console.error('Token validation failed:', error);
+        localStorage.removeItem('cruvz_auth_token');
+    }
+}
+
+// Check authentication status
+function checkAuthStatus() {
+    const token = localStorage.getItem('cruvz_auth_token');
+    if (token && !currentUser) {
+        validateAuthToken(token);
+    }
+}
+
+// Update UI for authenticated user
+function updateUIForAuthenticatedUser() {
+    const signInBtn = document.querySelector('.btn.btn-primary');
+    const signUpBtn = document.querySelector('.btn.btn-secondary');
+    
+    if (signInBtn && signUpBtn && currentUser) {
+        // Replace buttons with user menu
+        const navMenu = document.querySelector('.nav-menu');
+        const userMenu = document.createElement('div');
+        userMenu.className = 'user-menu-inline';
+        userMenu.innerHTML = `
+            <span class="user-name">Welcome, ${currentUser.name}</span>
+            <a href="pages/dashboard.html" class="btn btn-primary">Dashboard</a>
+            <button onclick="signOut()" class="btn btn-outline">Sign Out</button>
+        `;
+        
+        signInBtn.parentNode.replaceChild(userMenu, signInBtn);
+        signUpBtn.remove();
+    }
+}
+
 // Handle authentication form submission
 async function handleAuthSubmit(e) {
     e.preventDefault();
@@ -167,170 +247,94 @@ async function handleAuthSubmit(e) {
     const formData = new FormData(e.target);
     const email = formData.get('email');
     const password = formData.get('password');
+    const name = formData.get('fullName');
     const confirmPassword = formData.get('confirmPassword');
-    const fullName = formData.get('fullName');
     
-    // Basic validation
-    if (!email || !password) {
-        showNotification('Please fill in all required fields', 'error');
-        return;
-    }
-    
-    if (authMode === 'signup') {
-        if (password !== confirmPassword) {
-            showNotification('Passwords do not match', 'error');
-            return;
-        }
-        
-        if (!fullName) {
-            showNotification('Please enter your full name', 'error');
-            return;
-        }
-    }
+    // Show loading state
+    const submitBtn = document.getElementById('authSubmitBtn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Processing...';
+    submitBtn.disabled = true;
     
     try {
-        const endpoint = authMode === 'signin' ? '/api/v1/auth/signin' : '/api/v1/auth/signup';
-        const requestData = {
-            email,
-            password,
-            ...(authMode === 'signup' && { fullName })
-        };
+        let response;
         
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData)
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            // Store auth token
-            localStorage.setItem('cruvz_auth_token', data.token);
-            currentUser = data.user;
+        if (authMode === 'signup') {
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                throw new Error('Passwords do not match');
+            }
             
-            // Update UI
-            updateAuthUI();
+            response = await apiRequest('/auth/register', {
+                method: 'POST',
+                body: { email, password, name }
+            });
+        } else {
+            response = await apiRequest('/auth/login', {
+                method: 'POST',
+                body: { email, password }
+            });
+        }
+        
+        if (response.success) {
+            // Store token and user data
+            localStorage.setItem('cruvz_auth_token', response.data.token);
+            currentUser = response.data.user;
+            
+            // Hide modal and update UI
             hideAuthModal();
+            updateUIForAuthenticatedUser();
             
-            const action = authMode === 'signin' ? 'signed in' : 'account created';
-            showNotification(`Successfully ${action}!`, 'success');
+            // Show success message
+            showNotification('Authentication successful!', 'success');
             
             // Redirect to dashboard if appropriate
-            if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
-                setTimeout(() => {
-                    window.location.href = 'pages/dashboard.html';
-                }, 1500);
-            }
-        } else {
-            showNotification(data.message || 'Authentication failed', 'error');
+            setTimeout(() => {
+                window.location.href = 'pages/dashboard.html';
+            }, 1000);
         }
     } catch (error) {
-        console.error('Auth error:', error);
-        showNotification('Network error. Please try again.', 'error');
-    }
-}
-
-// Check authentication status
-async function checkAuthStatus() {
-    const token = localStorage.getItem('cruvz_auth_token');
-    if (!token) return;
-    
-    try {
-        const response = await fetch('/api/v1/auth/me', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            currentUser = data.user;
-            updateAuthUI();
-        } else {
-            // Token is invalid, remove it
-            localStorage.removeItem('cruvz_auth_token');
-            currentUser = null;
-        }
-    } catch (error) {
-        console.error('Auth check error:', error);
-        localStorage.removeItem('cruvz_auth_token');
-        currentUser = null;
-    }
-}
-
-// Validate auth token
-async function validateAuthToken(token) {
-    try {
-        const response = await fetch('/api/v1/auth/validate', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            currentUser = data.user;
-            updateAuthUI();
-        } else {
-            localStorage.removeItem('cruvz_auth_token');
-        }
-    } catch (error) {
-        console.error('Token validation error:', error);
-        localStorage.removeItem('cruvz_auth_token');
-    }
-}
-
-// Update authentication UI
-function updateAuthUI() {
-    const navMenu = document.querySelector('.nav-menu');
-    if (!navMenu) return;
-    
-    if (currentUser) {
-        // User is logged in
-        const signInBtn = navMenu.querySelector('.btn-primary');
-        const signUpBtn = navMenu.querySelector('.btn-secondary');
-        
-        if (signInBtn && signUpBtn) {
-            // Replace sign in/up buttons with user menu
-            const userMenu = document.createElement('div');
-            userMenu.className = 'user-menu';
-            userMenu.innerHTML = `
-                <div class="user-info">
-                    <img src="${currentUser.avatar || '/assets/default-avatar.png'}" alt="${currentUser.name}" class="user-avatar">
-                    <span class="user-name">${currentUser.name}</span>
-                </div>
-                <div class="user-dropdown">
-                    <a href="pages/dashboard.html" class="dropdown-item">Dashboard</a>
-                    <a href="pages/profile.html" class="dropdown-item">Profile</a>
-                    <a href="pages/settings.html" class="dropdown-item">Settings</a>
-                    <button onclick="signOut()" class="dropdown-item">Sign Out</button>
-                </div>
-            `;
-            
-            signInBtn.replaceWith(userMenu);
-            signUpBtn.remove();
-        }
+        console.error('Authentication error:', error);
+        showNotification(error.message || 'Authentication failed', 'error');
+    } finally {
+        // Reset button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
     }
 }
 
 // Sign out function
-function signOut() {
-    localStorage.removeItem('cruvz_auth_token');
-    currentUser = null;
-    
-    showNotification('Successfully signed out', 'success');
-    
-    // Reload page to reset UI
-    setTimeout(() => {
-        window.location.reload();
-    }, 1000);
+async function signOut() {
+    try {
+        await apiRequest('/auth/logout', { method: 'POST' });
+    } catch (error) {
+        console.error('Logout error:', error);
+    } finally {
+        localStorage.removeItem('cruvz_auth_token');
+        currentUser = null;
+        window.location.href = '/';
+    }
 }
 
+// Show notification
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <span class="notification-message">${message}</span>
+        <button class="notification-close" onclick="this.parentElement.remove()">&times;</button>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
 // Demo Modal Functions
 function showDemo() {
     const modal = document.getElementById('demoModal');
@@ -387,79 +391,6 @@ function stopDemo() {
     // Add logic to stop actual demo stream
 }
 
-// Notification system
-function showNotification(message, type = 'info') {
-    // Remove existing notifications
-    const existingNotifications = document.querySelectorAll('.notification');
-    existingNotifications.forEach(notification => notification.remove());
-    
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <div class="notification-content">
-            <span class="notification-message">${message}</span>
-            <button class="notification-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
-        </div>
-    `;
-    
-    // Add notification styles
-    const style = document.createElement('style');
-    style.textContent = `
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 3000;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
-            animation: slideIn 0.3s ease;
-        }
-        
-        .notification-info { border-left: 4px solid #17a2b8; }
-        .notification-success { border-left: 4px solid #28a745; }
-        .notification-error { border-left: 4px solid #dc3545; }
-        .notification-warning { border-left: 4px solid #ffc107; }
-        
-        .notification-content {
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .notification-message {
-            margin-right: 15px;
-        }
-        
-        .notification-close {
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            color: #999;
-            cursor: pointer;
-        }
-        
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-    `;
-    
-    if (!document.querySelector('style[data-notifications]')) {
-        style.setAttribute('data-notifications', 'true');
-        document.head.appendChild(style);
-    }
-    
-    document.body.appendChild(notification);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        notification.remove();
-    }, 5000);
-}
-
 // Utility functions
 function toggleMobileNav() {
     const navMenu = document.querySelector('.nav-menu');
@@ -469,31 +400,6 @@ function toggleMobileNav() {
         navMenu.classList.toggle('active');
         navToggle.classList.toggle('active');
     }
-}
-
-// API helper functions
-async function apiCall(endpoint, options = {}) {
-    const token = localStorage.getItem('cruvz_auth_token');
-    
-    const defaultOptions = {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
-        }
-    };
-    
-    const response = await fetch(endpoint, { ...defaultOptions, ...options });
-    
-    if (response.status === 401) {
-        // Token is invalid, remove it and redirect to login
-        localStorage.removeItem('cruvz_auth_token');
-        currentUser = null;
-        showNotification('Session expired. Please sign in again.', 'warning');
-        showAuthModal('signin');
-        throw new Error('Unauthorized');
-    }
-    
-    return response;
 }
 
 // Export functions for global access
