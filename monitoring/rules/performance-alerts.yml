@@ -1,0 +1,100 @@
+# Performance Alerting Rules for Six Sigma Quality
+# Focus on preventing performance degradation defects
+
+groups:
+- name: performance-monitoring
+  interval: 15s
+  rules:
+  
+  # Streaming Performance Metrics
+  - alert: StreamingLatencyHigh
+    expr: streaming_latency_seconds > 0.1
+    for: 30s
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: streaming_performance
+    annotations:
+      summary: "High streaming latency detected"
+      description: "Streaming latency is {{ $value }}s, which exceeds the Six Sigma threshold of 0.1s"
+
+  - alert: StreamingDroppedFrames
+    expr: rate(streaming_dropped_frames_total[5m]) > 0.001
+    for: 1m
+    labels:
+      severity: critical
+      six_sigma: defect
+      category: streaming_quality
+    annotations:
+      summary: "Dropped frames detected in streaming"
+      description: "Frame drop rate is {{ $value }} per second, indicating quality defects"
+
+  # WebRTC Performance
+  - alert: WebRTCConnectionFailure
+    expr: rate(webrtc_connection_failed_total[5m]) > 0
+    for: 30s
+    labels:
+      severity: critical
+      six_sigma: defect
+      category: webrtc
+    annotations:
+      summary: "WebRTC connection failures detected"
+      description: "WebRTC connections are failing at rate {{ $value }} per second"
+
+  - alert: WebRTCPacketLoss
+    expr: webrtc_packet_loss_percentage > 1
+    for: 1m
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: webrtc
+    annotations:
+      summary: "High WebRTC packet loss"
+      description: "WebRTC packet loss is {{ $value }}%, exceeding quality threshold"
+
+  # RTMP/SRT Performance
+  - alert: RTMPConnectionDrops
+    expr: rate(rtmp_connection_dropped_total[5m]) > 0
+    for: 30s
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: rtmp
+    annotations:
+      summary: "RTMP connection drops detected"
+      description: "RTMP connections are dropping at rate {{ $value }} per second"
+
+  - alert: SRTBandwidthLimited
+    expr: srt_bandwidth_utilization > 0.95
+    for: 2m
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: srt
+    annotations:
+      summary: "SRT bandwidth near capacity"
+      description: "SRT bandwidth utilization is {{ $value }}%, approaching limits"
+
+  # Response Time Monitoring
+  - alert: APIResponseTimeSlow
+    expr: http_request_duration_seconds{quantile="0.95"} > 2
+    for: 1m
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: api_performance
+    annotations:
+      summary: "Slow API response times"
+      description: "95th percentile API response time is {{ $value }}s, exceeding quality standards"
+
+  # Throughput Monitoring
+  - alert: ThroughputDegraded
+    expr: rate(requests_total[5m]) < 100 and rate(requests_total[5m]) offset 10m > 200
+    for: 2m
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: throughput
+    annotations:
+      summary: "Throughput degradation detected"
+      description: "Request throughput has dropped significantly from normal levels"

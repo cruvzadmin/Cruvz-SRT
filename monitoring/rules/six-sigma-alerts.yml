@@ -1,0 +1,102 @@
+# Six Sigma Alerting Rules for Cruvz Streaming
+# Target: 3.4 defects per million opportunities (99.99966% success rate)
+
+groups:
+- name: six-sigma-quality
+  interval: 30s
+  rules:
+  
+  # Six Sigma Service Availability - 99.99966% uptime target
+  - alert: ServiceDown
+    expr: up == 0
+    for: 0m
+    labels:
+      severity: critical
+      six_sigma: defect
+      category: availability
+    annotations:
+      summary: "Service {{ $labels.instance }} is down"
+      description: "{{ $labels.job }} on {{ $labels.instance }} has been down for more than 0 minutes. This is a critical Six Sigma defect."
+      
+  - alert: ServiceDegraded
+    expr: up == 1 and (rate(prometheus_notifications_failed_total[5m]) > 0)
+    for: 1m
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: performance
+    annotations:
+      summary: "Service {{ $labels.instance }} is degraded"
+      description: "{{ $labels.job }} on {{ $labels.instance }} is experiencing issues that may lead to defects."
+
+  # Six Sigma Health Check Failures
+  - alert: HealthCheckFailure
+    expr: probe_success == 0
+    for: 0m
+    labels:
+      severity: critical
+      six_sigma: defect
+      category: health
+    annotations:
+      summary: "Health check failed for {{ $labels.instance }}"
+      description: "Health check for {{ $labels.instance }} has failed. Immediate attention required."
+
+  # Six Sigma Memory Usage - Prevent OOM defects
+  - alert: HighMemoryUsage
+    expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) < 0.1
+    for: 2m
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: resource
+    annotations:
+      summary: "High memory usage on {{ $labels.instance }}"
+      description: "Memory usage is above 90% on {{ $labels.instance }}. This may lead to service defects."
+
+  # Six Sigma CPU Usage - Prevent performance defects
+  - alert: HighCPUUsage
+    expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+    for: 5m
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: resource
+    annotations:
+      summary: "High CPU usage on {{ $labels.instance }}"
+      description: "CPU usage is above 90% on {{ $labels.instance }} for more than 5 minutes."
+
+  # Six Sigma Disk Space - Prevent storage defects
+  - alert: DiskSpaceLow
+    expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+    for: 1m
+    labels:
+      severity: critical
+      six_sigma: defect
+      category: storage
+    annotations:
+      summary: "Disk space low on {{ $labels.instance }}"
+      description: "Disk space is below 10% on {{ $labels.instance }}. Critical defect that requires immediate action."
+
+  # Six Sigma Container Restart Detection
+  - alert: ContainerRestarted
+    expr: increase(container_start_time_seconds[10m]) > 0
+    for: 0m
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: stability
+    annotations:
+      summary: "Container {{ $labels.name }} has restarted"
+      description: "Container {{ $labels.name }} on {{ $labels.instance }} has restarted, indicating potential instability."
+
+  # Six Sigma Network Connectivity
+  - alert: NetworkLatencyHigh
+    expr: probe_duration_seconds > 1
+    for: 2m
+    labels:
+      severity: warning
+      six_sigma: potential_defect
+      category: network
+    annotations:
+      summary: "High network latency to {{ $labels.instance }}"
+      description: "Network latency to {{ $labels.instance }} is above 1 second, which may impact user experience."

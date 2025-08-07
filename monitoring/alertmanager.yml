@@ -1,0 +1,140 @@
+# AlertManager Configuration for Six Sigma Quality Management
+# Zero tolerance for defects - immediate escalation for critical issues
+
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'cruvz-streaming-alerts@example.com'
+  smtp_auth_username: 'alerts@example.com'
+  smtp_auth_password: 'password'
+
+# Six Sigma Routing - Immediate escalation for defects
+route:
+  group_by: ['alertname', 'six_sigma']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'web.hook'
+  routes:
+  
+  # Critical Six Sigma defects - immediate escalation
+  - match:
+      severity: critical
+      six_sigma: defect
+    receiver: 'critical-team'
+    group_wait: 0s
+    group_interval: 1m
+    repeat_interval: 5m
+    
+  # SLA violations - executive escalation
+  - match:
+      six_sigma: sla_violation
+    receiver: 'executive-team'
+    group_wait: 0s
+    group_interval: 30s
+    repeat_interval: 2m
+    
+  # Potential defects - development team
+  - match:
+      six_sigma: potential_defect
+    receiver: 'dev-team'
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 30m
+    
+  # Monitoring defects - ops team
+  - match:
+      six_sigma: monitoring_defect
+    receiver: 'ops-team'
+    group_wait: 1m
+    group_interval: 5m
+    repeat_interval: 1h
+
+receivers:
+- name: 'web.hook'
+  webhook_configs:
+  - url: 'http://127.0.0.1:5001/'
+    send_resolved: true
+
+- name: 'critical-team'
+  email_configs:
+  - to: 'critical-team@example.com'
+    subject: '[CRITICAL SIX SIGMA DEFECT] {{ .GroupLabels.alertname }}'
+    body: |
+      Alert: {{ .GroupLabels.alertname }}
+      Severity: CRITICAL SIX SIGMA DEFECT
+      
+      {{ range .Alerts }}
+      - Alert: {{ .Annotations.summary }}
+      - Description: {{ .Annotations.description }}
+      - Time: {{ .StartsAt }}
+      {{ end }}
+      
+      This is a critical defect that violates Six Sigma quality standards.
+      Immediate action required to maintain 99.99966% availability target.
+  slack_configs:
+  - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+    channel: '#critical-alerts'
+    title: 'CRITICAL SIX SIGMA DEFECT'
+    text: |
+      {{ range .Alerts }}
+      Alert: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      {{ end }}
+
+- name: 'executive-team'
+  email_configs:
+  - to: 'executives@example.com'
+    subject: '[SLA VIOLATION] Six Sigma Target Breach'
+    body: |
+      SLA VIOLATION DETECTED
+      
+      Our Six Sigma quality target of 99.99966% availability has been breached.
+      
+      {{ range .Alerts }}
+      - Alert: {{ .Annotations.summary }}
+      - Description: {{ .Annotations.description }}
+      - Time: {{ .StartsAt }}
+      {{ end }}
+      
+      Executive attention required for quality control review.
+
+- name: 'dev-team'
+  email_configs:
+  - to: 'developers@example.com'
+    subject: '[POTENTIAL DEFECT] {{ .GroupLabels.alertname }}'
+    body: |
+      Potential Six Sigma defect detected:
+      
+      {{ range .Alerts }}
+      - Alert: {{ .Annotations.summary }}
+      - Description: {{ .Annotations.description }}
+      {{ end }}
+      
+      Please investigate and implement preventive measures.
+  slack_configs:
+  - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+    channel: '#dev-alerts'
+    title: 'Potential Six Sigma Defect'
+
+- name: 'ops-team'
+  email_configs:
+  - to: 'operations@example.com'
+    subject: '[MONITORING] {{ .GroupLabels.alertname }}'
+    body: |
+      Monitoring system alert:
+      
+      {{ range .Alerts }}
+      - Alert: {{ .Annotations.summary }}
+      - Description: {{ .Annotations.description }}
+      {{ end }}
+
+# Six Sigma Quality Control - Inhibit rules to prevent alert fatigue
+inhibit_rules:
+- source_match:
+    severity: 'critical'
+  target_match:
+    severity: 'warning'
+  equal: ['alertname', 'dev', 'instance']
+
+templates:
+- '/etc/alertmanager/templates/*.tmpl'

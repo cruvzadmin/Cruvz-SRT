@@ -69,8 +69,22 @@ Although we have tested Cruvz Streaming on the platforms listed below, it may wo
 
 * [Quick Start Guide](https://cruvz.gitbook.io/cruvzstreaming/quick-start)
 * [Manual](https://cruvz.gitbook.io/cruvzstreaming/)
+* [Six Sigma Zero-Error Deployment](SIX_SIGMA_IMPLEMENTATION.md)
 
-### Docker
+### Docker with Six Sigma Quality Assurance
+```bash
+# Six Sigma compliant deployment with comprehensive monitoring
+docker-compose up -d
+
+# Monitor deployment status
+docker-compose ps
+docker-compose logs -f
+
+# Access monitoring dashboards
+# Grafana: http://localhost:3000 (admin/cruvz123)
+# Prometheus: http://localhost:9090
+# AlertManager: http://localhost:9093
+```
 ```bash
 docker run --name cs -d -e CS_HOST_IP=Your.HOST.IP.Address \
 -p 1935:1935 -p 9999:9999/udp -p 9000:9000 -p 3333:3333 -p 3478:3478 -p 10000-10009:10000-10009/udp \
