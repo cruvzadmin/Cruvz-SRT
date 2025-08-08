@@ -335,6 +335,8 @@ function showNotification(message, type = 'info') {
             notification.remove();
         }
     }, 5000);
+}
+
 // Demo Modal Functions
 function showDemo() {
     const modal = document.getElementById('demoModal');
