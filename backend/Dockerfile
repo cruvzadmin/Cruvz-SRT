@@ -1,39 +1,25 @@
-# Simplified Cruvz Streaming Backend - Six Sigma Zero-Error Approach
-# Using minimal dependencies and pre-installed base image
-
+# Six Sigma Zero-Error Backend - No External Dependencies Required
 FROM node:18-alpine
 
-# Skip SSL verification temporarily for build
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-
+# Set working directory
 WORKDIR /app
 
-# Copy only essential files first
-COPY package.json server-simple.js ./
+# Copy all application files
+COPY . .
 
-# Install only critical dependencies inline to avoid dependency conflicts
-RUN npm init -y && \
-    npm install express@4.18.2 --no-optional --no-audit && \
-    npm install cors@2.8.5 --no-optional --no-audit && \
-    npm install jsonwebtoken@9.0.2 --no-optional --no-audit && \
-    npm install bcryptjs@2.4.3 --no-optional --no-audit && \
-    npm install sqlite3@5.1.6 --no-optional --no-audit && \
-    npm install helmet@7.1.0 --no-optional --no-audit && \
-    npm install express-rate-limit@7.1.5 --no-optional --no-audit
-
-# Create directories
+# Create required directories
 RUN mkdir -p data logs uploads recordings && \
     chmod 755 data logs uploads recordings
 
-# Initialize basic setup
-RUN node -e "console.log('Setup completed')"
+# Create a minimal package.json for Node.js built-ins only
+RUN echo '{"name":"cruvz-backend","version":"1.0.0","main":"server-minimal.js","scripts":{"start":"node server-minimal.js"}}' > package.json
 
 # Expose port
 EXPOSE 5000
 
-# Health check
+# Health check using Node.js built-ins only (IPv4 explicit)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:5000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+    CMD node -e "require('http').get('http://127.0.0.1:5000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 # Start application
-CMD ["node", "server-simple.js"]
+CMD ["node", "server-minimal.js"]
