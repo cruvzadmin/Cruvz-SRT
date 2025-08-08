@@ -6,17 +6,10 @@ services:
   # Backend API Service
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: cruvz-streaming-backend
     restart: always
-
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
     deploy:
       resources:
@@ -60,8 +53,7 @@ services:
     container_name: cruvz-streaming-webapp
     restart: always
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
 
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:80 || exit 1"]
@@ -223,8 +215,7 @@ services:
     container_name: cruvz-dashboard
     restart: always
     depends_on:
-      monitoring:
-        condition: service_healthy
+      - monitoring
 
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1"]

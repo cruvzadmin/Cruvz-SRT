@@ -96,7 +96,10 @@ install_libopus()
     (DIR=${TEMP_PATH}/opus && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLfk https://archive.mozilla.org/pub/opus/opus-${OPUS_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    # Try multiple sources for reliable download
+    (curl -sSLfk https://downloads.xiph.org/releases/opus/opus-${OPUS_VERSION}.tar.gz | tar -xz --strip-components=1) || \
+    (curl -sSLfk https://github.com/xiph/opus/releases/download/v${OPUS_VERSION}/opus-${OPUS_VERSION}.tar.gz | tar -xz --strip-components=1) || \
+    (curl -sSLfk https://archive.mozilla.org/pub/opus/opus-${OPUS_VERSION}.tar.gz | tar -xz --strip-components=1) && \
     autoreconf -fiv && \
     ./configure --prefix="${PREFIX}" --enable-shared --disable-static && \
     make -j$(nproc) && \
