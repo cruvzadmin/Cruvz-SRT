@@ -17,11 +17,14 @@ NC='\033[0m' # No Color
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="/tmp/cruvz-production-logs"
-DEPLOYMENT_LOG="$LOG_DIR/production-deploy-$(date +%Y%m%d-%H%M%S).log"
+DEPLOYMENT_LOG="$LOG_DIR/cruvz_production_deploy.log"
 COMPOSE_FILE="docker-compose.yml"
 
 # Create log directory
 mkdir -p "$LOG_DIR"
+
+# Create symbolic link for compatibility with legacy log name
+ln -sf "$DEPLOYMENT_LOG" "$LOG_DIR/cruvz_production_deploy.log" 2>/dev/null || true
 
 # Logging function
 log() {
@@ -224,7 +227,7 @@ wait_for_services() {
     return 0
 }
 
-# Health validation
+# Health validation with streaming engine checks
 validate_health() {
     log "STEP" "Step 7/8: Validating Service Health..."
     
@@ -233,6 +236,7 @@ validate_health() {
         "http://localhost:5000/health|Backend API"
         "http://localhost:3000/api/health|Grafana Dashboard"
         "http://localhost:9090/-/healthy|Prometheus Monitoring"
+        "http://localhost:8080|Stream Engine Health"
     )
     
     local healthy_count=0
@@ -249,8 +253,28 @@ validate_health() {
         fi
     done
     
+    # Additional stream engine specific checks
+    log "INFO" "Checking Oven Media Engine processes..."
+    if docker compose -f "$COMPOSE_FILE" exec -T origin pgrep -f CruvzStreaming >/dev/null 2>&1; then
+        log "SUCCESS" "CruvzStreaming process is running"
+        ((healthy_count++))
+    elif docker compose -f "$COMPOSE_FILE" exec -T origin pgrep -f OvenMediaEngine >/dev/null 2>&1; then
+        log "SUCCESS" "OvenMediaEngine process is running"
+        ((healthy_count++))
+    else
+        log "WARN" "Stream engine process not detected"
+    fi
+    
+    # Check SSL certificates
+    log "INFO" "Checking SSL certificate configuration..."
+    if docker compose -f "$COMPOSE_FILE" exec -T origin test -f "/opt/ovenmediaengine/bin/origin_conf/cert.crt" 2>/dev/null; then
+        log "SUCCESS" "SSL certificates are configured"
+    else
+        log "WARN" "SSL certificates may need to be generated"
+    fi
+    
     if [ $healthy_count -gt 0 ]; then
-        log "SUCCESS" "Health validation completed - $healthy_count/$total_count services responding"
+        log "SUCCESS" "Health validation completed - $healthy_count/$((total_count+2)) services responding"
         return 0
     else
         log "ERROR" "No services are responding to health checks"

@@ -1,16 +1,17 @@
 # Production-Ready Backend with Full Dependencies
-FROM node:18-alpine
+FROM node:18
 
 # Set working directory
 WORKDIR /app
 
 # Install system dependencies including curl for health checks
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
-    sqlite \
-    curl
+    sqlite3 \
+    curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy application files first
 COPY . .

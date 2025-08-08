@@ -8,7 +8,7 @@ RUN     apt-get update && apt-get install -y \
         tzdata sudo curl git netcat libxml2-utils \
         build-essential autoconf automake autotools-dev libtool m4 \
         zlib1g-dev tclsh cmake pkg-config bc uuid-dev \
-        bzip2 \
+        bzip2 openssl \
         && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 FROM    base AS build
@@ -109,9 +109,23 @@ while true; do\n\
 done' > /opt/cruvzstreaming/bin/simple-health-server.sh && \
     chmod +x /opt/cruvzstreaming/bin/simple-health-server.sh
 
-# Six Sigma startup script
+# Six Sigma startup script with SSL certificate generation
 RUN echo '#!/bin/bash\n\
 set -euo pipefail\n\
+\n\
+# Generate SSL certificates if they don'\''t exist\n\
+if [ ! -f "/opt/cruvzstreaming/bin/origin_conf/cert.crt" ]; then\n\
+    echo "Generating SSL certificates..."\n\
+    openssl genrsa -out "/opt/cruvzstreaming/bin/origin_conf/cert.key" 2048\n\
+    openssl req -new -key "/opt/cruvzstreaming/bin/origin_conf/cert.key" -out "/opt/cruvzstreaming/bin/origin_conf/cert.csr" -subj "/C=US/ST=CA/L=San Francisco/O=Cruvz Streaming/OU=IT/CN=localhost"\n\
+    openssl x509 -req -days 365 -in "/opt/cruvzstreaming/bin/origin_conf/cert.csr" -signkey "/opt/cruvzstreaming/bin/origin_conf/cert.key" -out "/opt/cruvzstreaming/bin/origin_conf/cert.crt"\n\
+    touch "/opt/cruvzstreaming/bin/origin_conf/cert.ca-bundle"\n\
+    chmod 600 "/opt/cruvzstreaming/bin/origin_conf/cert.key"\n\
+    chmod 644 "/opt/cruvzstreaming/bin/origin_conf/cert.crt"\n\
+    chmod 644 "/opt/cruvzstreaming/bin/origin_conf/cert.ca-bundle"\n\
+    rm -f "/opt/cruvzstreaming/bin/origin_conf/cert.csr"\n\
+    echo "SSL certificates generated successfully"\n\
+fi\n\
 \n\
 # Start health check server in background\n\
 /opt/cruvzstreaming/bin/simple-health-server.sh &\n\

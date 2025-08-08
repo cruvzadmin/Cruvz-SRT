@@ -63,12 +63,29 @@ else
     exit 1
 fi
 
-# Test 5: Test streaming engine (OvenMediaEngine)
-echo "✅ Test 5: Verifying streaming engine deployment..."
-if docker compose logs origin | grep -q "OvenMediaEngine"; then
-    echo "   ✅ OvenMediaEngine (stream engine) is running"
+# Test 5: Test streaming engine (OvenMediaEngine) with SSL checks
+echo "✅ Test 5: Verifying streaming engine deployment and SSL configuration..."
+if docker compose logs origin | grep -q -E "(OvenMediaEngine|CruvzStreaming)"; then
+    echo "   ✅ Stream engine is running"
+    
+    # Check SSL certificate generation
+    if docker compose exec -T origin test -f "/opt/ovenmediaengine/bin/origin_conf/cert.crt" 2>/dev/null || \
+       docker compose exec -T origin test -f "/opt/cruvzstreaming/bin/origin_conf/cert.crt" 2>/dev/null; then
+        echo "   ✅ SSL certificates are configured"
+    else
+        echo "   ⚠️  SSL certificates may still be generating"
+    fi
+    
+    # Check if TLS ports are accessible
+    if nc -z localhost 3334 2>/dev/null; then
+        echo "   ✅ TLS WebRTC signaling port is accessible"
+    else
+        echo "   ⚠️  TLS port may still be initializing"
+    fi
 else
     echo "   ❌ Stream engine verification failed"
+    echo "   📋 Checking stream engine logs..."
+    docker compose logs --tail=20 origin
     exit 1
 fi
 

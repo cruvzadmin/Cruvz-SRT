@@ -100,9 +100,9 @@ services:
     container_name: cruvz-streaming-origin
     restart: always
 
-    # Enhanced health check
+    # Enhanced health check with multiple validation methods
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f OvenMediaEngine > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "pgrep -f CruvzStreaming > /dev/null && curl -f http://localhost:8080 || (pgrep -f OvenMediaEngine > /dev/null)"]
       interval: 30s
       timeout: 10s
       retries: 3
