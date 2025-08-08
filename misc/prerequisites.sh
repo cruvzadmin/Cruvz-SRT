@@ -457,16 +457,39 @@ index 87df1e83..e83f8576 100644
     cd build && \
     cmake .. \
         "-DCMAKE_INSTALL_PREFIX=${PREFIX}" \
-        "-DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib" && \
+        "-DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib" \
+        "-DSPDLOG_FMT_EXTERNAL=ON" && \
     make -j$(nproc) && \
     sudo make install && \
     rm -rf ${DIR} ) || fail_exit "spdlog"
 }
 
+install_libfmt()
+{
+    (DIR=${TEMP_PATH}/fmt && \
+    mkdir -p ${DIR} && \
+    cd ${DIR} && \
+    curl -sSLfk https://github.com/fmtlib/fmt/archive/refs/tags/10.1.1.tar.gz | tar -xz --strip-components=1 && \
+    mkdir -p build && \
+    cd build && \
+    cmake .. \
+        "-DCMAKE_INSTALL_PREFIX=${PREFIX}" \
+        "-DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib" \
+        "-DBUILD_SHARED_LIBS=ON" && \
+    make -j$(nproc) && \
+    sudo make install && \
+    rm -rf ${DIR} ) || fail_exit "libfmt"
+}
+
 install_base_ubuntu()
 {
     sudo apt-get install -y build-essential autoconf libtool zlib1g-dev tclsh cmake curl pkg-config bc uuid-dev
-	sudo apt-get install -y git
+    sudo apt-get install -y git nasm yasm patch texinfo gettext python3 python3-pip
+    # Install fmt library for logging support (correct package name for Ubuntu 22.04)
+    sudo apt-get install -y libfmt-dev libfmt8
+    # Install multimedia development libraries as fallback
+    sudo apt-get install -y libavutil-dev libavformat-dev libavcodec-dev libswscale-dev
+    sudo apt-get install -y libopus-dev libvpx-dev libsrt-openssl-dev libssl-dev
 }
 
 install_base_fedora()
@@ -679,6 +702,7 @@ then
         jemalloc
         libpcre2
         hiredis
+        libfmt
         spdlog
     )
 fi
