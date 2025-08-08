@@ -20,6 +20,9 @@ const sixSigmaRoutes = require('./routes/sixSigma');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// TRUST PROXY: Required for rate limiting and X-Forwarded-For headers (NGINX/Proxy)
+app.set('trust proxy', 1); // <-- Added this line
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: false, // Allow inline scripts for development
