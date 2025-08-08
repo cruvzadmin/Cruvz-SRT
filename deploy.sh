@@ -162,9 +162,29 @@ cleanup_previous() {
     return 0
 }
 
+# Build core streaming engine
+prepare_core_engine() {
+    log "STEP" "Step 4/9: Preparing Core Streaming Engine..."
+    
+    log "INFO" "Validating core streaming engine source code..."
+    if [ ! -d "src/projects" ]; then
+        log "ERROR" "Core streaming engine source code missing"
+        return 1
+    fi
+    
+    if [ ! -f "src/Makefile" ]; then
+        log "ERROR" "Core streaming engine Makefile missing"
+        return 1
+    fi
+    
+    log "INFO" "Core streaming engine will be built during Docker container creation"
+    log "SUCCESS" "Core streaming engine preparation completed"
+    return 0
+}
+
 # Build backend
 prepare_backend() {
-    log "STEP" "Step 4/8: Preparing Backend Application..."
+    log "STEP" "Step 5/9: Preparing Backend Application..."
     
     if [ -d "backend/node_modules" ]; then
         log "INFO" "Removing existing node_modules for clean build..."
@@ -178,7 +198,7 @@ prepare_backend() {
 
 # Deploy services
 deploy_services() {
-    log "STEP" "Step 5/8: Deploying Production Services..."
+    log "STEP" "Step 6/9: Deploying Production Services..."
     
     log "INFO" "Building and starting all services..."
     if ! docker compose -f "$COMPOSE_FILE" up -d --build 2>&1 | tee -a "$DEPLOYMENT_LOG"; then
@@ -192,7 +212,7 @@ deploy_services() {
 
 # Wait for services
 wait_for_services() {
-    log "STEP" "Step 6/8: Waiting for Services to Initialize..."
+    log "STEP" "Step 7/9: Waiting for Services to Initialize..."
     
     local max_wait=300  # 5 minutes
     local wait_time=0
@@ -229,7 +249,7 @@ wait_for_services() {
 
 # Health validation with streaming engine checks
 validate_health() {
-    log "STEP" "Step 7/8: Validating Service Health..."
+    log "STEP" "Step 8/9: Validating Service Health..."
     
     local endpoints=(
         "http://localhost:80|Web Application"
@@ -253,21 +273,18 @@ validate_health() {
         fi
     done
     
-    # Additional stream engine specific checks
-    log "INFO" "Checking Oven Media Engine processes..."
+    # Additional CruvzStreaming engine specific checks
+    log "INFO" "Checking CruvzStreaming engine processes..."
     if docker compose -f "$COMPOSE_FILE" exec -T origin pgrep -f CruvzStreaming >/dev/null 2>&1; then
-        log "SUCCESS" "CruvzStreaming process is running"
-        ((healthy_count++))
-    elif docker compose -f "$COMPOSE_FILE" exec -T origin pgrep -f OvenMediaEngine >/dev/null 2>&1; then
-        log "SUCCESS" "OvenMediaEngine process is running"
+        log "SUCCESS" "CruvzStreaming engine is running"
         ((healthy_count++))
     else
-        log "WARN" "Stream engine process not detected"
+        log "WARN" "CruvzStreaming engine process not detected"
     fi
     
     # Check SSL certificates
     log "INFO" "Checking SSL certificate configuration..."
-    if docker compose -f "$COMPOSE_FILE" exec -T origin test -f "/opt/ovenmediaengine/bin/origin_conf/cert.crt" 2>/dev/null; then
+    if docker compose -f "$COMPOSE_FILE" exec -T origin test -f "/opt/cruvzstreaming/bin/origin_conf/cert.crt" 2>/dev/null; then
         log "SUCCESS" "SSL certificates are configured"
     else
         log "WARN" "SSL certificates may need to be generated"
@@ -284,7 +301,7 @@ validate_health() {
 
 # Final verification
 final_verification() {
-    log "STEP" "Step 8/8: Final Deployment Verification..."
+    log "STEP" "Step 9/9: Final Deployment Verification..."
     
     # Check core services are running
     local core_services=("backend" "web-app" "origin")
@@ -422,6 +439,7 @@ main() {
     if [ "$deploy_success" = true ]; then
         validate_configuration || deploy_success=false
         cleanup_previous || deploy_success=false
+        prepare_core_engine || deploy_success=false
         prepare_backend || deploy_success=false
         deploy_services || deploy_success=false
         wait_for_services || deploy_success=false
