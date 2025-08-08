@@ -25,7 +25,7 @@ namespace ov
 			//--------------------------------------------------------------------
 			void format(const spdlog::details::log_msg &msg, const std::tm &, spdlog::memory_buf_t &dest) override
 			{
-				AppendThreadName(msg.pthread_id, dest);
+				AppendThreadName(msg.thread_id, dest);
 			}
 
 			std::unique_ptr<custom_flag_formatter> clone() const override
@@ -34,7 +34,7 @@ namespace ov
 			}
 
 		protected:
-			void AppendThreadName(pthread_t thread_id, spdlog::memory_buf_t &dest)
+			void AppendThreadName(size_t thread_id, spdlog::memory_buf_t &dest)
 			{
 				auto thread_name = Platform::GetThreadName();
 				auto length = ::strlen(thread_name);

@@ -8,7 +8,7 @@
 //==============================================================================
 #pragma once
 
-#include <spdlog/fmt/bundled/format.h>
+#include <fmt/format.h>
 
 #include <cstdarg>
 #include <map>

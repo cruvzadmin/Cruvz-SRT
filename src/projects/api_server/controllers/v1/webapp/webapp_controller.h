@@ -8,13 +8,13 @@
 //==============================================================================
 #pragma once
 
-#include "../controller_base.h"
+#include "../../controller_base.h"
 
 namespace api
 {
 	namespace v1
 	{
-		class WebAppController : public Controller<WebAppController>
+		class WebAppController : public ControllerBase<WebAppController>
 		{
 		public:
 			void PrepareHandlers() override;
