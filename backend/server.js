@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
 require('express-async-errors');
 require('dotenv').config();
 
@@ -63,7 +64,7 @@ app.use(morgan('combined', {
   }
 }));
 
-// Health check endpoint (must respond with HTTP 200)
+// Health check endpoint (always returns 200)
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
@@ -81,17 +82,20 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/keys', apiRoutes);
 app.use('/api/six-sigma', sixSigmaRoutes);
 
-// Serve static files from web-app directory (guard if directory exists)
+// Serve static files from web-app directory
 const staticDir = path.join(__dirname, '../web-app');
 app.use(express.static(staticDir));
 
-// Catch-all handler for frontend routes (guard file existence)
+// Catch-all handler for frontend routes
 app.get('*', (req, res, next) => {
-  const indexPath = path.join(__dirname, '../web-app/index.html');
-  res.sendFile(indexPath, function (err) {
+  const indexPath = path.join(staticDir, 'index.html');
+  // Only serve if file exists, otherwise respond with a simple message
+  fs.access(indexPath, fs.constants.F_OK, (err) => {
     if (err) {
-      next();
+      logger.warn('index.html not found, returning fallback');
+      return res.status(200).send('<html><body><h1>Cruvz Streaming Backend Running</h1></body></html>');
     }
+    res.sendFile(indexPath);
   });
 });
 
