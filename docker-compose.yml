@@ -95,14 +95,16 @@ services:
     - "com.cruvz.component=frontend"
 
   origin:
-    # Use stable base image to avoid build issues
-    image: airensoft/ovenmediaengine:latest
+    # Build the actual Cruvz Streaming core engine from source
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: cruvz-streaming-origin
     restart: always
 
-    # Enhanced health check with multiple validation methods
+    # Enhanced health check for CruvzStreaming binary
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f CruvzStreaming > /dev/null && curl -f http://localhost:8080 || (pgrep -f OvenMediaEngine > /dev/null)"]
+      test: ["CMD-SHELL", "pgrep -f CruvzStreaming > /dev/null || curl -f http://localhost:8080 > /dev/null"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -143,14 +145,14 @@ services:
     - LOG_LEVEL=INFO
     - SIX_SIGMA_MODE=true
 
-    # Persistent storage
+    # Persistent storage for CruvzStreaming
     volumes:
-    - cs-origin-conf:/opt/ovenmediaengine/bin/origin_conf:rw
-    - cs-logs:/opt/ovenmediaengine/logs:rw
-    - cs-metrics:/opt/ovenmediaengine/metrics:rw
+    - cs-origin-conf:/opt/cruvzstreaming/bin/origin_conf:rw
+    - cs-logs:/opt/cruvzstreaming/logs:rw
+    - cs-metrics:/opt/cruvzstreaming/metrics:rw
     # Mount Cruvz configurations if available
-    - ./misc/conf_examples/Origin.xml:/opt/ovenmediaengine/bin/origin_conf/Server.xml:ro
-    - ./misc/conf_examples/Logger.xml:/opt/ovenmediaengine/bin/origin_conf/Logger.xml:ro
+    - ./misc/conf_examples/Origin.xml:/opt/cruvzstreaming/bin/origin_conf/Server.xml:ro
+    - ./misc/conf_examples/Logger.xml:/opt/cruvzstreaming/bin/origin_conf/Logger.xml:ro
 
     # Production logging
     logging:
