@@ -1,6 +1,16 @@
 const fs = require('fs');
 const path = require('path');
-const logger = require('../utils/logger');
+
+// Try to require logger, fallback to console if not found
+let logger;
+try {
+  logger = require('../utils/logger');
+} catch (e) {
+  logger = {
+    info: console.log,
+    error: console.error
+  };
+}
 
 async function setup() {
   try {
@@ -22,8 +32,18 @@ async function setup() {
     }
 
     // Run database migration
-    const migrate = require('./migrate');
-    await migrate();
+    let migrate;
+    try {
+      migrate = require('./migrate');
+    } catch (e) {
+      logger.info('No migrate script found. Skipping migrations.');
+      migrate = null;
+    }
+    if (typeof migrate === 'function') {
+      await migrate();
+    } else if (migrate && typeof migrate.default === 'function') {
+      await migrate.default();
+    }
 
     logger.info('Backend setup completed successfully');
   } catch (error) {
