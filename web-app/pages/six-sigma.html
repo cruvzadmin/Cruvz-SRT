@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Six Sigma Dashboard - Cruvz Streaming</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/six-sigma.css">
+    <link rel="icon" href="../assets/favicon.ico" type="image/x-icon">
+</head>
+<body class="dashboard-body">
+    <!-- Navigation -->
+    <nav class="navbar dashboard-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img src="../assets/logo.png" alt="Cruvz Streaming" class="logo-img">
+                <span class="logo-text">Six Sigma Quality Dashboard</span>
+            </div>
+            <div class="nav-menu">
+                <a href="../index.html" class="nav-link">Home</a>
+                <a href="dashboard.html" class="nav-link">Main Dashboard</a>
+                <a href="#overview" class="nav-link">Overview</a>
+                <a href="#metrics" class="nav-link">Metrics</a>
+                <a href="#reports" class="nav-link">Reports</a>
+                <div class="user-menu">
+                    <div class="user-info" onclick="toggleUserDropdown()">
+                        <img src="../assets/default-avatar.png" alt="User" class="user-avatar" id="userAvatar">
+                        <span class="user-name" id="userName">Loading...</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="dashboard.html" class="dropdown-item">Main Dashboard</a>
+                        <a href="#settings" class="dropdown-item">Settings</a>
+                        <button onclick="signOut()" class="dropdown-item">Sign Out</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="six-sigma-main">
+        <!-- Header -->
+        <section class="six-sigma-header">
+            <div class="container">
+                <h1>Six Sigma Quality Dashboard</h1>
+                <p class="subtitle">Real-time quality metrics and performance analytics for zero-defect deployment</p>
+                
+                <!-- Quality Gates Status -->
+                <div class="quality-gates">
+                    <div class="gate-item" id="sigmaGate">
+                        <div class="gate-icon">📊</div>
+                        <div class="gate-info">
+                            <span class="gate-label">Sigma Level</span>
+                            <span class="gate-value" id="currentSigmaLevel">6.0σ</span>
+                            <span class="gate-status" id="sigmaStatus">PASS</span>
+                        </div>
+                    </div>
+                    <div class="gate-item" id="uptimeGate">
+                        <div class="gate-icon">⚡</div>
+                        <div class="gate-info">
+                            <span class="gate-label">Uptime</span>
+                            <span class="gate-value" id="currentUptime">99.99%</span>
+                            <span class="gate-status" id="uptimeStatus">PASS</span>
+                        </div>
+                    </div>
+                    <div class="gate-item" id="performanceGate">
+                        <div class="gate-icon">🚀</div>
+                        <div class="gate-info">
+                            <span class="gate-label">Performance</span>
+                            <span class="gate-value" id="currentPerformance">100%</span>
+                            <span class="gate-status" id="performanceStatus">PASS</span>
+                        </div>
+                    </div>
+                    <div class="gate-item" id="errorGate">
+                        <div class="gate-icon">🛡️</div>
+                        <div class="gate-info">
+                            <span class="gate-label">Error Rate</span>
+                            <span class="gate-value" id="currentErrorRate">0.001%</span>
+                            <span class="gate-status" id="errorStatus">PASS</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Metrics Overview -->
+        <section class="metrics-overview">
+            <div class="container">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <h3>Overall Sigma Level</h3>
+                        <div class="metric-value">
+                            <span class="value" id="overallSigma">6.0</span>
+                            <span class="unit">σ</span>
+                        </div>
+                        <div class="metric-trend positive">
+                            <span class="trend-icon">↗</span>
+                            <span class="trend-value">+0.2σ</span>
+                        </div>
+                        <div class="metric-target">Target: ≥4.0σ</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <h3>Defects Per Million</h3>
+                        <div class="metric-value">
+                            <span class="value" id="dpmo">3.4</span>
+                            <span class="unit">DPMO</span>
+                        </div>
+                        <div class="metric-trend positive">
+                            <span class="trend-icon">↘</span>
+                            <span class="trend-value">-1.2</span>
+                        </div>
+                        <div class="metric-target">Target: ≤3.4</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <h3>System Availability</h3>
+                        <div class="metric-value">
+                            <span class="value" id="availability">99.999</span>
+                            <span class="unit">%</span>
+                        </div>
+                        <div class="metric-trend positive">
+                            <span class="trend-icon">↗</span>
+                            <span class="trend-value">+0.01%</span>
+                        </div>
+                        <div class="metric-target">Target: ≥99.9%</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <h3>Process Capability</h3>
+                        <div class="metric-value">
+                            <span class="value" id="cpk">2.0</span>
+                            <span class="unit">Cpk</span>
+                        </div>
+                        <div class="metric-trend positive">
+                            <span class="trend-icon">↗</span>
+                            <span class="trend-value">+0.1</span>
+                        </div>
+                        <div class="metric-target">Target: ≥1.33</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Defects by Category -->
+        <section class="defects-analysis">
+            <div class="container">
+                <h2>Defects Analysis by Category</h2>
+                <div class="analysis-grid">
+                    <div class="analysis-card">
+                        <h3>Streaming Performance</h3>
+                        <div class="category-metrics">
+                            <div class="category-stat">
+                                <span class="stat-label">Defects:</span>
+                                <span class="stat-value" id="streamingDefects">0</span>
+                            </div>
+                            <div class="category-stat">
+                                <span class="stat-label">Sigma Level:</span>
+                                <span class="stat-value" id="streamingSigma">6.0σ</span>
+                            </div>
+                            <div class="category-stat">
+                                <span class="stat-label">Status:</span>
+                                <span class="stat-value status-good" id="streamingStatus">EXCELLENT</span>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <h3>API Performance</h3>
+                        <div class="category-metrics">
+                            <div class="category-stat">
+                                <span class="stat-label">Defects:</span>
+                                <span class="stat-value" id="apiDefects">0</span>
+                            </div>
+                            <div class="category-stat">
+                                <span class="stat-label">Sigma Level:</span>
+                                <span class="stat-value" id="apiSigma">6.0σ</span>
+                            </div>
+                            <div class="category-stat">
+                                <span class="stat-label">Status:</span>
+                                <span class="stat-value status-good" id="apiStatus">EXCELLENT</span>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <h3>System Health</h3>
+                        <div class="category-metrics">
+                            <div class="category-stat">
+                                <span class="stat-label">Defects:</span>
+                                <span class="stat-value" id="systemDefects">0</span>
+                            </div>
+                            <div class="category-stat">
+                                <span class="stat-label">Sigma Level:</span>
+                                <span class="stat-value" id="systemSigma">6.0σ</span>
+                            </div>
+                            <div class="category-stat">
+                                <span class="stat-label">Status:</span>
+                                <span class="stat-value status-good" id="systemStatus">EXCELLENT</span>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <h3>User Experience</h3>
+                        <div class="category-metrics">
+                            <div class="category-stat">
+                                <span class="stat-label">Defects:</span>
+                                <span class="stat-value" id="uxDefects">0</span>
+                            </div>
+                            <div class="category-stat">
+                                <span class="stat-label">Sigma Level:</span>
+                                <span class="stat-value" id="uxSigma">6.0σ</span>
+                            </div>
+                            <div class="category-stat">
+                                <span class="stat-label">Status:</span>
+                                <span class="stat-value status-good" id="uxStatus">EXCELLENT</span>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Performance Trends -->
+        <section class="performance-trends">
+            <div class="container">
+                <h2>Performance Trends</h2>
+                <div class="trends-grid">
+                    <div class="trend-card">
+                        <h3>Sigma Level Trend (30 Days)</h3>
+                        <div class="chart-container">
+                            <canvas id="sigmaChart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="trend-card">
+                        <h3>Defect Rate Trend (30 Days)</h3>
+                        <div class="chart-container">
+                            <canvas id="defectChart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- System Health -->
+        <section class="system-health">
+            <div class="container">
+                <h2>Real-time System Health</h2>
+                <div class="health-grid">
+                    <div class="health-card">
+                        <h3>CPU Usage</h3>
+                        <div class="health-value">
+                            <span class="value" id="cpuUsage">15.2</span>
+                            <span class="unit">%</span>
+                        </div>
+                        <div class="health-bar">
+                            <div class="health-fill" id="cpuFill" style="width: 15.2%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="health-card">
+                        <h3>Memory Usage</h3>
+                        <div class="health-value">
+                            <span class="value" id="memoryUsage">42.8</span>
+                            <span class="unit">%</span>
+                        </div>
+                        <div class="health-bar">
+                            <div class="health-fill" id="memoryFill" style="width: 42.8%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="health-card">
+                        <h3>Network I/O</h3>
+                        <div class="health-value">
+                            <span class="value" id="networkIO">2.4</span>
+                            <span class="unit">Gbps</span>
+                        </div>
+                        <div class="health-indicator">
+                            <div class="indicator-dot active"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="health-card">
+                        <h3>Active Connections</h3>
+                        <div class="health-value">
+                            <span class="value" id="activeConnections">1,247</span>
+                            <span class="unit">conn</span>
+                        </div>
+                        <div class="health-indicator">
+                            <div class="indicator-dot active"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Actions -->
+        <section class="actions-section">
+            <div class="container">
+                <div class="actions-grid">
+                    <button class="action-btn primary" onclick="refreshSixSigmaData()">
+                        <span class="btn-icon">🔄</span>
+                        Refresh Data
+                    </button>
+                    
+                    <button class="action-btn secondary" onclick="generateSixSigmaReport()">
+                        <span class="btn-icon">📊</span>
+                        Generate Report
+                    </button>
+                    
+                    <button class="action-btn secondary" onclick="exportMetrics()">
+                        <span class="btn-icon">💾</span>
+                        Export Metrics
+                    </button>
+                    
+                    <button class="action-btn outline" onclick="openGrafana()">
+                        <span class="btn-icon">📈</span>
+                        Open Grafana
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading Six Sigma metrics...</div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/main.js"></script>
+    <script src="../js/six-sigma.js"></script>
+</body>
+</html>

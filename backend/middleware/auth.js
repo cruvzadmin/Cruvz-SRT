@@ -1,0 +1,69 @@
+const jwt = require('jsonwebtoken');
+const db = require('../config/database');
+const logger = require('../utils/logger');
+
+const auth = async (req, res, next) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'No token, authorization denied'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Get user from database
+    const user = await db('users')
+      .select('id', 'email', 'name', 'role', 'is_active', 'last_login')
+      .where({ id: decoded.id })
+      .first();
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Token is not valid - user not found'
+      });
+    }
+
+    if (!user.is_active) {
+      return res.status(401).json({
+        success: false,
+        error: 'Account is deactivated'
+      });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    logger.error('Auth middleware error:', error);
+    res.status(401).json({
+      success: false,
+      error: 'Token is not valid'
+    });
+  }
+};
+
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Access denied - no user context'
+      });
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        error: `Access denied - requires role: ${roles.join(' or ')}`
+      });
+    }
+
+    next();
+  };
+};
+
+module.exports = { auth, authorize };
