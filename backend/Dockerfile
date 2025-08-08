@@ -15,18 +15,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy package files first for better Docker layer caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# Copy application files
+# Copy application files (needed for postinstall script)
 COPY . .
+
+# Install dependencies (using fresh install to avoid npm ci issues)
+RUN rm -f package-lock.json && npm install --omit=dev --no-package-lock
 
 # Create required directories
 RUN mkdir -p data logs uploads recordings && \
     chmod 755 data logs uploads recordings
-
-# Run setup and migrations
-RUN npm run postinstall || echo "Setup completed with warnings"
 
 # Expose port
 EXPOSE 5000
@@ -36,4 +33,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Start application
-CMD ["node", "server-simple.js"]
+CMD ["node", "server.js"]

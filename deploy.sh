@@ -23,8 +23,8 @@ COMPOSE_FILE="docker-compose.yml"
 # Create log directory
 mkdir -p "$LOG_DIR"
 
-# Create symbolic link for compatibility with legacy log name
-ln -sf "$DEPLOYMENT_LOG" "$LOG_DIR/cruvz_production_deploy.log" 2>/dev/null || true
+# Remove any existing circular symlinks and ensure clean log file
+rm -f "$LOG_DIR/cruvz_production_deploy.log" 2>/dev/null || true
 
 # Logging function
 log() {
