@@ -20,7 +20,7 @@ OPENH264_VERSION=2.4.0
 HIREDIS_VERSION=1.0.2
 NVCC_HDR_VERSION=11.1.5.2
 X264_VERSION=31e19f92
-WEBP_VERSION=1.5.0
+WEBP_VERSION=1.3.2
 SPDLOG_VERSION=1.15.1
 
 INTEL_QSV_HWACCELS=false
@@ -96,10 +96,8 @@ install_libopus()
     (DIR=${TEMP_PATH}/opus && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    # Try multiple sources for reliable download
-    (curl -sSLfk https://downloads.xiph.org/releases/opus/opus-${OPUS_VERSION}.tar.gz | tar -xz --strip-components=1) || \
-    (curl -sSLfk https://github.com/xiph/opus/releases/download/v${OPUS_VERSION}/opus-${OPUS_VERSION}.tar.gz | tar -xz --strip-components=1) || \
-    (curl -sSLfk https://archive.mozilla.org/pub/opus/opus-${OPUS_VERSION}.tar.gz | tar -xz --strip-components=1) && \
+    # Use GitHub archive as primary source
+    curl -sSLfk https://github.com/xiph/opus/archive/refs/tags/v${OPUS_VERSION}.tar.gz | tar -xz --strip-components=1 && \
     autoreconf -fiv && \
     ./configure --prefix="${PREFIX}" --enable-shared --disable-static && \
     make -j$(nproc) && \
@@ -117,7 +115,7 @@ install_libx264()
     (DIR=${TEMP_PATH}/x264 && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sLfk https://code.videolan.org/videolan/x264/-/archive/master/x264-${X264_VERSION}.tar.bz2 | tar -jx --strip-components=1 && \
+    curl -sSLfk https://github.com/mirror/x264/archive/refs/heads/master.tar.gz | tar -xz --strip-components=1 && \
     ./configure --prefix="${PREFIX}" --enable-shared --enable-pic --disable-cli && \
     make -j$(nproc) && \
     sudo make install && \
@@ -182,7 +180,8 @@ install_libwebp()
     (DIR=${TEMP_PATH}/webp && \
     mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLfk https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${WEBP_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    curl -sSLfk https://github.com/webmproject/libwebp/archive/refs/tags/v${WEBP_VERSION}.tar.gz | tar -xz --strip-components=1 && \
+    ./autogen.sh && \
     ./configure --prefix="${PREFIX}" --enable-shared --disable-static && \
     make -j$(nproc) && \
     sudo make install && \
