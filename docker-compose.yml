@@ -6,7 +6,7 @@ services:
   # Backend API Service
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: cruvz-streaming-backend
     restart: always
