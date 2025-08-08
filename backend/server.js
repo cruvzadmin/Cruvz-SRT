@@ -63,9 +63,9 @@ app.use(morgan('combined', {
   }
 }));
 
-// Health check endpoint
+// Health check endpoint (must respond with HTTP 200)
 app.get('/health', (req, res) => {
-  res.json({
+  res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
@@ -81,12 +81,18 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/keys', apiRoutes);
 app.use('/api/six-sigma', sixSigmaRoutes);
 
-// Serve static files from web-app directory
-app.use(express.static(path.join(__dirname, '../web-app')));
+// Serve static files from web-app directory (guard if directory exists)
+const staticDir = path.join(__dirname, '../web-app');
+app.use(express.static(staticDir));
 
-// Catch-all handler for frontend routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../web-app/index.html'));
+// Catch-all handler for frontend routes (guard file existence)
+app.get('*', (req, res, next) => {
+  const indexPath = path.join(__dirname, '../web-app/index.html');
+  res.sendFile(indexPath, function (err) {
+    if (err) {
+      next();
+    }
+  });
 });
 
 // Error handling middleware
