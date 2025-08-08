@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     python3 \
     sqlite3 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -35,7 +36,7 @@ EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
+    CMD curl -f http://localhost:5000/health || exit 1
 
 # Start application
 CMD ["npm", "start"]
