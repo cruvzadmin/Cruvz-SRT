@@ -6,8 +6,9 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files and scripts directory needed for postinstall
 COPY package*.json ./
+COPY scripts ./scripts
 
 # Install dependencies
 RUN npm ci --only=production
