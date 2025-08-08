@@ -82,7 +82,7 @@ print_banner() {
 
 # Prerequisites validation
 validate_prerequisites() {
-    log "STEP" "Step 1/8: Validating Prerequisites..."
+    log "STEP" "Step 1/9: Validating Prerequisites..."
     
     local required_commands=("docker" "curl")
     local missing_commands=()
@@ -123,7 +123,7 @@ validate_prerequisites() {
 
 # Configuration validation
 validate_configuration() {
-    log "STEP" "Step 2/8: Validating Configuration..."
+    log "STEP" "Step 2/9: Validating Configuration..."
     
     local required_files=(
         "$COMPOSE_FILE"
@@ -150,7 +150,7 @@ validate_configuration() {
 
 # Cleanup previous deployment
 cleanup_previous() {
-    log "STEP" "Step 3/8: Cleaning Up Previous Deployment..."
+    log "STEP" "Step 3/9: Cleaning Up Previous Deployment..."
     
     log "INFO" "Stopping existing containers..."
     docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
