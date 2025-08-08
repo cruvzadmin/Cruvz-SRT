@@ -239,7 +239,6 @@ services:
     environment:
     - GF_SECURITY_ADMIN_PASSWORD=cruvz123
     - GF_USERS_ALLOW_SIGN_UP=false
-    - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/six-sigma-overview.json
 
     volumes:
