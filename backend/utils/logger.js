@@ -51,4 +51,51 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
+// Six Sigma logging functions for quality tracking
+logger.sixSigma = {
+  defect: (category, message, data = {}) => {
+    logger.error('SIX_SIGMA_DEFECT', {
+      category,
+      message,
+      data,
+      timestamp: new Date().toISOString()
+    });
+  },
+  
+  metric: (name, value, target, category = 'general') => {
+    const sigmaLevel = calculateSigmaLevel(value, target);
+    logger.info('SIX_SIGMA_METRIC', {
+      name,
+      value,
+      target,
+      category,
+      sigmaLevel,
+      withinSpec: sigmaLevel >= 3.4,
+      timestamp: new Date().toISOString()
+    });
+  },
+  
+  checkpoint: (phase, status, details = {}) => {
+    logger.info('SIX_SIGMA_CHECKPOINT', {
+      phase, // DEFINE, MEASURE, ANALYZE, IMPROVE, CONTROL
+      status, // PASS, FAIL, WARNING
+      details,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+// Calculate Six Sigma level (simplified calculation)
+function calculateSigmaLevel(actual, target) {
+  if (target === 0) return 6; // Perfect if target is 0 and actual is 0
+  const errorRate = Math.abs(actual - target) / target;
+  
+  if (errorRate <= 0.00034) return 6; // 6 Sigma: 3.4 DPMO
+  if (errorRate <= 0.00233) return 5; // 5 Sigma: 233 DPMO
+  if (errorRate <= 0.00621) return 4; // 4 Sigma: 6210 DPMO
+  if (errorRate <= 0.06681) return 3; // 3 Sigma: 66810 DPMO
+  if (errorRate <= 0.30854) return 2; // 2 Sigma: 308537 DPMO
+  return 1; // Below 2 Sigma
+}
+
 module.exports = logger;
