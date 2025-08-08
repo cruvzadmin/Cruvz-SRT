@@ -2,7 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
-const { auth, authorize } = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
 const router = express.Router();

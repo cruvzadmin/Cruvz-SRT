@@ -17,8 +17,8 @@ const logger = {
 };
 
 // In-memory storage (production would use proper database)
-let users = [];
-let sessions = [];
+const users = [];
+const sessions = [];
 let nextUserId = 1;
 
 // Ensure data directory exists
@@ -360,8 +360,8 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   logger.info(`🚀 Cruvz Streaming API (Six Sigma) running on port ${PORT}`);
   logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
-  logger.info(`🎯 Zero external dependencies - Maximum reliability`);
-  logger.info(`✅ Six Sigma quality deployment: ACTIVE`);
+  logger.info('🎯 Zero external dependencies - Maximum reliability');
+  logger.info('✅ Six Sigma quality deployment: ACTIVE');
 });
 
 // Graceful shutdown

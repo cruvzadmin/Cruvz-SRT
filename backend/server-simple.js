@@ -60,7 +60,7 @@ app.get('/health', (req, res) => {
 });
 
 // Simple in-memory user store for testing (production would use proper database)
-let users = [];
+const users = [];
 let nextUserId = 1;
 
 // Simple JWT-like token generation
@@ -280,7 +280,7 @@ app.use('*', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   logger.info(`🚀 Cruvz Streaming API server running on port ${PORT}`);
   logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
-  logger.info(`🎯 Six Sigma quality deployment: ACTIVE`);
+  logger.info('🎯 Six Sigma quality deployment: ACTIVE');
 });
 
 // Graceful shutdown
