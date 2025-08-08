@@ -81,73 +81,32 @@ async function loadSixSigmaData() {
         }
     } catch (error) {
         console.error('Failed to load Six Sigma data:', error);
-        showNotification('Failed to load Six Sigma data. Using mock data for demonstration.', 'warning');
+        showNotification('Unable to connect to Six Sigma API. Please check your connection.', 'error');
         
-        // Load mock data for demonstration
-        loadMockSixSigmaData();
+        // Show error state instead of mock data
+        displaySixSigmaError();
     } finally {
         hideLoadingOverlay();
     }
 }
 
-// Load mock Six Sigma data
-function loadMockSixSigmaData() {
-    sixSigmaData = {
-        overview: {
-            overall_sigma_level: 6.0,
-            api_sigma_level: 6.0,
-            target_sigma_level: 6.0,
-            uptime_percentage: 99.99,
-            total_defects: 0,
-            defect_rate: 0.001
-        },
-        system_health: {
-            cpu_usage: 15.2,
-            memory_usage: 42.8,
-            disk_usage: 25.1,
-            active_connections: 1247,
-            active_streams: 5,
-            network_in_mbps: 1.2,
-            network_out_mbps: 2.4,
-            uptime_seconds: 2592000
-        },
-        streaming_performance: {
-            total_measurements: 10000,
-            avg_cpu_usage: 12.5,
-            avg_memory_usage: 35.2,
-            total_dropped_frames: 0,
-            frame_drop_rate: 0.0
-        },
-        user_metrics: {
-            total_users: 1250,
-            active_users: 847,
-            user_activity_rate: 67.8
-        },
-        defects_by_category: [
-            { category: 'streaming', total_defects: 0, avg_sigma: 6.0 },
-            { category: 'api', total_defects: 0, avg_sigma: 6.0 },
-            { category: 'system', total_defects: 0, avg_sigma: 6.0 },
-            { category: 'auth', total_defects: 0, avg_sigma: 6.0 }
-        ],
-        performance_trends: generateMockTrendData(),
-        quality_gates: {
-            sigma_level_gate: true,
-            uptime_gate: true,
-            performance_gate: true,
-            error_rate_gate: true
-        }
-    };
-    
-    updateSixSigmaDisplay(sixSigmaData);
+// Display error state for Six Sigma dashboard
+function displaySixSigmaError() {
+    // Clear existing content and show error message
+    const dashboardContent = document.querySelector('.dashboard-content');
+    if (dashboardContent) {
+        dashboardContent.innerHTML = `
+            <div class="error-state">
+                <div class="error-icon">⚠️</div>
+                <h2>Unable to Load Six Sigma Data</h2>
+                <p>Could not connect to the Six Sigma monitoring service.</p>
+                <button onclick="loadSixSigmaData()" class="btn btn-primary">Retry</button>
+            </div>
+        `;
+    }
 }
 
-// Generate mock trend data
-function generateMockTrendData() {
-    const trends = [];
-    const today = new Date();
-    
-    for (let i = 29; i >= 0; i--) {
-        const date = new Date(today);
+// Update Six Sigma display with real data
         date.setDate(date.getDate() - i);
         
         trends.push({

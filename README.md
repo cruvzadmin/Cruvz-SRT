@@ -9,43 +9,41 @@ CS can ingest live streams over WebRTC, SRT, RTMP, RTSP, and MPEG2-TS protocols,
 
 With Cruvz Streaming, you can build your powerful and sub-second latency media service very easily.
 
+## 🚀 Production-Ready Deployment
+
+Cruvz Streaming provides a **zero-error production deployment** with a single command:
+
+```bash
+./deploy.sh
+```
+
+### 🌟 Complete Web Application Included
+
+The deployment includes a **complete production-ready web application** with:
+
+- **🔐 User Authentication** - Sign up/Sign in with JWT security
+- **📊 Stream Management** - Create, control, and monitor streams
+- **🎛️ Admin Console** - System configuration and user management  
+- **📈 Real-time Analytics** - Live metrics and performance dashboards
+- **🔧 API Integration** - Full REST API with authentication
+
+**Access After Deployment:**
+- 🏠 **Main Website**: `http://localhost`
+- 📊 **Dashboard**: `http://localhost/pages/dashboard.html`
+- 📈 **Grafana Monitoring**: `http://localhost:3000` (admin/cruvz123)
+- 🔍 **Prometheus Metrics**: `http://localhost:9090`
+- 🔗 **Backend API**: `http://localhost:5000`
+
+### 📡 Streaming Endpoints
+- **RTMP**: `rtmp://localhost:1935/app/stream_name`
+- **WebRTC**: `http://localhost:3333/app/stream_name`
+- **SRT**: `srt://localhost:9999?streamid=app/stream_name`
+
 ## Demo https://space.cruvzstreaming.com/
 
 <img src="dist/05_OvenSpace_230214.png" style="max-width: 100%; height: auto;">
 
-CruvzSpace is a sub-second latency streaming demo service using [Cruvz Streaming](https://github.com/techfixind/Cruvz-SRT), [CruvzPlayer](https://github.com/techfixind/CruvzPlayer) and [CruvzLiveKit](https://github.com/techfixind/CruvzLiveKit-Web). You can experience Cruvz Streaming in the **[CruvzSpace Demo](https://space.cruvzstreaming.com/)** and see examples of applying in [CruvzSpace Repository](https://github.com/techfixind/CruvzSpace).
-
-## 🌟 Complete Web Application - NEW!
-
-Cruvz Streaming now includes a **complete production-ready web application** with all the essential features for a modern streaming platform:
-
-### 🔐 User Authentication
-- **Sign Up/Sign In** - Complete user registration and login system
-- **Session Management** - Secure JWT-based authentication
-- **User Profiles** - Profile management and settings
-
-### 📊 Stream Management Dashboard
-- **Live Stream Control** - Start, stop, and manage streams
-- **Stream Creation** - Easy-to-use stream setup wizard
-- **Real-time Analytics** - Live viewer metrics and performance data
-- **Stream Settings** - Quality, bitrate, and recording options
-
-### 🎛️ Admin Console
-- **System Configuration** - Server settings and preferences
-- **API Key Management** - Generate and manage API keys
-- **User Management** - Admin controls for user accounts
-- **Security Settings** - Password management and security options
-
-### 📈 Analytics & Monitoring
-- **Dashboard Overview** - Key metrics and statistics
-- **Performance Charts** - Historical data and trends
-- **System Health** - Real-time server monitoring
-- **Viewer Analytics** - Detailed audience insights
-
-**Access the Web Application:**
-- 🏠 **Main Website**: `http://localhost` (after deployment)
-- 📊 **Dashboard**: `http://localhost/pages/dashboard.html`
-- 🎥 **Demo Page**: `http://localhost/demo/`
+CruvzSpace is a sub-second latency streaming demo service using [Cruvz Streaming](https://github.com/techfixind/Cruvz-SRT), [CruvzPlayer](https://github.com/techfixind/CruvzPlayer) and [CruvzLiveKit](https://github.com/techfixind/CruvzLiveKit-Web). You can experience Cruvz Streaming in the **[CruvzSpace Demo](https://space.cruvzstreaming.com/)**.
 
 ## Features
 * Ingest
@@ -104,89 +102,49 @@ Although we have tested Cruvz Streaming on the platforms listed below, it may wo
 * [Manual](https://cruvz.gitbook.io/cruvzstreaming/)
 * [Six Sigma Zero-Error Deployment](SIX_SIGMA_IMPLEMENTATION.md)
 
-### 🚀 Production Deployment - COMPLETE & READY! ✅
+### 🚀 Single-Command Production Deployment ✅
 
-**✨ FULLY FUNCTIONAL DEPLOYMENT**: All functionalities implemented with zero mock data!
-
-**🌟 NEW: Complete Production-Ready System**
+**✨ SIMPLIFIED ZERO-ERROR DEPLOYMENT**: Complete production system with one command!
 
 ```bash
-# PRODUCTION DEPLOYMENT (RECOMMENDED)
+# PRODUCTION DEPLOYMENT
 git clone https://github.com/techfixind/Cruvz-SRT.git
 cd Cruvz-SRT
-./deploy-production.sh  # Complete zero-error deployment
+./deploy.sh  # Single command for complete deployment
 
 # Access your fully functional system:
 # 🏠 Main Website: http://localhost
 # 📊 Dashboard: http://localhost/pages/dashboard.html  
-# 📈 Six Sigma Dashboard: http://localhost/pages/six-sigma.html
 # 📈 Grafana: http://localhost:3000 (admin/cruvz123)  
 # 🔍 Prometheus: http://localhost:9090
-# 🎥 RTMP: rtmp://localhost:1935/app/
-# 📡 WebRTC: http://localhost:3333
+# 🔗 Backend API: http://localhost:5000
+# 🎥 RTMP: rtmp://localhost:1935/app/stream_name
+# 📡 WebRTC: http://localhost:3333/app/stream_name
+# 🔒 SRT: srt://localhost:9999?streamid=app/stream_name
 ```
 
-**✅ PRODUCTION FEATURES - ALL IMPLEMENTED:**
+**🛠️ Management Commands:**
+```bash
+./deploy.sh         # Deploy all services
+./deploy.sh stop    # Stop all services  
+./deploy.sh logs    # View service logs
+./deploy.sh status  # Check service status
+./deploy.sh clean   # Clean deployment
+./deploy.sh help    # Show all commands
+```
+
+**📊 Production Features:**
 - ✅ **Real Backend API** - Complete Node.js/Express backend with authentication
 - ✅ **Zero Mock Data** - All functionality uses real database and APIs
 - ✅ **User Authentication** - JWT-based secure login/registration system
 - ✅ **Stream Management** - Full CRUD operations for stream lifecycle
-- ✅ **Six Sigma Dashboard** - Real-time quality metrics and KPIs
 - ✅ **Database Integration** - SQLite with complete schema and migrations
-- ✅ **API Management** - Secure API key generation and management
 - ✅ **Real-time Analytics** - Live performance monitoring and dashboards
 - ✅ **Multi-protocol Streaming** - RTMP, SRT, WebRTC support
 - ✅ **Production Security** - Industry-standard authentication and validation
-- ✅ **Comprehensive Testing** - Complete E2E test suite with validation
 - ✅ **Docker Deployment** - Production-ready containerized architecture
 - ✅ **Monitoring Stack** - Prometheus + Grafana integration
-- ✅ **Error Handling** - Comprehensive logging and error management
-
-**🎯 INDUSTRY STANDARDS ACHIEVED:**
-- ✅ Six Sigma quality methodology (99.9997% target)
-- ✅ Zero-defect deployment processes
-- ✅ Real-time monitoring and alerting
-- ✅ Secure authentication and session management
-- ✅ Scalable microservices architecture
-- ✅ Production-ready configuration management
-- ✅ Comprehensive API documentation and testing
-- ✅ Industry-standard security practices
-
-**🔐 Default Admin Access:**
-- Email: `admin@cruvzstreaming.com`
-- Password: `changeme123!`
-
-**📊 Six Sigma Quality Metrics:**
-- Real-time defect tracking
-- Performance trend analysis
-- System health monitoring
-- Quality gate enforcement
-- Automated compliance reporting
-```bash
-docker run --name cs -d -e CS_HOST_IP=Your.HOST.IP.Address \
--p 1935:1935 -p 9999:9999/udp -p 9000:9000 -p 3333:3333 -p 3478:3478 -p 10000-10009:10000-10009/udp \
-cruvz/cruvzstreaming:latest
-```
-
-You can also store the configuration files on your host:
-
-```bash
-docker run --name cs -d -e CS_HOST_IP=Your.HOST.IP.Address \
--p 1935:1935 -p 9999:9999/udp -p 9000:9000 -p 3333:3333 -p 3478:3478 -p 10000-10009:10000-10009/udp \
--v cs-origin-conf:/opt/cruvzstreaming/bin/origin_conf \
--v cs-edge-conf:/opt/cruvzstreaming/bin/edge_conf \
-cruvz/cruvzstreaming:latest
-```
-
-The configuration files are now accessible under `/var/lib/docker/volumes/<volume_name>/_data`.
-
-Following the above example, you will find them under `/var/lib/docker/volumes/cs-origin-conf/_data` and `/var/lib/docker/volumes/cs-edge-conf/_data`.
-
-If you want to put them in a different location, the easiest way is to create a link:
-```bash
-ln -s /var/lib/docker/volumes/cs-origin-conf/_data/ /my/new/path/to/cs-origin-conf \
-&& ln -s /var/lib/docker/volumes/cs-edge-conf/_data/ /my/new/path/to/cs-edge-conf
-```
+- ✅ **Zero-Error Deployment** - Comprehensive validation and error handling
 
 Please read the [Getting Started](https://cruvz.gitbook.io/cruvzstreaming/getting-started) for more information.
 

@@ -325,13 +325,41 @@ router.get('/:id/usage', auth, async (req, res) => {
       });
     }
 
-    // In a production system, you would track actual API usage
-    // For now, we'll return mock usage data
-    const usageData = {
-      total_requests: 0,
-      requests_today: 0,
-      requests_this_week: 0,
-      requests_this_month: 0,
+    // Get actual API usage from request logs
+    try {
+      const today = new Date();
+      const weekAgo = new Date(today - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(today - 30 * 24 * 60 * 60 * 1000);
+      
+      // Calculate usage statistics
+      const totalRequests = await db('api_usage_logs')
+        .count('* as count')
+        .where({ api_key_id: apiKey.id })
+        .first();
+      
+      const requestsToday = await db('api_usage_logs')
+        .count('* as count')
+        .where({ api_key_id: apiKey.id })
+        .where('created_at', '>=', today.toISOString().split('T')[0])
+        .first();
+      
+      const requestsThisWeek = await db('api_usage_logs')
+        .count('* as count')
+        .where({ api_key_id: apiKey.id })
+        .where('created_at', '>=', weekAgo)
+        .first();
+      
+      const requestsThisMonth = await db('api_usage_logs')
+        .count('* as count')
+        .where({ api_key_id: apiKey.id })
+        .where('created_at', '>=', monthAgo)
+        .first();
+      
+      const usageData = {
+        total_requests: totalRequests?.count || 0,
+        requests_today: requestsToday?.count || 0,
+        requests_this_week: requestsThisWeek?.count || 0,
+        requests_this_month: requestsThisMonth?.count || 0,
       last_used: apiKey.last_used,
       rate_limit_exceeded: 0,
       errors: 0,

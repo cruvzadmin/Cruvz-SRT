@@ -182,10 +182,10 @@ async function loadOverviewData() {
         }
     } catch (error) {
         console.error('Failed to load overview data:', error);
-        showNotification('Failed to load overview data', 'error');
+        showNotification('Unable to connect to server. Please check your connection.', 'error');
         
-        // Fallback to mock data for development
-        loadMockOverviewData();
+        // Show connection error instead of mock data
+        document.getElementById('overview-stats').innerHTML = '<div class="error-message">Unable to load statistics. Please refresh the page.</div>';
     }
 }
 
@@ -207,22 +207,6 @@ function updateStatsDisplay(stats) {
 }
 
 // Load mock data as fallback
-function loadMockOverviewData() {
-    const stats = {
-        activeStreams: Math.floor(Math.random() * 10) + 1,
-        totalViewers: Math.floor(Math.random() * 5000) + 1000,
-        avgLatency: Math.floor(Math.random() * 20) + 40,
-        bandwidth: (Math.random() * 2 + 1).toFixed(1)
-    };
-    
-    updateStatsDisplay({
-        active_streams: stats.activeStreams,
-        total_viewers: stats.totalViewers,
-        avg_viewers: stats.avgLatency,
-        total_data_transferred: parseFloat(stats.bandwidth)
-    });
-}
-
 // Load streams
 async function loadStreams() {
     try {
@@ -233,11 +217,13 @@ async function loadStreams() {
         }
     } catch (error) {
         console.error('Failed to load streams:', error);
-        showNotification('Failed to load streams', 'error');
+        showNotification('Unable to load streams. Please check your connection.', 'error');
         
-        // Fallback to mock data
-        streams = generateMockStreams();
-        updateStreamsDisplay(streams);
+        // Show error message instead of mock data
+        const streamsContainer = document.getElementById('streams-container');
+        if (streamsContainer) {
+            streamsContainer.innerHTML = '<div class="error-message">Unable to load streams. Please refresh the page.</div>';
+        }
     }
 }
 
@@ -280,29 +266,6 @@ function updateStreamsDisplay(streamsList) {
     `).join('');
 }
 
-// Generate mock streams for fallback
-function generateMockStreams() {
-    return [
-        {
-            id: 1,
-            title: 'Live Gaming Session',
-            description: 'Playing the latest games',
-            status: 'live',
-            protocol: 'rtmp',
-            created_at: new Date().toISOString(),
-            started_at: new Date().toISOString()
-        },
-        {
-            id: 2,
-            title: 'Tech Talk',
-            description: 'Discussion about new technologies',
-            status: 'inactive',
-            protocol: 'webrtc',
-            created_at: new Date().toISOString()
-        }
-    ];
-}
-
 // Load user information
 async function loadUserInfo() {
     try {
@@ -313,12 +276,13 @@ async function loadUserInfo() {
         }
     } catch (error) {
         console.error('Failed to load user info:', error);
-        // Fallback to mock data
+        // Show generic user info instead of mock data
         updateUserDisplay({
             name: 'User',
-            email: 'user@example.com',
+            email: 'Please login again',
             avatar_url: null
         });
+        showNotification('Unable to load user information', 'warning');
     }
 }
 
