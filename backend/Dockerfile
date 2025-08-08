@@ -9,6 +9,7 @@ WORKDIR /app
 # Copy package files and scripts directory needed for postinstall
 COPY package*.json ./
 COPY scripts ./scripts
+COPY backend ./backend
 
 # Install dependencies
 RUN npm ci --only=production
@@ -28,8 +29,9 @@ RUN apk add --no-cache curl
 # Copy node_modules from builder stage
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 
-# Copy application code
+# Copy application code, including backend directory
 COPY --chown=nodejs:nodejs . .
+COPY --chown=nodejs:nodejs backend ./backend
 
 # Create necessary directories
 RUN mkdir -p data logs uploads recordings && \
