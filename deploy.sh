@@ -198,23 +198,19 @@ wait_for_services() {
     log "INFO" "Waiting for all services to become healthy..."
     
     while [ $wait_time -lt $max_wait ]; do
-        local healthy_services=0
-        local total_services=0
+        # Check if services are running using docker compose ps
+        local running_services=$(docker compose -f "$COMPOSE_FILE" ps --filter status=running --format json 2>/dev/null | wc -l)
+        local total_services=$(docker compose -f "$COMPOSE_FILE" ps --format json 2>/dev/null | wc -l)
         
-        # Get service status
-        local service_status=$(docker compose -f "$COMPOSE_FILE" ps --format json 2>/dev/null || echo "[]")
+        # Check if services are running using docker compose ps
+        local running_services=$(docker compose -f "$COMPOSE_FILE" ps --filter status=running --format json 2>/dev/null | wc -l)
+        local total_services=$(docker compose -f "$COMPOSE_FILE" ps --format json 2>/dev/null | wc -l)
         
-        if [ "$service_status" != "[]" ]; then
-            # Count running services
-            local running_services=$(echo "$service_status" | jq -r 'select(.State == "running") | .Name' 2>/dev/null | wc -l)
-            local total_services=$(echo "$service_status" | jq -r '.Name' 2>/dev/null | wc -l)
-            
-            if [ "$running_services" -eq "$total_services" ] && [ "$total_services" -gt 0 ]; then
-                log "SUCCESS" "All services are running ($running_services/$total_services)"
-                sleep 30  # Give services additional time to fully initialize
-                return 0
-            fi
-            
+        if [ "$total_services" -gt 0 ] && [ "$running_services" -eq "$total_services" ]; then
+            log "SUCCESS" "All services are running ($running_services/$total_services)"
+            sleep 30  # Give services additional time to fully initialize
+            return 0
+        elif [ "$total_services" -gt 0 ]; then
             log "INFO" "Services running: $running_services/$total_services (waiting ${check_interval}s...)"
         else
             log "INFO" "Waiting for services to start..."
@@ -271,7 +267,7 @@ final_verification() {
     local running_core=0
     
     for service in "${core_services[@]}"; do
-        if docker compose -f "$COMPOSE_FILE" ps "$service" --format json 2>/dev/null | jq -r '.State' | grep -q "running"; then
+        if docker compose -f "$COMPOSE_FILE" ps "$service" --filter status=running 2>/dev/null | grep -q "$service"; then
             ((running_core++))
             log "SUCCESS" "$service is running"
         else

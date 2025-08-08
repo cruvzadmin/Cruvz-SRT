@@ -82,10 +82,21 @@ router.get('/dashboard', auth, authorize('admin'), async (req, res) => {
       .count('* as active_users')
       .where('last_login', '>=', timeFilter);
 
-    // API performance (mock calculation)
-    const apiRequests = 10000; // This would come from request logs
-    const apiErrors = 5; // This would come from error logs
-    const apiSigmaLevel = calculateSigmaLevel(apiErrors, apiRequests);
+    // API performance from actual request logs
+    const apiStats = await db('api_usage_logs')
+      .count('* as total_requests')
+      .where('created_at', '>=', timeFilter)
+      .first();
+    
+    const apiErrors = await db('api_usage_logs')
+      .count('* as error_count')
+      .where('created_at', '>=', timeFilter)
+      .where('status_code', '>=', 400)
+      .first();
+    
+    const apiRequests = apiStats?.total_requests || 0;
+    const errorCount = apiErrors?.error_count || 0;
+    const apiSigmaLevel = calculateSigmaLevel(errorCount, apiRequests);
 
     // Calculate overall Six Sigma score
     const avgSigmaLevel = systemMetrics.reduce((sum, metric) => sum + (metric.avg_sigma || 0), 0) / (systemMetrics.length || 1);
