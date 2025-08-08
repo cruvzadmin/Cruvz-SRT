@@ -1,10 +1,15 @@
 # Cruvz Streaming Backend API Dockerfile
-# Production-ready lightweight build
+# Production-ready lightweight build using prebuilt image
 
-FROM node:18-alpine
+FROM node:18-slim
 
-# Install system dependencies for native modules
-RUN apk add --no-cache python3 make g++ sqlite
+# Install only essential system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    sqlite3 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -12,8 +17,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY scripts/ ./scripts/
 
-# Install dependencies and build native modules
-RUN npm install --no-optional
+# Install dependencies with better error handling
+RUN npm ci --no-audit --no-fund && \
+    npm cache clean --force
 
 # Copy application code
 COPY . .
@@ -30,7 +36,7 @@ EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
+    CMD curl -f http://localhost:5000/health || exit 1
 
 # Start application
 CMD ["npm", "start"]
