@@ -360,28 +360,35 @@ router.get('/:id/usage', auth, async (req, res) => {
         requests_today: requestsToday?.count || 0,
         requests_this_week: requestsThisWeek?.count || 0,
         requests_this_month: requestsThisMonth?.count || 0,
-      last_used: apiKey.last_used,
-      rate_limit_exceeded: 0,
-      errors: 0,
-      success_rate: 100
-    };
+        last_used: apiKey.last_used,
+        rate_limit_exceeded: 0,
+        errors: 0,
+        success_rate: 100
+      };
 
-    res.json({
-      success: true,
-      data: {
-        api_key: {
-          id: apiKey.id,
-          name: apiKey.name,
-          permissions: apiKey.permissions,
-          is_active: apiKey.is_active,
-          expires_at: apiKey.expires_at,
-          created_at: apiKey.created_at
-        },
-        usage: usageData
-      }
-    });
+      res.json({
+        success: true,
+        data: {
+          api_key: {
+            id: apiKey.id,
+            name: apiKey.name,
+            permissions: apiKey.permissions,
+            is_active: apiKey.is_active,
+            expires_at: apiKey.expires_at,
+            created_at: apiKey.created_at
+          },
+          usage: usageData
+        }
+      });
+    } catch (error) {
+      logger.error('Get API key usage error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Server error'
+      });
+    }
   } catch (error) {
-    logger.error('Get API key usage error:', error);
+    logger.error('Get API key usage outer error:', error);
     res.status(500).json({
       success: false,
       error: 'Server error'
