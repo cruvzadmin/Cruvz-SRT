@@ -10,6 +10,9 @@ services:
       dockerfile: Dockerfile
     container_name: cruvz-streaming-backend
     restart: always
+    depends_on:
+      origin:
+        condition: service_healthy
 
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]

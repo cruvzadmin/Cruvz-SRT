@@ -4,13 +4,13 @@ FROM    ubuntu:22.04 AS base
 ENV     DEBIAN_FRONTEND=noninteractive
 # CORRECTED: xmllint is part of libxml2-utils, not a standalone package
 # ADDED: full set of build dependencies for project build and prerequisites.sh
-# FIXED: Added missing fmt library and essential development packages with correct package names
+# FIXED: Corrected package names for Ubuntu 22.04 compatibility
 RUN     apt-get update && apt-get install -y \
-        tzdata sudo curl git netcat libxml2-utils \
+        tzdata sudo curl git netcat-openbsd libxml2-utils \
         build-essential autoconf automake autotools-dev libtool m4 \
         zlib1g-dev tclsh cmake pkg-config bc uuid-dev \
         bzip2 openssl nasm yasm \
-        libfmt-dev libfmt8 \
+        libfmt-dev \
         patch texinfo gettext \
         python3 python3-pip \
         ca-certificates \
