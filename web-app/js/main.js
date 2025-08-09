@@ -29,8 +29,8 @@ function initializeApp() {
     // Initialize smooth scrolling
     setupSmoothScrolling();
     
-    // Initialize demo animations
-    initializeDemoAnimations();
+    // Initialize production monitoring
+    initializeProductionMonitoring();
 }
 
 // API helper functions
