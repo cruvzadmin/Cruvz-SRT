@@ -90,7 +90,7 @@ const staticDir = path.join(__dirname, '../web-app');
 app.use(express.static(staticDir));
 
 // Catch-all handler for frontend routes
-app.get('*', (req, res, next) => {
+app.get('*', (req, res, _next) => {
   const indexPath = path.join(staticDir, 'index.html');
   // Only serve if file exists, otherwise respond with a simple message
   fs.access(indexPath, fs.constants.F_OK, (err) => {

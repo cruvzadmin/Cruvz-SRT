@@ -29,20 +29,20 @@ router.get('/dashboard', auth, authorize('admin'), async (req, res) => {
     
     let timeFilter;
     switch (timeframe) {
-      case '1h':
-        timeFilter = new Date(Date.now() - 60 * 60 * 1000);
-        break;
-      case '24h':
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    case '1h':
+      timeFilter = new Date(Date.now() - 60 * 60 * 1000);
+      break;
+    case '24h':
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
+      timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
     }
 
     // Overall system metrics
@@ -185,20 +185,20 @@ router.get('/metrics', auth, authorize('admin'), async (req, res) => {
 
     let timeFilter;
     switch (timeframe) {
-      case '1h':
-        timeFilter = new Date(Date.now() - 60 * 60 * 1000);
-        break;
-      case '24h':
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    case '1h':
+      timeFilter = new Date(Date.now() - 60 * 60 * 1000);
+      break;
+    case '24h':
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
+      timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
     }
 
     let query = db('six_sigma_metrics')
@@ -301,24 +301,24 @@ router.post('/metrics', auth, authorize('admin'), async (req, res) => {
 // @access  Private (Admin only)
 router.get('/reports', auth, authorize('admin'), async (req, res) => {
   try {
-    const { timeframe = '30d', format = 'json' } = req.query;
+    const { timeframe = '30d' } = req.query;
 
     let timeFilter;
     switch (timeframe) {
-      case '24h':
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case '90d':
-        timeFilter = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    case '24h':
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
+      timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      timeFilter = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
     // Overall compliance

@@ -16,7 +16,7 @@ const updateProfileSchema = Joi.object({
 
 const changePasswordSchema = Joi.object({
   current_password: Joi.string().required(),
-  new_password: Joi.string().min(8).pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])')).required()
+  new_password: Joi.string().min(8).pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])')).required()
 });
 
 // @route   GET /api/users/profile

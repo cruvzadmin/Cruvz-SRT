@@ -14,20 +14,20 @@ router.get('/dashboard', auth, async (req, res) => {
     
     let timeFilter;
     switch (timeframe) {
-      case '1h':
-        timeFilter = new Date(Date.now() - 60 * 60 * 1000);
-        break;
-      case '24h':
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    case '1h':
+      timeFilter = new Date(Date.now() - 60 * 60 * 1000);
+      break;
+    case '24h':
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
+      timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
     }
 
     // User's stream analytics
@@ -154,17 +154,17 @@ router.get('/streams/:id', auth, async (req, res) => {
 
     let timeFilter;
     switch (timeframe) {
-      case '1h':
-        timeFilter = new Date(Date.now() - 60 * 60 * 1000);
-        break;
-      case '24h':
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    case '1h':
+      timeFilter = new Date(Date.now() - 60 * 60 * 1000);
+      break;
+    case '24h':
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
+      timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
     }
 
     // Get detailed stream analytics
@@ -237,20 +237,20 @@ router.get('/system', auth, authorize('admin'), async (req, res) => {
     
     let timeFilter;
     switch (timeframe) {
-      case '1h':
-        timeFilter = new Date(Date.now() - 60 * 60 * 1000);
-        break;
-      case '24h':
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    case '1h':
+      timeFilter = new Date(Date.now() - 60 * 60 * 1000);
+      break;
+    case '24h':
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
+      timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
     }
 
     // System overview

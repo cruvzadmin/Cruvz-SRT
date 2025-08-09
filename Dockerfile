@@ -4,11 +4,19 @@ FROM    ubuntu:22.04 AS base
 ENV     DEBIAN_FRONTEND=noninteractive
 # CORRECTED: xmllint is part of libxml2-utils, not a standalone package
 # ADDED: full set of build dependencies for project build and prerequisites.sh
+# FIXED: Added missing fmt library and essential development packages with correct package names
 RUN     apt-get update && apt-get install -y \
         tzdata sudo curl git netcat libxml2-utils \
         build-essential autoconf automake autotools-dev libtool m4 \
         zlib1g-dev tclsh cmake pkg-config bc uuid-dev \
-        bzip2 openssl \
+        bzip2 openssl nasm yasm \
+        libfmt-dev libfmt8 \
+        patch texinfo gettext \
+        python3 python3-pip \
+        ca-certificates \
+        libavutil-dev libavformat-dev libavcodec-dev libswscale-dev \
+        libopus-dev libvpx-dev libsrt-openssl-dev \
+        libssl-dev \
         && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 FROM    base AS build
@@ -22,7 +30,7 @@ ENV     PREFIX=/opt/cruvzstreaming
 ENV     TEMP_DIR=/tmp/cs
 
 # Set PKG_CONFIG_PATH so pkg-config can find custom .pc files for built dependencies
-ENV     PKG_CONFIG_PATH=/opt/cruvzstreaming/lib/pkgconfig:/opt/cruvzstreaming/lib64/pkgconfig
+ENV     PKG_CONFIG_PATH=/opt/cruvzstreaming/lib/pkgconfig:/opt/cruvzstreaming/lib64/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
 
 ## Copy Cruvz Streaming source
 COPY . ${TEMP_DIR}
