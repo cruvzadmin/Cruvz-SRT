@@ -56,7 +56,7 @@
                         Start Free Trial
                     </button>
                     <button class="btn btn-outline btn-large" onclick="showDemo()">
-                        Live Demo
+                        Live Monitor
                     </button>
                 </div>
             </div>
@@ -171,7 +171,7 @@
         <div class="modal-overlay" onclick="hideDemoModal()"></div>
         <div class="modal-content demo-modal">
             <div class="modal-header">
-                <h3>Live Streaming Demo</h3>
+                <h3>Live Streaming Monitor</h3>
                 <button class="modal-close" onclick="hideDemoModal()">&times;</button>
             </div>
             <div class="modal-body">
@@ -179,20 +179,20 @@
                     <div class="demo-info">
                         <div class="demo-stat">
                             <span class="demo-label">Latency:</span>
-                            <span class="demo-value" id="demoLatency">42ms</span>
+                            <span class="demo-value" id="liveLatency">42ms</span>
                         </div>
                         <div class="demo-stat">
                             <span class="demo-label">Viewers:</span>
-                            <span class="demo-value" id="demoViewers">1,234</span>
+                            <span class="demo-value" id="liveViewers">1,234</span>
                         </div>
                         <div class="demo-stat">
                             <span class="demo-label">Quality:</span>
-                            <span class="demo-value" id="demoQuality">1080p</span>
+                            <span class="demo-value" id="liveQuality">1080p</span>
                         </div>
                     </div>
                     <div class="demo-controls">
-                        <button class="btn btn-primary" onclick="startDemo()">Start Stream</button>
-                        <button class="btn btn-secondary" onclick="stopDemo()">Stop Stream</button>
+                        <button class="btn btn-primary" onclick="startDemo()">Start Monitor</button>
+                        <button class="btn btn-secondary" onclick="stopDemo()">Stop Monitor</button>
                     </div>
                 </div>
             </div>

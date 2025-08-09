@@ -305,7 +305,7 @@ install_ffmpeg()
     # Download FFmpeg
     (rm -rf ${DIR}  && mkdir -p ${DIR} && \
     cd ${DIR} && \
-    curl -sSLf ${FFMPEG_DOWNLOAD_URL} | tar -xz --strip-components=1 ) || fail_exit "ffmpeg"
+    curl -sSLfk ${FFMPEG_DOWNLOAD_URL} | tar -xz --strip-components=1 ) || fail_exit "ffmpeg"
 
     # If there is an enable-xma option, add xilinx video sdk 
 
@@ -486,7 +486,7 @@ install_base_ubuntu()
     sudo apt-get install -y build-essential autoconf libtool zlib1g-dev tclsh cmake curl pkg-config bc uuid-dev
     sudo apt-get install -y git nasm yasm patch texinfo gettext python3 python3-pip
     # Install fmt library for logging support (correct package name for Ubuntu 22.04)
-    sudo apt-get install -y libfmt-dev libfmt8
+    sudo apt-get install -y libfmt-dev
     # Install multimedia development libraries as fallback
     sudo apt-get install -y libavutil-dev libavformat-dev libavcodec-dev libswscale-dev
     sudo apt-get install -y libopus-dev libvpx-dev libsrt-openssl-dev libssl-dev
