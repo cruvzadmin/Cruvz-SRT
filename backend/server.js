@@ -211,26 +211,62 @@ app.get('*', (req, res, _next) => {
 // Error handling middleware
 app.use(errorHandler);
 
-// Start server
-const server = app.listen(PORT, () => {
-  logger.info(`Cruvz Streaming API server running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost'}`);
-});
+// Database initialization and migration function
+async function initializeDatabase() {
+  try {
+    logger.info('Initializing database...');
+    
+    // Run database migration
+    const migrate = require('./scripts/migrate');
+    await migrate();
+    
+    logger.info('Database initialization completed successfully');
+    return true;
+  } catch (error) {
+    logger.error('Database initialization failed:', error);
+    return false;
+  }
+}
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    logger.info('Process terminated');
-  });
-});
+// Start server with database initialization
+async function startServer() {
+  try {
+    // Initialize database first
+    const dbInitialized = await initializeDatabase();
+    if (!dbInitialized) {
+      logger.error('Failed to initialize database, exiting...');
+      process.exit(1);
+    }
+    
+    // Start the server after database is ready
+    const server = app.listen(PORT, () => {
+      logger.info(`Cruvz Streaming API server running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost'}`);
+    });
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  server.close(() => {
-    logger.info('Process terminated');
-  });
-});
+    // Graceful shutdown handlers
+    const gracefulShutdown = (signal) => {
+      logger.info(`${signal} received, shutting down gracefully`);
+      server.close(() => {
+        logger.info('Process terminated');
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    
+    return server;
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the application
+if (require.main === module) {
+  startServer();
+}
 
 module.exports = app;

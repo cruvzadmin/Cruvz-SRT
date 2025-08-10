@@ -15,16 +15,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy package files first for better Docker layer caching
 COPY package*.json ./
 
-# Install dependencies with reliable settings
-RUN npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund
+# Install dependencies with production-safe approach
+RUN npm config set registry https://registry.npmjs.org/ && \
+    npm install --production --no-package-lock --no-audit --no-fund
 
 # Copy application files after dependencies are installed
 COPY . .
 
-# Run setup script to create directories and initialize database (but handle failure gracefully)
-RUN npm run setup || echo "Setup script completed with warnings"
-
-# Create required directories with proper permissions
+# Create required directories with proper permissions (but don't run setup that requires database)
 RUN mkdir -p data logs uploads recordings && \
     chmod 755 data logs uploads recordings
 
