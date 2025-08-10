@@ -3,9 +3,46 @@
 // Global state
 let currentUser = null;
 let authMode = 'signin'; // 'signin' or 'signup'
+let isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 
 // API Configuration
 const API_BASE_URL = window.location.origin + '/api';
+
+// Production-level notification system
+function showNotification(message, type = 'info', duration = 5000) {
+    // Remove existing notifications
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notif => notif.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <span class="notification-icon">${getNotificationIcon(type)}</span>
+            <span class="notification-message">${message}</span>
+            <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after duration
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, duration);
+}
+
+function getNotificationIcon(type) {
+    const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+    return icons[type] || icons.info;
+}
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -29,8 +66,92 @@ function initializeApp() {
     // Initialize smooth scrolling
     setupSmoothScrolling();
     
-    // Initialize production monitoring
-    initializeProductionMonitoring();
+// Initialize production monitoring
+function initializeProductionMonitoring() {
+    // Performance monitoring
+    if ('performance' in window) {
+        // Monitor page load performance
+        window.addEventListener('load', () => {
+            const perfData = performance.getEntriesByType('navigation')[0];
+            const loadTime = perfData.loadEventEnd - perfData.fetchStart;
+            
+            // Send performance metrics to backend
+            apiRequest('/analytics/performance', {
+                method: 'POST',
+                body: {
+                    type: 'page_load',
+                    load_time: loadTime,
+                    page: window.location.pathname,
+                    user_agent: navigator.userAgent,
+                    timestamp: new Date().toISOString()
+                }
+            }).catch(() => {}); // Silent fail for monitoring
+        });
+        
+        // Monitor API response times
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            const start = performance.now();
+            return originalFetch.apply(this, args).then(response => {
+                const duration = performance.now() - start;
+                
+                // Log slow requests (>2 seconds)
+                if (duration > 2000) {
+                    console.warn(`Slow API request: ${args[0]} took ${duration}ms`);
+                }
+                
+                return response;
+            });
+        };
+    }
+    
+    // Error monitoring
+    window.addEventListener('error', (event) => {
+        const errorData = {
+            type: 'javascript_error',
+            message: event.message,
+            filename: event.filename,
+            line: event.lineno,
+            column: event.colno,
+            stack: event.error ? event.error.stack : '',
+            page: window.location.pathname,
+            user_agent: navigator.userAgent,
+            timestamp: new Date().toISOString()
+        };
+        
+        // Send error to backend for logging
+        apiRequest('/analytics/errors', {
+            method: 'POST',
+            body: errorData
+        }).catch(() => {}); // Silent fail
+    });
+    
+    // Promise rejection monitoring
+    window.addEventListener('unhandledrejection', (event) => {
+        const errorData = {
+            type: 'unhandled_promise_rejection',
+            message: event.reason ? event.reason.toString() : 'Unknown promise rejection',
+            page: window.location.pathname,
+            timestamp: new Date().toISOString()
+        };
+        
+        apiRequest('/analytics/errors', {
+            method: 'POST',
+            body: errorData
+        }).catch(() => {});
+    });
+    
+    // Real-time connectivity monitoring
+    if ('navigator' in window && 'onLine' in navigator) {
+        window.addEventListener('online', () => {
+            showNotification('Connection restored', 'success');
+        });
+        
+        window.addEventListener('offline', () => {
+            showNotification('Connection lost. Some features may not work.', 'warning');
+        });
+    }
+}
 }
 
 // API helper functions

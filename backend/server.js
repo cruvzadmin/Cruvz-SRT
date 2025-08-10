@@ -20,67 +20,167 @@ const sixSigmaRoutes = require('./routes/sixSigma');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// TRUST PROXY: Required for rate limiting and X-Forwarded-For headers (NGINX/Proxy)
-app.set('trust proxy', 1); // <-- Added this line
+// Production environment setup
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Security middleware
+// Trust proxy for production (behind reverse proxy/nginx)
+app.set('trust proxy', 1);
+
+// Advanced security middleware for production
 app.use(helmet({
-  contentSecurityPolicy: false, // Allow inline scripts for development
-  crossOriginEmbedderPolicy: false
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "ws:", "wss:"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
 }));
 
-// CORS configuration
+// Production CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost',
+  origin: isProduction ? ['http://localhost', 'https://localhost'] : ['http://localhost', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key'],
+  exposedHeaders: ['X-Total-Count', 'X-Page-Count']
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+// Production rate limiting - stricter limits
+const generalLimiter = rateLimit({
+  windowMs: isProduction ? 15 * 60 * 1000 : 60 * 1000, // 15 min in production, 1 min in dev
+  max: isProduction ? 100 : 1000,
   message: {
-    error: 'Too many requests from this IP, please try again later.'
-  }
+    success: false,
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
-app.use(limiter);
 
-// Auth rate limiting (more restrictive)
+app.use(generalLimiter);
+
+// Authentication rate limiting (more restrictive)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
+  max: isProduction ? 5 : 20, // 5 attempts in production, 20 in dev
   message: {
-    error: 'Too many authentication attempts, please try again later.'
+    success: false,
+    error: 'Too many authentication attempts, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Streaming API rate limiting (higher limits for active streams)
+const streamingLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: isProduction ? 200 : 500, // Higher limits for streaming operations
+  message: {
+    success: false,
+    error: 'Streaming rate limit exceeded, please wait before retrying.',
+    retryAfter: '5 minutes'
   }
 });
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
+// Body parsing middleware with size limits
+app.use(express.json({ 
+  limit: isProduction ? '10mb' : '50mb',
+  verify: (req, res, buf) => {
+    // Validate JSON structure in production
+    if (isProduction && req.get('content-type') === 'application/json') {
+      try {
+        JSON.parse(buf);
+      } catch (e) {
+        throw new Error('Invalid JSON');
+      }
+    }
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Logging middleware
-app.use(morgan('combined', {
+// Production logging
+app.use(morgan(isProduction ? 'combined' : 'dev', {
   stream: {
     write: (message) => logger.info(message.trim())
+  },
+  skip: (req, res) => {
+    // Skip health check logs in production to reduce noise
+    return isProduction && req.url === '/health';
   }
 }));
 
-// Health check endpoint (always returns 200)
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development'
-  });
+// Security middleware - Additional headers
+app.use((req, res, next) => {
+  res.setHeader('X-DNS-Prefetch-Control', 'off');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Download-Options', 'noopen');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  if (isProduction) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
 });
 
-// API routes
+// Health check endpoint with detailed status
+app.get('/health', (req, res) => {
+  const healthData = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: '2.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    nodeVersion: process.version
+  };
+  
+  if (isProduction) {
+    // In production, include basic system info
+    healthData.production = true;
+    healthData.pid = process.pid;
+  }
+  
+  res.status(200).json(healthData);
+});
+
+// Metrics endpoint for monitoring
+app.get('/metrics', (req, res) => {
+  const metrics = {
+    timestamp: new Date().toISOString(),
+    process: {
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      cpuUsage: process.cpuUsage(),
+      version: process.version
+    },
+    system: {
+      loadavg: require('os').loadavg(),
+      freemem: require('os').freemem(),
+      totalmem: require('os').totalmem()
+    }
+  };
+  res.status(200).json(metrics);
+});
+
+// API routes with appropriate rate limiting
 app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/streams', streamingLimiter, streamRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/streams', streamRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/keys', apiRoutes);
 app.use('/api/six-sigma', sixSigmaRoutes);
