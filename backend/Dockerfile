@@ -6,17 +6,17 @@ WORKDIR /app
 
 # Install essential dependencies including those needed for native modules
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files first for better Docker layer caching
 COPY package*.json ./
 
-# Install dependencies with optimized settings for faster builds
-RUN npm config set fetch-timeout 300000 && \
-    npm config set fetch-retry-mintimeout 10000 && \
-    npm config set fetch-retry-maxtimeout 60000 && \
-    npm install --omit=dev --no-audit --no-fund
+# Install dependencies with reliable settings
+RUN npm install --omit=dev --no-audit --no-fund
 
 # Copy application files after dependencies are installed
 COPY . .
