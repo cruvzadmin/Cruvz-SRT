@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package*.json ./
 
 # Install dependencies with reliable settings
-RUN npm install --omit=dev --no-audit --no-fund
+RUN npm install --production --no-audit --no-fund --no-optional
 
 # Copy application files after dependencies are installed
 COPY . .
