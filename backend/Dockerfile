@@ -4,22 +4,29 @@ FROM node:18-slim
 # Set working directory
 WORKDIR /app
 
-# Install essential dependencies only
+# Install essential dependencies including those needed for native modules
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    make \
-    g++ \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files first for better Docker layer caching
 COPY package*.json ./
 
-# Copy application files (needed for postinstall script)
+# Install dependencies with optimized settings for faster builds
+RUN npm config set fetch-timeout 300000 && \
+    npm config set fetch-retry-mintimeout 10000 && \
+    npm config set fetch-retry-maxtimeout 60000 && \
+    npm install --omit=dev --no-audit --no-fund
+
+# Copy application files after dependencies are installed
 COPY . .
 
-# Install dependencies (using fresh install to avoid npm ci issues)
-RUN rm -f package-lock.json && npm install --omit=dev --no-package-lock
+# Run setup script to create directories and initialize database
+RUN npm run setup
+
+# Create required directories with proper permissions
+RUN mkdir -p data logs uploads recordings && \
+    chmod 755 data logs uploads recordings
 
 # Create required directories
 RUN mkdir -p data logs uploads recordings && \
