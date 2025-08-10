@@ -104,20 +104,15 @@ services:
   # WEB APPLICATION (NGINX)
   # ================================
   web-app:
-    build:
-      context: ./web-app
-      dockerfile: ../docker/Dockerfile.webapp
-      args:
-        - ENVIRONMENT=production
-    container_name: cruvz-webapp
+    image: nginx:alpine
+    container_name: cruvz-web-app
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./web-app:/usr/share/nginx/html:ro
-      - ./data/logs/nginx:/var/log/nginx
-      - ./ssl:/etc/nginx/ssl:ro
+      - ./web-app/server.conf:/etc/nginx/conf.d/default.conf:ro
     environment:
       - BACKEND_API_URL=http://backend:5000
       - ENVIRONMENT=production
@@ -126,7 +121,7 @@ services:
     depends_on:
       - backend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80", "||", "exit", "1"]
       interval: 30s
       timeout: 10s
       retries: 3

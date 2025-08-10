@@ -21,7 +21,7 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="/tmp/cruvz-logs"
 DEPLOYMENT_LOG="$LOG_DIR/production_deploy.log"
-COMPOSE_FILE="production-compose.yml"
+COMPOSE_FILE="docker-compose.yml"
 SERVICE_CHECK_TIMEOUT=300
 HEALTH_CHECK_TIMEOUT=180
 
