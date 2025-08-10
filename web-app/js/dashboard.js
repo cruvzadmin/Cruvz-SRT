@@ -531,12 +531,29 @@ function showCreateStreamModal() {
                     </div>
                     <div class="form-group">
                         <label for="streamProtocol">Protocol</label>
-                        <select id="streamProtocol" name="protocol">
+                        <select id="streamProtocol" name="protocol" onchange="updateProtocolPlaceholders()">
                             <option value="rtmp">RTMP</option>
                             <option value="srt">SRT</option>
                             <option value="webrtc">WebRTC</option>
                         </select>
                     </div>
+                    
+                    <!-- Source/Input URL Configuration -->
+                    <div class="form-group">
+                        <label for="sourceUrl">Source URL (Input) *</label>
+                        <input type="url" id="sourceUrl" name="source_url" required 
+                               placeholder="rtmp://source.example.com/live/stream_key">
+                        <small class="form-help">The URL where your streaming software will send the stream</small>
+                    </div>
+                    
+                    <!-- Destination/Output URL Configuration -->
+                    <div class="form-group">
+                        <label for="destinationUrl">Destination URL (Output) *</label>
+                        <input type="url" id="destinationUrl" name="destination_url" required 
+                               placeholder="rtmp://localhost:1935/app/stream_name">
+                        <small class="form-help">The URL where viewers will access the stream</small>
+                    </div>
+                    
                     <div class="form-group">
                         <label for="streamQuality">Quality</label>
                         <select id="streamQuality" name="quality">
@@ -568,6 +585,33 @@ function showCreateStreamModal() {
     
     // Handle form submission
     document.getElementById('createStreamForm').addEventListener('submit', handleCreateStream);
+    
+    // Update placeholders based on initial protocol
+    updateProtocolPlaceholders();
+}
+
+// Update URL placeholders based on selected protocol
+function updateProtocolPlaceholders() {
+    const protocol = document.getElementById('streamProtocol')?.value || 'rtmp';
+    const sourceUrl = document.getElementById('sourceUrl');
+    const destinationUrl = document.getElementById('destinationUrl');
+    
+    if (!sourceUrl || !destinationUrl) return;
+    
+    switch(protocol) {
+        case 'rtmp':
+            sourceUrl.placeholder = 'rtmp://source.example.com/live/stream_key';
+            destinationUrl.placeholder = 'rtmp://localhost:1935/app/stream_name';
+            break;
+        case 'srt':
+            sourceUrl.placeholder = 'srt://source.example.com:9999?streamid=input_stream_key';
+            destinationUrl.placeholder = 'srt://localhost:9999?streamid=app/stream_name';
+            break;
+        case 'webrtc':
+            sourceUrl.placeholder = 'http://source.example.com:3333/app/input_stream';
+            destinationUrl.placeholder = 'http://localhost:3333/app/stream_name';
+            break;
+    }
 }
 
 // Handle create stream form submission
@@ -579,6 +623,8 @@ async function handleCreateStream(e) {
         title: formData.get('title'),
         description: formData.get('description'),
         protocol: formData.get('protocol'),
+        source_url: formData.get('source_url'),
+        destination_url: formData.get('destination_url'),
         settings: {
             quality: formData.get('quality')
         },
@@ -687,6 +733,8 @@ function loadSettings() {
 }
 
 // Export functions for global access
+// Make updateProtocolPlaceholders available globally
+window.updateProtocolPlaceholders = updateProtocolPlaceholders;
 window.showCreateStreamModal = showCreateStreamModal;
 window.startStream = startStream;
 window.stopStream = stopStream;

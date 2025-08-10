@@ -64,6 +64,8 @@ async function migrate() {
         table.string('stream_key').unique().notNullable();
         table.string('status').defaultTo('inactive'); // inactive, live, ended, error
         table.string('protocol').defaultTo('rtmp'); // rtmp, srt, webrtc
+        table.string('source_url').nullable(); // Input URL where stream content comes from
+        table.string('destination_url').nullable(); // Output URL where stream is published
         table.json('settings').nullable(); // quality, bitrate, etc.
         table.integer('max_viewers').defaultTo(1000);
         table.boolean('is_recording').defaultTo(false);
@@ -75,6 +77,24 @@ async function migrate() {
       logger.info('Streams table created');
     } else {
       logger.info('Streams table already exists');
+      
+      // Check and add source_url and destination_url columns if they don't exist
+      const columnsExist = await db.raw(`PRAGMA table_info(streams)`);
+      const columnNames = columnsExist.map(col => col.name);
+      
+      if (!columnNames.includes('source_url')) {
+        await db.schema.alterTable('streams', (table) => {
+          table.string('source_url').nullable();
+        });
+        logger.info('Added source_url column to streams table');
+      }
+      
+      if (!columnNames.includes('destination_url')) {
+        await db.schema.alterTable('streams', (table) => {
+          table.string('destination_url').nullable();
+        });
+        logger.info('Added destination_url column to streams table');
+      }
     }
 
     // Stream Analytics table

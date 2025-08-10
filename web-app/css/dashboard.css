@@ -417,6 +417,14 @@
     margin-right: 10px;
 }
 
+.form-help {
+    display: block;
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 5px;
+    font-style: italic;
+}
+
 .form-actions {
     display: flex;
     gap: 15px;
