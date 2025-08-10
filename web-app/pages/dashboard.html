@@ -95,7 +95,7 @@
             <section id="overview-section" class="content-section active">
                 <div class="section-header">
                     <h1>Dashboard Overview</h1>
-                    <button class="btn btn-primary" onclick="showCreateStreamModal()">
+                    <button class="btn btn-primary" id="createStreamBtn">
                         ➕ Create New Stream
                     </button>
                 </div>
@@ -149,22 +149,22 @@
                         <h2>Quick Actions</h2>
                     </div>
                     <div class="quick-actions">
-                        <button class="action-card" onclick="showCreateStreamModal()">
+                        <button class="action-card" id="quickCreateStreamBtn">
                             <div class="action-icon">🎥</div>
                             <h3>Create Stream</h3>
                             <p>Start a new live stream</p>
                         </button>
-                        <button class="action-card" onclick="showSection('analytics')">
+                        <button class="action-card" id="viewAnalyticsBtn">
                             <div class="action-icon">📈</div>
                             <h3>View Analytics</h3>
                             <p>Check performance metrics</p>
                         </button>
-                        <button class="action-card" onclick="showSection('api')">
+                        <button class="action-card" id="apiSetupBtn">
                             <div class="action-icon">🔧</div>
                             <h3>API Setup</h3>
                             <p>Configure API access</p>
                         </button>
-                        <button class="action-card" onclick="openMonitoring()">
+                        <button class="action-card" id="monitoringBtn">
                             <div class="action-icon">📊</div>
                             <h3>Monitoring</h3>
                             <p>Real-time system status</p>
@@ -178,8 +178,8 @@
                 <div class="section-header">
                     <h1>Live Streams</h1>
                     <div class="header-actions">
-                        <button class="btn btn-outline" onclick="refreshStreams()">🔄 Refresh</button>
-                        <button class="btn btn-primary" onclick="showCreateStreamModal()">➕ Create Stream</button>
+                        <button class="btn btn-outline" id="refreshStreamsBtn">🔄 Refresh</button>
+                        <button class="btn btn-primary" id="createStreamBtn2">➕ Create Stream</button>
                     </div>
                 </div>
 
@@ -218,6 +218,33 @@
                         <div class="form-group">
                             <label for="streamDescription">Description</label>
                             <textarea id="streamDescription" name="description" rows="3"></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="streamProtocol">Protocol</label>
+                                <select id="streamProtocol" name="protocol">
+                                    <option value="rtmp">RTMP</option>
+                                    <option value="srt">SRT</option>
+                                    <option value="webrtc">WebRTC</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Source/Input URL Configuration -->
+                        <div class="form-group">
+                            <label for="mainSourceUrl">Source URL (Input)</label>
+                            <input type="url" id="mainSourceUrl" name="source_url" 
+                                   placeholder="rtmp://source.example.com/live/stream_key">
+                            <small class="form-help">Optional: The URL where your streaming software will send the stream (auto-generated if empty)</small>
+                        </div>
+                        
+                        <!-- Destination/Output URL Configuration -->
+                        <div class="form-group">
+                            <label for="mainDestinationUrl">Destination URL (Output)</label>
+                            <input type="url" id="mainDestinationUrl" name="destination_url" 
+                                   placeholder="rtmp://localhost:1935/app/stream_name">
+                            <small class="form-help">Optional: The URL where viewers will access the stream (auto-generated if empty)</small>
                         </div>
 
                         <div class="form-row">
