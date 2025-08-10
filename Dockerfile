@@ -24,65 +24,20 @@ RUN mkdir -p /opt/ovenmediaengine/logs \
 EXPOSE 80/tcp 8080/tcp 1935/tcp 3333/tcp 3334/tcp 4000-4005/udp 10000-10010/udp 9000/tcp
 
 # Production Health Check Script  
-RUN echo '#!/bin/bash\n\
-# Production Health Check Endpoint\n\
-if pgrep -f OvenMediaEngine > /dev/null; then\n\
-    echo "HTTP/1.1 200 OK"\n\
-    echo "Content-Type: application/json"\n\
-    echo ""\n\
-    echo "{\"status\":\"healthy\",\"service\":\"cruvz-streaming\",\"timestamp\":\"$(date -Iseconds)\"}"\n\
-else\n\
-    echo "HTTP/1.1 503 Service Unavailable"\n\
-    echo "Content-Type: application/json"\n\
-    echo ""\n\
-    echo "{\"status\":\"unhealthy\",\"service\":\"cruvz-streaming\",\"timestamp\":\"$(date -Iseconds)\"}"\n\
-fi' > /opt/ovenmediaengine/bin/health-check.sh && \
-    chmod +x /opt/ovenmediaengine/bin/health-check.sh
+COPY docker/health-check.sh /opt/ovenmediaengine/bin/health-check.sh
+RUN chmod +x /opt/ovenmediaengine/bin/health-check.sh
 
 # Production Metrics endpoint
-RUN echo '#!/bin/bash\n\
-# Production Metrics Endpoint\n\
-echo "HTTP/1.1 200 OK"\n\
-echo "Content-Type: text/plain"\n\
-echo ""\n\
-echo "# Production Quality Metrics"\n\
-echo "cruvz_streaming_uptime_seconds $(cat /proc/uptime | cut -d\" \" -f1)"\n\
-echo "cruvz_streaming_process_running $(pgrep -c OvenMediaEngine)"\n\
-echo "cruvz_streaming_production_ready 1"\n\
-' > /opt/ovenmediaengine/bin/metrics.sh && \
-    chmod +x /opt/ovenmediaengine/bin/metrics.sh
+COPY docker/metrics.sh /opt/ovenmediaengine/bin/metrics.sh
+RUN chmod +x /opt/ovenmediaengine/bin/metrics.sh
 
 # Set up health check HTTP server
-RUN echo '#!/bin/bash\n\
-while true; do\n\
-    echo -e "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"status\":\"healthy\"}" | nc -l -p 8080 -q 1\n\
-done' > /opt/ovenmediaengine/bin/simple-health-server.sh && \
-    chmod +x /opt/ovenmediaengine/bin/simple-health-server.sh
+COPY docker/simple-health-server.sh /opt/ovenmediaengine/bin/simple-health-server.sh
+RUN chmod +x /opt/ovenmediaengine/bin/simple-health-server.sh
 
-# Production startup script with SSL certificate generation
-RUN echo '#!/bin/bash\n\
-set -euo pipefail\n\
-\n\
-# Generate SSL certificates if they don'\''t exist\n\
-if [ ! -f "/opt/ovenmediaengine/bin/origin_conf/cert.crt" ]; then\n\
-    echo "Generating SSL certificates..."\n\
-    openssl genrsa -out "/opt/ovenmediaengine/bin/origin_conf/cert.key" 2048\n\
-    openssl req -new -key "/opt/ovenmediaengine/bin/origin_conf/cert.key" -out "/opt/ovenmediaengine/bin/origin_conf/cert.csr" -subj "/C=US/ST=CA/L=San Francisco/O=Cruvz Streaming/OU=IT/CN=localhost"\n\
-    openssl x509 -req -days 365 -in "/opt/ovenmediaengine/bin/origin_conf/cert.csr" -signkey "/opt/ovenmediaengine/bin/origin_conf/cert.key" -out "/opt/ovenmediaengine/bin/origin_conf/cert.crt"\n\
-    touch "/opt/ovenmediaengine/bin/origin_conf/cert.ca-bundle"\n\
-    chmod 600 "/opt/ovenmediaengine/bin/origin_conf/cert.key"\n\
-    chmod 644 "/opt/ovenmediaengine/bin/origin_conf/cert.crt"\n\
-    chmod 644 "/opt/ovenmediaengine/bin/origin_conf/cert.ca-bundle"\n\
-    rm -f "/opt/ovenmediaengine/bin/origin_conf/cert.csr"\n\
-    echo "SSL certificates generated successfully"\n\
-fi\n\
-\n\
-# Start health check server in background\n\
-/opt/ovenmediaengine/bin/simple-health-server.sh &\n\
-\n\
-# Execute the main command\n\
-exec "$@"' > /opt/ovenmediaengine/bin/production-entrypoint.sh && \
-    chmod +x /opt/ovenmediaengine/bin/production-entrypoint.sh
+# Copy production startup script
+COPY docker/production-entrypoint.sh /opt/ovenmediaengine/bin/production-entrypoint.sh
+RUN chmod +x /opt/ovenmediaengine/bin/production-entrypoint.sh
 
 # Production Labels for monitoring
 LABEL com.cruvz.production="enabled" \
