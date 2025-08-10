@@ -28,10 +28,6 @@ RUN npm run setup
 RUN mkdir -p data logs uploads recordings && \
     chmod 755 data logs uploads recordings
 
-# Create required directories
-RUN mkdir -p data logs uploads recordings && \
-    chmod 755 data logs uploads recordings
-
 # Expose port
 EXPOSE 5000
 
