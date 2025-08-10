@@ -9,6 +9,8 @@ let userDropdownOpen = false;
 let streams = [];
 let analytics = {};
 
+
+
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
     initializeDashboard();
@@ -35,11 +37,18 @@ async function apiRequest(endpoint, options = {}) {
 
     try {
         const response = await fetch(`${apiBaseUrl}${endpoint}`, config);
-        const data = await response.json();
+        
+        // Check if response is valid JSON
+        let data;
+        try {
+            data = await response.json();
+        } catch (jsonError) {
+            throw new Error('Invalid response format');
+        }
 
         if (!response.ok) {
             if (response.status === 401) {
-                // Token expired, redirect to login
+                // Token expired or invalid, redirect to login
                 localStorage.removeItem('cruvz_auth_token');
                 window.location.href = '../index.html';
                 return;
@@ -56,8 +65,9 @@ async function apiRequest(endpoint, options = {}) {
 
 // Initialize dashboard functionality
 function initializeDashboard() {
-    // Check authentication
+    // Check authentication - require valid token
     const token = localStorage.getItem('cruvz_auth_token');
+    
     if (!token) {
         window.location.href = '../index.html';
         return;
@@ -81,6 +91,64 @@ function setupDashboardEventListeners() {
             closeUserDropdown();
         }
     });
+
+    // Setup main create stream form
+    const mainCreateForm = document.getElementById('createStreamForm');
+    if (mainCreateForm) {
+        mainCreateForm.addEventListener('submit', handleMainCreateStream);
+    }
+
+    // Setup protocol change listener for main form
+    const protocolSelect = document.getElementById('streamProtocol');
+    if (protocolSelect) {
+        protocolSelect.addEventListener('change', updateMainFormProtocolPlaceholders);
+        // Update placeholders on initial load
+        updateMainFormProtocolPlaceholders();
+    }
+
+    // Setup create stream buttons
+    const createStreamBtn = document.getElementById('createStreamBtn');
+    if (createStreamBtn) {
+        createStreamBtn.addEventListener('click', showCreateStreamModal);
+    }
+
+    const quickCreateStreamBtn = document.getElementById('quickCreateStreamBtn');
+    if (quickCreateStreamBtn) {
+        quickCreateStreamBtn.addEventListener('click', showCreateStreamModal);
+    }
+
+    // Setup quick action buttons
+    const viewAnalyticsBtn = document.getElementById('viewAnalyticsBtn');
+    if (viewAnalyticsBtn) {
+        viewAnalyticsBtn.addEventListener('click', () => showSection('analytics'));
+    }
+
+    const apiSetupBtn = document.getElementById('apiSetupBtn');
+    if (apiSetupBtn) {
+        apiSetupBtn.addEventListener('click', () => showSection('api'));
+    }
+
+    const monitoringBtn = document.getElementById('monitoringBtn');
+    if (monitoringBtn) {
+        monitoringBtn.addEventListener('click', () => {
+            showNotification('Monitoring dashboard would open here', 'info');
+        });
+    }
+
+    // Setup refresh streams button
+    const refreshStreamsBtn = document.getElementById('refreshStreamsBtn');
+    if (refreshStreamsBtn) {
+        refreshStreamsBtn.addEventListener('click', () => {
+            loadStreams();
+            showNotification('Streams refreshed', 'success');
+        });
+    }
+
+    // Setup create stream button in streams section
+    const createStreamBtn2 = document.getElementById('createStreamBtn2');
+    if (createStreamBtn2) {
+        createStreamBtn2.addEventListener('click', showCreateStreamModal);
+    }
 }
 
 // Setup sidebar navigation
@@ -184,8 +252,11 @@ async function loadOverviewData() {
         console.error('Failed to load overview data:', error);
         showNotification('Unable to connect to server. Please check your connection.', 'error');
         
-        // Show connection error instead of mock data
-        document.getElementById('overview-stats').innerHTML = '<div class="error-message">Unable to load statistics. Please refresh the page.</div>';
+        // Show connection error
+        const overviewStats = document.getElementById('overview-stats');
+        if (overviewStats) {
+            overviewStats.innerHTML = '<div class="error-message">Unable to load statistics. Please refresh the page.</div>';
+        }
     }
 }
 
@@ -206,7 +277,6 @@ function updateStatsDisplay(stats) {
     }
 }
 
-// Load mock data as fallback
 // Load streams
 async function loadStreams() {
     try {
@@ -219,8 +289,8 @@ async function loadStreams() {
         console.error('Failed to load streams:', error);
         showNotification('Unable to load streams. Please check your connection.', 'error');
         
-        // Show error message instead of mock data
-        const streamsContainer = document.getElementById('streams-container');
+        // Show error message
+        const streamsContainer = document.getElementById('streamsContainer');
         if (streamsContainer) {
             streamsContainer.innerHTML = '<div class="error-message">Unable to load streams. Please refresh the page.</div>';
         }
@@ -276,7 +346,7 @@ async function loadUserInfo() {
         }
     } catch (error) {
         console.error('Failed to load user info:', error);
-        // Show generic user info instead of mock data
+        // Show generic user info on error
         updateUserDisplay({
             name: 'User',
             email: 'Please login again',
@@ -614,6 +684,30 @@ function updateProtocolPlaceholders() {
     }
 }
 
+// Update URL placeholders for main form
+function updateMainFormProtocolPlaceholders() {
+    const protocol = document.getElementById('streamProtocol')?.value || 'rtmp';
+    const sourceUrl = document.getElementById('mainSourceUrl');
+    const destinationUrl = document.getElementById('mainDestinationUrl');
+    
+    if (!sourceUrl || !destinationUrl) return;
+    
+    switch(protocol) {
+        case 'rtmp':
+            sourceUrl.placeholder = 'rtmp://source.example.com/live/stream_key';
+            destinationUrl.placeholder = 'rtmp://localhost:1935/app/stream_name';
+            break;
+        case 'srt':
+            sourceUrl.placeholder = 'srt://source.example.com:9999?streamid=input_stream_key';
+            destinationUrl.placeholder = 'srt://localhost:9999?streamid=app/stream_name';
+            break;
+        case 'webrtc':
+            sourceUrl.placeholder = 'http://source.example.com:3333/app/input_stream';
+            destinationUrl.placeholder = 'http://localhost:3333/app/stream_name';
+            break;
+    }
+}
+
 // Handle create stream form submission
 async function handleCreateStream(e) {
     e.preventDefault();
@@ -644,6 +738,48 @@ async function handleCreateStream(e) {
             e.target.closest('.modal').remove();
             // Refresh streams list
             loadStreams();
+        }
+    } catch (error) {
+        console.error('Failed to create stream:', error);
+        showNotification(error.message || 'Failed to create stream', 'error');
+    }
+}
+
+// Handle main create stream form submission
+async function handleMainCreateStream(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const streamData = {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        protocol: formData.get('protocol') || 'rtmp',
+        source_url: formData.get('source_url'),
+        destination_url: formData.get('destination_url'),
+        settings: {
+            quality: formData.get('quality'),
+            bitrate: parseInt(formData.get('bitrate'))
+        },
+        max_viewers: 1000,
+        is_recording: formData.has('record')
+    };
+    
+    try {
+        const response = await apiRequest('/streams', {
+            method: 'POST',
+            body: streamData
+        });
+        
+        if (response.success) {
+            showNotification('Stream created successfully!', 'success');
+            // Reset form
+            e.target.reset();
+            // Update placeholders
+            updateMainFormProtocolPlaceholders();
+            // Refresh streams list
+            loadStreams();
+            // Switch to streams view
+            showSection('streams');
         }
     } catch (error) {
         console.error('Failed to create stream:', error);
@@ -735,6 +871,7 @@ function loadSettings() {
 // Export functions for global access
 // Make updateProtocolPlaceholders available globally
 window.updateProtocolPlaceholders = updateProtocolPlaceholders;
+window.updateMainFormProtocolPlaceholders = updateMainFormProtocolPlaceholders;
 window.showCreateStreamModal = showCreateStreamModal;
 window.startStream = startStream;
 window.stopStream = stopStream;
@@ -744,6 +881,7 @@ window.viewAnalytics = viewAnalytics;
 window.toggleUserDropdown = toggleUserDropdown;
 window.signOut = signOut;
 window.copyToClipboard = copyToClipboard;
+window.resetCreateForm = resetCreateForm;
 
 // Enhanced Analytics Functions
 function updateAnalytics() {
@@ -881,6 +1019,15 @@ function loadAnalytics() {
     
     // Trigger data refresh
     updateAnalytics();
+}
+
+// Reset create form
+function resetCreateForm() {
+    const form = document.getElementById('createStreamForm');
+    if (form) {
+        form.reset();
+        updateMainFormProtocolPlaceholders();
+    }
 }
 
 // Export new functions for global access

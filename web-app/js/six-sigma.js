@@ -106,20 +106,6 @@ function displaySixSigmaError() {
     }
 }
 
-// Update Six Sigma display with real data
-        date.setDate(date.getDate() - i);
-        
-        trends.push({
-            date: date.toISOString().split('T')[0],
-            avg_sigma: 5.8 + Math.random() * 0.4, // 5.8 - 6.2
-            measurements: 100 + Math.floor(Math.random() * 50),
-            total_defects: Math.floor(Math.random() * 3)
-        });
-    }
-    
-    return trends;
-}
-
 // Update Six Sigma display
 function updateSixSigmaDisplay(data) {
     // Update quality gates
@@ -498,7 +484,11 @@ function convertToCSV(data) {
 
 // Open Grafana
 function openGrafana() {
-    window.open('http://localhost:3000', '_blank');
+    // Use environment-specific Grafana URL
+    const grafanaUrl = window.location.hostname === 'localhost' ? 
+        'http://localhost:3000' : 
+        `http://${window.location.hostname}:3000`;
+    window.open(grafanaUrl, '_blank');
 }
 
 // Start real-time updates

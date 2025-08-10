@@ -3,7 +3,6 @@
 // Global state
 let currentUser = null;
 let authMode = 'signin'; // 'signin' or 'signup'
-let isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 
 // API Configuration
 const API_BASE_URL = `http://${window.location.hostname}:5000/api`;
