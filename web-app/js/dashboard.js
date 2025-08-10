@@ -9,93 +9,7 @@ let userDropdownOpen = false;
 let streams = [];
 let analytics = {};
 
-// Mock data for development/demo mode
-function getMockData(endpoint) {
-    const mockData = {
-        '/auth/me': {
-            success: true,
-            data: {
-                id: 1,
-                name: 'Demo User',
-                email: 'demo@example.com',
-                avatar_url: null,
-                role: 'user'
-            }
-        },
-        '/streams': {
-            success: true,
-            data: {
-                streams: [
-                    {
-                        id: 1,
-                        title: 'Demo Stream 1',
-                        description: 'A demo streaming session',
-                        protocol: 'rtmp',
-                        status: 'live',
-                        source_url: 'rtmp://demo.source.com/live/stream1',
-                        destination_url: 'rtmp://localhost:1935/app/stream1',
-                        stream_key: 'demo_stream_key_1',
-                        created_at: new Date().toISOString(),
-                        started_at: new Date().toISOString()
-                    },
-                    {
-                        id: 2,
-                        title: 'Demo Stream 2',
-                        description: 'Another demo stream',
-                        protocol: 'srt',
-                        status: 'inactive',
-                        source_url: 'srt://demo.source.com:9999?streamid=stream2',
-                        destination_url: 'srt://localhost:9999?streamid=app/stream2',
-                        stream_key: 'demo_stream_key_2',
-                        created_at: new Date().toISOString()
-                    }
-                ],
-                pagination: {
-                    current_page: 1,
-                    total_pages: 1,
-                    total_items: 2,
-                    items_per_page: 10
-                }
-            }
-        },
-        '/analytics/dashboard': {
-            success: true,
-            data: {
-                overview: {
-                    active_streams: 1,
-                    total_viewers: 1250,
-                    avg_viewers: 85,
-                    total_data_transferred: 45.2
-                },
-                recent_streams: [
-                    {
-                        id: 1,
-                        title: 'Demo Stream 1',
-                        viewers: 125,
-                        duration: '02:15:30'
-                    }
-                ]
-            }
-        }
-    };
 
-    // For stream creation, return success
-    if (endpoint === '/streams' && arguments[1] && arguments[1].method === 'POST') {
-        return {
-            success: true,
-            data: {
-                id: Date.now(),
-                title: 'New Demo Stream',
-                stream_key: `demo_${Date.now()}`,
-                protocol: 'rtmp',
-                status: 'inactive',
-                created_at: new Date().toISOString()
-            }
-        };
-    }
-
-    return mockData[endpoint] || { success: false, error: 'Mock data not available' };
-}
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
@@ -107,7 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // API helper function
 async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('cruvz_auth_token');
-    const isDevelopment = window.location.hostname === 'localhost';
     
     const config = {
         method: 'GET',
@@ -135,11 +48,7 @@ async function apiRequest(endpoint, options = {}) {
 
         if (!response.ok) {
             if (response.status === 401) {
-                // In development mode, provide mock data instead of redirecting
-                if (isDevelopment && token === 'demo-token') {
-                    return getMockData(endpoint);
-                }
-                // Token expired, redirect to login
+                // Token expired or invalid, redirect to login
                 localStorage.removeItem('cruvz_auth_token');
                 window.location.href = '../index.html';
                 return;
@@ -150,31 +59,18 @@ async function apiRequest(endpoint, options = {}) {
         return data;
     } catch (error) {
         console.error('API Request Error:', error);
-        
-        // In development mode with demo token, provide mock data
-        if (isDevelopment && token === 'demo-token') {
-            return getMockData(endpoint);
-        }
-        
         throw error;
     }
 }
 
 // Initialize dashboard functionality
 function initializeDashboard() {
-    // Check authentication - in development mode, allow demo access
+    // Check authentication - require valid token
     const token = localStorage.getItem('cruvz_auth_token');
-    const isDevelopment = window.location.hostname === 'localhost';
     
-    if (!token && !isDevelopment) {
+    if (!token) {
         window.location.href = '../index.html';
         return;
-    }
-    
-    // For development/demo mode, set a demo token
-    if (!token && isDevelopment) {
-        localStorage.setItem('cruvz_auth_token', 'demo-token');
-        showNotification('Running in demo mode - some features may be limited', 'info');
     }
     
     // Setup navigation
@@ -356,8 +252,11 @@ async function loadOverviewData() {
         console.error('Failed to load overview data:', error);
         showNotification('Unable to connect to server. Please check your connection.', 'error');
         
-        // Show connection error instead of mock data
-        document.getElementById('overview-stats').innerHTML = '<div class="error-message">Unable to load statistics. Please refresh the page.</div>';
+        // Show connection error
+        const overviewStats = document.getElementById('overview-stats');
+        if (overviewStats) {
+            overviewStats.innerHTML = '<div class="error-message">Unable to load statistics. Please refresh the page.</div>';
+        }
     }
 }
 
@@ -378,7 +277,6 @@ function updateStatsDisplay(stats) {
     }
 }
 
-// Load mock data as fallback
 // Load streams
 async function loadStreams() {
     try {
@@ -391,8 +289,8 @@ async function loadStreams() {
         console.error('Failed to load streams:', error);
         showNotification('Unable to load streams. Please check your connection.', 'error');
         
-        // Show error message instead of mock data
-        const streamsContainer = document.getElementById('streams-container');
+        // Show error message
+        const streamsContainer = document.getElementById('streamsContainer');
         if (streamsContainer) {
             streamsContainer.innerHTML = '<div class="error-message">Unable to load streams. Please refresh the page.</div>';
         }
@@ -448,7 +346,7 @@ async function loadUserInfo() {
         }
     } catch (error) {
         console.error('Failed to load user info:', error);
-        // Show generic user info instead of mock data
+        // Show generic user info on error
         updateUserDisplay({
             name: 'User',
             email: 'Please login again',
