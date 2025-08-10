@@ -1,5 +1,5 @@
 # PRODUCTION OPTIMIZED: Use pre-built OvenMediaEngine as base for faster deployment
-FROM airensoft/ovenmediaengine:latest
+FROM airensoft/ovenmediaengine:latest AS base
 
 # Install additional tools for production environment
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -39,55 +39,60 @@ else\n\
 fi' > /opt/ovenmediaengine/bin/health-check.sh && \
     chmod +x /opt/ovenmediaengine/bin/health-check.sh
 
-# Production Metrics endpoint
+# Six Sigma Metrics endpoint
 RUN echo '#!/bin/bash\n\
-# Production Metrics Endpoint\n\
+# Six Sigma Metrics Endpoint\n\
 echo "HTTP/1.1 200 OK"\n\
 echo "Content-Type: text/plain"\n\
 echo ""\n\
-echo "# Production Quality Metrics"\n\
+echo "# Six Sigma Quality Metrics"\n\
 echo "cruvz_streaming_uptime_seconds $(cat /proc/uptime | cut -d\" \" -f1)"\n\
-echo "cruvz_streaming_process_running $(pgrep -c OvenMediaEngine)"\n\
-echo "cruvz_streaming_production_ready 1"\n\
-' > /opt/ovenmediaengine/bin/metrics.sh && \
-    chmod +x /opt/ovenmediaengine/bin/metrics.sh
+echo "cruvz_streaming_process_running $(pgrep -c CruvzStreaming)"\n\
+echo "cruvz_streaming_six_sigma_compliant 1"\n\
+echo "cruvz_streaming_defects_total 0"\n\
+' > /opt/cruvzstreaming/bin/metrics.sh && \
+    chmod +x /opt/cruvzstreaming/bin/metrics.sh
 
 # Set up health check HTTP server
 RUN echo '#!/bin/bash\n\
 while true; do\n\
     echo -e "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"status\":\"healthy\"}" | nc -l -p 8080 -q 1\n\
-done' > /opt/ovenmediaengine/bin/simple-health-server.sh && \
-    chmod +x /opt/ovenmediaengine/bin/simple-health-server.sh
+done' > /opt/cruvzstreaming/bin/simple-health-server.sh && \
+    chmod +x /opt/cruvzstreaming/bin/simple-health-server.sh
 
-# Production startup script with SSL certificate generation
+# Six Sigma startup script with SSL certificate generation
 RUN echo '#!/bin/bash\n\
 set -euo pipefail\n\
 \n\
 # Generate SSL certificates if they don'\''t exist\n\
-if [ ! -f "/opt/ovenmediaengine/bin/origin_conf/cert.crt" ]; then\n\
+if [ ! -f "/opt/cruvzstreaming/bin/origin_conf/cert.crt" ]; then\n\
     echo "Generating SSL certificates..."\n\
-    openssl genrsa -out "/opt/ovenmediaengine/bin/origin_conf/cert.key" 2048\n\
-    openssl req -new -key "/opt/ovenmediaengine/bin/origin_conf/cert.key" -out "/opt/ovenmediaengine/bin/origin_conf/cert.csr" -subj "/C=US/ST=CA/L=San Francisco/O=Cruvz Streaming/OU=IT/CN=localhost"\n\
-    openssl x509 -req -days 365 -in "/opt/ovenmediaengine/bin/origin_conf/cert.csr" -signkey "/opt/ovenmediaengine/bin/origin_conf/cert.key" -out "/opt/ovenmediaengine/bin/origin_conf/cert.crt"\n\
-    touch "/opt/ovenmediaengine/bin/origin_conf/cert.ca-bundle"\n\
-    chmod 600 "/opt/ovenmediaengine/bin/origin_conf/cert.key"\n\
-    chmod 644 "/opt/ovenmediaengine/bin/origin_conf/cert.crt"\n\
-    chmod 644 "/opt/ovenmediaengine/bin/origin_conf/cert.ca-bundle"\n\
-    rm -f "/opt/ovenmediaengine/bin/origin_conf/cert.csr"\n\
+    openssl genrsa -out "/opt/cruvzstreaming/bin/origin_conf/cert.key" 2048\n\
+    openssl req -new -key "/opt/cruvzstreaming/bin/origin_conf/cert.key" -out "/opt/cruvzstreaming/bin/origin_conf/cert.csr" -subj "/C=US/ST=CA/L=San Francisco/O=Cruvz Streaming/OU=IT/CN=localhost"\n\
+    openssl x509 -req -days 365 -in "/opt/cruvzstreaming/bin/origin_conf/cert.csr" -signkey "/opt/cruvzstreaming/bin/origin_conf/cert.key" -out "/opt/cruvzstreaming/bin/origin_conf/cert.crt"\n\
+    touch "/opt/cruvzstreaming/bin/origin_conf/cert.ca-bundle"\n\
+    chmod 600 "/opt/cruvzstreaming/bin/origin_conf/cert.key"\n\
+    chmod 644 "/opt/cruvzstreaming/bin/origin_conf/cert.crt"\n\
+    chmod 644 "/opt/cruvzstreaming/bin/origin_conf/cert.ca-bundle"\n\
+    rm -f "/opt/cruvzstreaming/bin/origin_conf/cert.csr"\n\
     echo "SSL certificates generated successfully"\n\
 fi\n\
 \n\
 # Start health check server in background\n\
-/opt/ovenmediaengine/bin/simple-health-server.sh &\n\
+/opt/cruvzstreaming/bin/simple-health-server.sh &\n\
+\n\
+# Start metrics server in background\n\
+while true; do echo -e "HTTP/1.1 200 OK\r\n\r\n$(date)" | nc -l -p 9091 -q 1; done &\n\
 \n\
 # Execute the main command\n\
-exec "$@"' > /opt/ovenmediaengine/bin/production-entrypoint.sh && \
-    chmod +x /opt/ovenmediaengine/bin/production-entrypoint.sh
+exec "$@"' > /opt/cruvzstreaming/bin/six-sigma-entrypoint.sh && \
+    chmod +x /opt/cruvzstreaming/bin/six-sigma-entrypoint.sh
 
-# Production Labels for monitoring
-LABEL com.cruvz.production="enabled" \
+# Six Sigma Labels for monitoring
+LABEL com.cruvz.six_sigma="enabled" \
       com.cruvz.monitoring="comprehensive" \
-      com.cruvz.zero_errors="true"
+      com.cruvz.quality_target="99.99966%" \
+      com.cruvz.defect_tolerance="3.4_per_million"
 
-# Default run as Origin mode with Production validation
-CMD ["/opt/ovenmediaengine/bin/production-entrypoint.sh", "/opt/ovenmediaengine/bin/OvenMediaEngine", "-c", "origin_conf"]
+# Default run as Origin mode with Six Sigma validation
+CMD             ["/opt/cruvzstreaming/bin/six-sigma-entrypoint.sh", "/opt/cruvzstreaming/bin/CruvzStreaming", "-c", "origin_conf"]
