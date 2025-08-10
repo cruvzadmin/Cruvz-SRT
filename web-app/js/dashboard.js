@@ -744,4 +744,155 @@ window.viewAnalytics = viewAnalytics;
 window.toggleUserDropdown = toggleUserDropdown;
 window.signOut = signOut;
 window.copyToClipboard = copyToClipboard;
+
+// Enhanced Analytics Functions
+function updateAnalytics() {
+    const timeframe = document.getElementById('analyticsTimeframe')?.value || '24h';
+    console.log('Updating analytics for timeframe:', timeframe);
+    
+    if (window.analyticsEngine) {
+        window.analyticsEngine.fetchAnalyticsData();
+    }
+    
+    // Also load stream performance data
+    loadStreamPerformance();
+}
+
+function refreshAnalytics() {
+    if (window.analyticsEngine) {
+        window.analyticsEngine.fetchAnalyticsData();
+    }
+    loadStreamPerformance();
+    showNotification('Analytics refreshed', 'success');
+}
+
+function exportAnalytics() {
+    const timeframe = document.getElementById('analyticsTimeframe')?.value || '24h';
+    if (window.analyticsEngine) {
+        window.analyticsEngine.exportData('csv', timeframe);
+    }
+}
+
+function toggleChartType(chartName) {
+    // Toggle between different chart types (line, bar, area)
+    console.log('Toggling chart type for:', chartName);
+    showNotification(`Chart type toggled for ${chartName}`, 'info');
+}
+
+function showQualityDetails() {
+    showNotification('Quality details modal would open here', 'info');
+}
+
+function showProtocolDetails() {
+    showNotification('Protocol details modal would open here', 'info');
+}
+
+function showGeographicMap() {
+    showNotification('Geographic map modal would open here', 'info');
+}
+
+function showAllStreams() {
+    showSection('streams');
+}
+
+function generateReport() {
+    showNotification('Generating analytics report...', 'info');
+    // This would generate and download a comprehensive report
+}
+
+// Load stream performance data for analytics table
+async function loadStreamPerformance() {
+    try {
+        const response = await apiRequest('/analytics/streams');
+        if (response.success) {
+            updateStreamPerformanceTable(response.data);
+        }
+    } catch (error) {
+        console.error('Failed to load stream performance:', error);
+        const tableBody = document.getElementById('streamPerformanceTable');
+        if (tableBody) {
+            tableBody.innerHTML = '<tr><td colspan="7" class="loading-cell">Failed to load stream performance data</td></tr>';
+        }
+    }
+}
+
+function updateStreamPerformanceTable(streams) {
+    const tableBody = document.getElementById('streamPerformanceTable');
+    if (!tableBody) return;
+    
+    if (streams.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="7" class="loading-cell">No active streams found</td></tr>';
+        return;
+    }
+    
+    tableBody.innerHTML = streams.map(stream => `
+        <tr>
+            <td>
+                <div class="stream-name">
+                    <strong>${stream.title}</strong>
+                    <div class="stream-id">${stream.stream_key}</div>
+                </div>
+            </td>
+            <td>
+                <span class="protocol-badge protocol-${stream.protocol.toLowerCase()}">${stream.protocol.toUpperCase()}</span>
+            </td>
+            <td>
+                <span class="viewer-count">${stream.viewers || 0}</span>
+            </td>
+            <td>
+                <span class="quality-badge quality-${stream.quality}">${stream.quality}</span>
+            </td>
+            <td>
+                <span class="latency ${stream.latency < 100 ? 'good' : stream.latency < 200 ? 'warning' : 'poor'}">${stream.latency || 0}ms</span>
+            </td>
+            <td>
+                <span class="uptime ${stream.uptime > 99 ? 'excellent' : stream.uptime > 95 ? 'good' : 'poor'}">${stream.uptime || 0}%</span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-small btn-outline" onclick="viewStreamDetails('${stream.id}')">View</button>
+                    <button class="btn btn-small btn-primary" onclick="manageStream('${stream.id}')">Manage</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function viewStreamDetails(streamId) {
+    showNotification(`Viewing details for stream ${streamId}`, 'info');
+    // This would open a detailed view modal
+}
+
+function manageStream(streamId) {
+    showNotification(`Managing stream ${streamId}`, 'info');
+    // This would open stream management interface
+}
+
+// Load analytics when the analytics section is accessed
+function loadAnalytics() {
+    // Initialize analytics engine if not already done
+    if (!window.analyticsEngine) {
+        window.analyticsEngine = new window.AnalyticsEngine();
+        window.analyticsEngine.init();
+    }
+    
+    // Load stream performance data
+    loadStreamPerformance();
+    
+    // Trigger data refresh
+    updateAnalytics();
+}
+
+// Export new functions for global access
+window.updateAnalytics = updateAnalytics;
+window.refreshAnalytics = refreshAnalytics;
+window.exportAnalytics = exportAnalytics;
+window.toggleChartType = toggleChartType;
+window.showQualityDetails = showQualityDetails;
+window.showProtocolDetails = showProtocolDetails;
+window.showGeographicMap = showGeographicMap;
+window.showAllStreams = showAllStreams;
+window.generateReport = generateReport;
+window.viewStreamDetails = viewStreamDetails;
+window.manageStream = manageStream;
 window.showSection = showSection;
