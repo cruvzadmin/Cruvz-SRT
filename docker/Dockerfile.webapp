@@ -1,0 +1,42 @@
+# Production Dockerfile for Web Application
+FROM nginx:1.25-alpine
+
+# Install production dependencies
+RUN apk add --no-cache \
+    curl \
+    gzip \
+    brotli \
+    && rm -rf /var/cache/apk/*
+
+# Copy web application files
+COPY . /usr/share/nginx/html/
+
+# Copy optimized nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Create directory for logs
+RUN mkdir -p /var/log/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chmod -R 755 /var/log/nginx
+
+# Optimize static assets
+RUN find /usr/share/nginx/html -type f \( -name "*.css" -o -name "*.js" -o -name "*.html" \) \
+    -exec gzip -9 -k {} \; \
+    -exec brotli -q 11 -k {} \;
+
+# Security: Remove default nginx files and set permissions
+RUN rm -rf /etc/nginx/conf.d/default.conf && \
+    chown -R nginx:nginx /usr/share/nginx/html && \
+    find /usr/share/nginx/html -type d -exec chmod 755 {} \; && \
+    find /usr/share/nginx/html -type f -exec chmod 644 {} \;
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost/ || exit 1
+
+# Use non-root user
+USER nginx
+
+EXPOSE 80 443
+
+CMD ["nginx", "-g", "daemon off;"]

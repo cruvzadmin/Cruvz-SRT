@@ -1,19 +1,19 @@
-# Prometheus Configuration for Cruvz Streaming Six Sigma Monitoring
-# Target: 99.99966% uptime (3.4 defects per million opportunities)
+# Production Prometheus Configuration for Cruvz Streaming
+# Comprehensive monitoring for zero-error production deployment
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    monitor: 'cruvz-streaming-six-sigma'
+    monitor: 'cruvz-streaming-production'
     environment: 'production'
 
-# Six Sigma Quality Rules - Zero tolerance for defects
+# Production Quality Rules - Zero tolerance for critical errors
 rule_files:
-  - "/etc/prometheus/rules/six-sigma-alerts.yml"
+  - "/etc/prometheus/rules/production-alerts.yml"
   - "/etc/prometheus/rules/performance-alerts.yml"
   - "/etc/prometheus/rules/availability-alerts.yml"
 
-# Six Sigma Comprehensive Monitoring Configuration
+# Production Monitoring Configuration
 scrape_configs:
   # Self-monitoring
   - job_name: 'prometheus'
@@ -28,6 +28,35 @@ scrape_configs:
       - targets: ['node-exporter:9100']
     scrape_interval: 15s
 
+  # Cruvz Backend API - Core business logic
+  - job_name: 'cruvz-backend'
+    static_configs:
+      - targets: ['backend:5000']
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+    scrape_timeout: 10s
+
+  # Cruvz Streaming Engine - Core streaming functionality
+  - job_name: 'cruvz-origin'
+    static_configs:
+      - targets: ['origin:8080']
+    scrape_interval: 10s
+    metrics_path: '/v1/stats/current'
+    scrape_timeout: 10s
+
+  # Web Application Frontend
+  - job_name: 'cruvz-webapp'
+    static_configs:
+      - targets: ['web-app:80']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+
+  # Redis Cache Performance
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
   # Monitoring infrastructure
   - job_name: 'grafana'
     static_configs:
@@ -35,11 +64,10 @@ scrape_configs:
     scrape_interval: 30s
     metrics_path: /metrics
 
-# Six Sigma Alerting Configuration - Zero tolerance
+# Production Alerting Configuration
 alerting:
   alertmanagers:
     - static_configs:
-        - targets:
-          - alertmanager:9093
+        - targets: []  # Configure alertmanager if needed
       scheme: http
       timeout: 10s
