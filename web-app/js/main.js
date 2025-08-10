@@ -4,8 +4,8 @@
 let currentUser = null;
 let authMode = 'signin'; // 'signin' or 'signup'
 
-// API Configuration
-const API_BASE_URL = `http://${window.location.hostname}:5000/api`;
+// API Configuration - Use nginx proxy instead of direct backend calls
+const API_BASE_URL = '/api';
 window.API_BASE_URL = API_BASE_URL;
 
 // Production-level notification system
