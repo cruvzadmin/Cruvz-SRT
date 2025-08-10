@@ -7,6 +7,7 @@ let isProduction = window.location.hostname !== 'localhost' && window.location.h
 
 // API Configuration
 const API_BASE_URL = window.location.origin.replace(':80', ':5000') + '/api';
+window.API_BASE_URL = API_BASE_URL;
 
 // Production-level notification system
 function showNotification(message, type = 'info', duration = 5000) {

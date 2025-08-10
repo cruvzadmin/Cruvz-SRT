@@ -1,7 +1,7 @@
 // Dashboard-specific JavaScript functionality
 
-// API Configuration
-const API_BASE_URL = window.location.origin.replace(':80', ':5000') + '/api';
+// Use existing apiBaseUrl from main.js or create one if not available
+let apiBaseUrl = window.apiBaseUrl || window.location.origin.replace(':80', ':5000') + '/api';
 
 // Dashboard state
 let currentSection = 'overview';
@@ -34,7 +34,7 @@ async function apiRequest(endpoint, options = {}) {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+        const response = await fetch(`${apiBaseUrl}${endpoint}`, config);
         const data = await response.json();
 
         if (!response.ok) {
