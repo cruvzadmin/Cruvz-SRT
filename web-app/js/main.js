@@ -6,7 +6,7 @@ let authMode = 'signin'; // 'signin' or 'signup'
 let isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 
 // API Configuration
-const API_BASE_URL = window.location.origin + '/api';
+const API_BASE_URL = window.location.origin.replace(':80', ':5000') + '/api';
 
 // Production-level notification system
 function showNotification(message, type = 'info', duration = 5000) {

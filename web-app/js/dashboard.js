@@ -1,5 +1,8 @@
 // Dashboard-specific JavaScript functionality
 
+// API Configuration
+const API_BASE_URL = window.location.origin.replace(':80', ':5000') + '/api';
+
 // Dashboard state
 let currentSection = 'overview';
 let userDropdownOpen = false;
@@ -266,7 +269,7 @@ function updateStreamsDisplay(streamsList) {
 // Load user information
 async function loadUserInfo() {
     try {
-        const response = await apiRequest('/users/profile');
+        const response = await apiRequest('/auth/me');
         if (response.success) {
             const user = response.data;
             updateUserDisplay(user);
