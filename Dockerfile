@@ -59,30 +59,9 @@ while true; do\n\
 done' > /opt/ovenmediaengine/bin/simple-health-server.sh && \
     chmod +x /opt/ovenmediaengine/bin/simple-health-server.sh
 
-# Production startup script with SSL certificate generation
-RUN echo '#!/bin/bash\n\
-set -euo pipefail\n\
-\n\
-# Generate SSL certificates if they don'\''t exist\n\
-if [ ! -f "/opt/ovenmediaengine/bin/origin_conf/cert.crt" ]; then\n\
-    echo "Generating SSL certificates..."\n\
-    openssl genrsa -out "/opt/ovenmediaengine/bin/origin_conf/cert.key" 2048\n\
-    openssl req -new -key "/opt/ovenmediaengine/bin/origin_conf/cert.key" -out "/opt/ovenmediaengine/bin/origin_conf/cert.csr" -subj "/C=US/ST=CA/L=San Francisco/O=Cruvz Streaming/OU=IT/CN=localhost"\n\
-    openssl x509 -req -days 365 -in "/opt/ovenmediaengine/bin/origin_conf/cert.csr" -signkey "/opt/ovenmediaengine/bin/origin_conf/cert.key" -out "/opt/ovenmediaengine/bin/origin_conf/cert.crt"\n\
-    touch "/opt/ovenmediaengine/bin/origin_conf/cert.ca-bundle"\n\
-    chmod 600 "/opt/ovenmediaengine/bin/origin_conf/cert.key"\n\
-    chmod 644 "/opt/ovenmediaengine/bin/origin_conf/cert.crt"\n\
-    chmod 644 "/opt/ovenmediaengine/bin/origin_conf/cert.ca-bundle"\n\
-    rm -f "/opt/ovenmediaengine/bin/origin_conf/cert.csr"\n\
-    echo "SSL certificates generated successfully"\n\
-fi\n\
-\n\
-# Start health check server in background\n\
-/opt/ovenmediaengine/bin/simple-health-server.sh &\n\
-\n\
-# Execute the main command\n\
-exec "$@"' > /opt/ovenmediaengine/bin/production-entrypoint.sh && \
-    chmod +x /opt/ovenmediaengine/bin/production-entrypoint.sh
+# Copy production startup script
+COPY docker/production-entrypoint.sh /opt/ovenmediaengine/bin/production-entrypoint.sh
+RUN chmod +x /opt/ovenmediaengine/bin/production-entrypoint.sh
 
 # Production Labels for monitoring
 LABEL com.cruvz.production="enabled" \
