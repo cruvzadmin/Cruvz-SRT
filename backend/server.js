@@ -73,10 +73,10 @@ const generalLimiter = rateLimit({
 
 app.use(generalLimiter);
 
-// Authentication rate limiting (more restrictive)
+// Authentication rate limiting (more restrictive but reasonable)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 5 : 20, // 5 attempts in production, 20 in dev
+  max: isProduction ? 10 : 20, // 10 attempts in production, 20 in dev
   message: {
     success: false,
     error: 'Too many authentication attempts, please try again later.',
@@ -84,6 +84,12 @@ const authLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // Allow for different IPs to have their own limits
+  keyGenerator: (req) => {
+    return req.ip;
+  },
+  // Skip rate limiting for successful requests
+  skipSuccessfulRequests: true
 });
 
 // Streaming API rate limiting (higher limits for active streams)

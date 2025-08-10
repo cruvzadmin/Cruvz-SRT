@@ -1,5 +1,8 @@
 // Dashboard-specific JavaScript functionality
 
+// Use existing apiBaseUrl from main.js or create one if not available
+let apiBaseUrl = window.API_BASE_URL || `http://${window.location.hostname}:5000/api`;
+
 // Dashboard state
 let currentSection = 'overview';
 let userDropdownOpen = false;
@@ -31,7 +34,7 @@ async function apiRequest(endpoint, options = {}) {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+        const response = await fetch(`${apiBaseUrl}${endpoint}`, config);
         const data = await response.json();
 
         if (!response.ok) {
@@ -266,7 +269,7 @@ function updateStreamsDisplay(streamsList) {
 // Load user information
 async function loadUserInfo() {
     try {
-        const response = await apiRequest('/users/profile');
+        const response = await apiRequest('/auth/me');
         if (response.success) {
             const user = response.data;
             updateUserDisplay(user);
@@ -528,12 +531,29 @@ function showCreateStreamModal() {
                     </div>
                     <div class="form-group">
                         <label for="streamProtocol">Protocol</label>
-                        <select id="streamProtocol" name="protocol">
+                        <select id="streamProtocol" name="protocol" onchange="updateProtocolPlaceholders()">
                             <option value="rtmp">RTMP</option>
                             <option value="srt">SRT</option>
                             <option value="webrtc">WebRTC</option>
                         </select>
                     </div>
+                    
+                    <!-- Source/Input URL Configuration -->
+                    <div class="form-group">
+                        <label for="sourceUrl">Source URL (Input) *</label>
+                        <input type="url" id="sourceUrl" name="source_url" required 
+                               placeholder="rtmp://source.example.com/live/stream_key">
+                        <small class="form-help">The URL where your streaming software will send the stream</small>
+                    </div>
+                    
+                    <!-- Destination/Output URL Configuration -->
+                    <div class="form-group">
+                        <label for="destinationUrl">Destination URL (Output) *</label>
+                        <input type="url" id="destinationUrl" name="destination_url" required 
+                               placeholder="rtmp://localhost:1935/app/stream_name">
+                        <small class="form-help">The URL where viewers will access the stream</small>
+                    </div>
+                    
                     <div class="form-group">
                         <label for="streamQuality">Quality</label>
                         <select id="streamQuality" name="quality">
@@ -565,6 +585,33 @@ function showCreateStreamModal() {
     
     // Handle form submission
     document.getElementById('createStreamForm').addEventListener('submit', handleCreateStream);
+    
+    // Update placeholders based on initial protocol
+    updateProtocolPlaceholders();
+}
+
+// Update URL placeholders based on selected protocol
+function updateProtocolPlaceholders() {
+    const protocol = document.getElementById('streamProtocol')?.value || 'rtmp';
+    const sourceUrl = document.getElementById('sourceUrl');
+    const destinationUrl = document.getElementById('destinationUrl');
+    
+    if (!sourceUrl || !destinationUrl) return;
+    
+    switch(protocol) {
+        case 'rtmp':
+            sourceUrl.placeholder = 'rtmp://source.example.com/live/stream_key';
+            destinationUrl.placeholder = 'rtmp://localhost:1935/app/stream_name';
+            break;
+        case 'srt':
+            sourceUrl.placeholder = 'srt://source.example.com:9999?streamid=input_stream_key';
+            destinationUrl.placeholder = 'srt://localhost:9999?streamid=app/stream_name';
+            break;
+        case 'webrtc':
+            sourceUrl.placeholder = 'http://source.example.com:3333/app/input_stream';
+            destinationUrl.placeholder = 'http://localhost:3333/app/stream_name';
+            break;
+    }
 }
 
 // Handle create stream form submission
@@ -576,6 +623,8 @@ async function handleCreateStream(e) {
         title: formData.get('title'),
         description: formData.get('description'),
         protocol: formData.get('protocol'),
+        source_url: formData.get('source_url'),
+        destination_url: formData.get('destination_url'),
         settings: {
             quality: formData.get('quality')
         },
@@ -684,6 +733,8 @@ function loadSettings() {
 }
 
 // Export functions for global access
+// Make updateProtocolPlaceholders available globally
+window.updateProtocolPlaceholders = updateProtocolPlaceholders;
 window.showCreateStreamModal = showCreateStreamModal;
 window.startStream = startStream;
 window.stopStream = stopStream;
@@ -693,4 +744,155 @@ window.viewAnalytics = viewAnalytics;
 window.toggleUserDropdown = toggleUserDropdown;
 window.signOut = signOut;
 window.copyToClipboard = copyToClipboard;
+
+// Enhanced Analytics Functions
+function updateAnalytics() {
+    const timeframe = document.getElementById('analyticsTimeframe')?.value || '24h';
+    console.log('Updating analytics for timeframe:', timeframe);
+    
+    if (window.analyticsEngine) {
+        window.analyticsEngine.fetchAnalyticsData();
+    }
+    
+    // Also load stream performance data
+    loadStreamPerformance();
+}
+
+function refreshAnalytics() {
+    if (window.analyticsEngine) {
+        window.analyticsEngine.fetchAnalyticsData();
+    }
+    loadStreamPerformance();
+    showNotification('Analytics refreshed', 'success');
+}
+
+function exportAnalytics() {
+    const timeframe = document.getElementById('analyticsTimeframe')?.value || '24h';
+    if (window.analyticsEngine) {
+        window.analyticsEngine.exportData('csv', timeframe);
+    }
+}
+
+function toggleChartType(chartName) {
+    // Toggle between different chart types (line, bar, area)
+    console.log('Toggling chart type for:', chartName);
+    showNotification(`Chart type toggled for ${chartName}`, 'info');
+}
+
+function showQualityDetails() {
+    showNotification('Quality details modal would open here', 'info');
+}
+
+function showProtocolDetails() {
+    showNotification('Protocol details modal would open here', 'info');
+}
+
+function showGeographicMap() {
+    showNotification('Geographic map modal would open here', 'info');
+}
+
+function showAllStreams() {
+    showSection('streams');
+}
+
+function generateReport() {
+    showNotification('Generating analytics report...', 'info');
+    // This would generate and download a comprehensive report
+}
+
+// Load stream performance data for analytics table
+async function loadStreamPerformance() {
+    try {
+        const response = await apiRequest('/analytics/streams');
+        if (response.success) {
+            updateStreamPerformanceTable(response.data);
+        }
+    } catch (error) {
+        console.error('Failed to load stream performance:', error);
+        const tableBody = document.getElementById('streamPerformanceTable');
+        if (tableBody) {
+            tableBody.innerHTML = '<tr><td colspan="7" class="loading-cell">Failed to load stream performance data</td></tr>';
+        }
+    }
+}
+
+function updateStreamPerformanceTable(streams) {
+    const tableBody = document.getElementById('streamPerformanceTable');
+    if (!tableBody) return;
+    
+    if (streams.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="7" class="loading-cell">No active streams found</td></tr>';
+        return;
+    }
+    
+    tableBody.innerHTML = streams.map(stream => `
+        <tr>
+            <td>
+                <div class="stream-name">
+                    <strong>${stream.title}</strong>
+                    <div class="stream-id">${stream.stream_key}</div>
+                </div>
+            </td>
+            <td>
+                <span class="protocol-badge protocol-${stream.protocol.toLowerCase()}">${stream.protocol.toUpperCase()}</span>
+            </td>
+            <td>
+                <span class="viewer-count">${stream.viewers || 0}</span>
+            </td>
+            <td>
+                <span class="quality-badge quality-${stream.quality}">${stream.quality}</span>
+            </td>
+            <td>
+                <span class="latency ${stream.latency < 100 ? 'good' : stream.latency < 200 ? 'warning' : 'poor'}">${stream.latency || 0}ms</span>
+            </td>
+            <td>
+                <span class="uptime ${stream.uptime > 99 ? 'excellent' : stream.uptime > 95 ? 'good' : 'poor'}">${stream.uptime || 0}%</span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-small btn-outline" onclick="viewStreamDetails('${stream.id}')">View</button>
+                    <button class="btn btn-small btn-primary" onclick="manageStream('${stream.id}')">Manage</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function viewStreamDetails(streamId) {
+    showNotification(`Viewing details for stream ${streamId}`, 'info');
+    // This would open a detailed view modal
+}
+
+function manageStream(streamId) {
+    showNotification(`Managing stream ${streamId}`, 'info');
+    // This would open stream management interface
+}
+
+// Load analytics when the analytics section is accessed
+function loadAnalytics() {
+    // Initialize analytics engine if not already done
+    if (!window.analyticsEngine) {
+        window.analyticsEngine = new window.AnalyticsEngine();
+        window.analyticsEngine.init();
+    }
+    
+    // Load stream performance data
+    loadStreamPerformance();
+    
+    // Trigger data refresh
+    updateAnalytics();
+}
+
+// Export new functions for global access
+window.updateAnalytics = updateAnalytics;
+window.refreshAnalytics = refreshAnalytics;
+window.exportAnalytics = exportAnalytics;
+window.toggleChartType = toggleChartType;
+window.showQualityDetails = showQualityDetails;
+window.showProtocolDetails = showProtocolDetails;
+window.showGeographicMap = showGeographicMap;
+window.showAllStreams = showAllStreams;
+window.generateReport = generateReport;
+window.viewStreamDetails = viewStreamDetails;
+window.manageStream = manageStream;
 window.showSection = showSection;

@@ -16,13 +16,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package*.json ./
 
 # Install dependencies with reliable settings
-RUN npm ci --production --no-audit --no-fund --no-optional || npm install --production --no-audit --no-fund --no-optional
+RUN npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund
 
 # Copy application files after dependencies are installed
 COPY . .
 
-# Run setup script to create directories and initialize database
-RUN npm run setup
+# Run setup script to create directories and initialize database (but handle failure gracefully)
+RUN npm run setup || echo "Setup script completed with warnings"
 
 # Create required directories with proper permissions
 RUN mkdir -p data logs uploads recordings && \

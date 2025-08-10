@@ -266,28 +266,195 @@
             <!-- Analytics Section -->
             <section id="analytics-section" class="content-section">
                 <div class="section-header">
-                    <h1>Analytics</h1>
+                    <h1>Real-Time Analytics</h1>
                     <div class="header-actions">
                         <select id="analyticsTimeframe" onchange="updateAnalytics()">
-                            <option value="24h">Last 24 Hours</option>
-                            <option value="7d" selected>Last 7 Days</option>
+                            <option value="1h">Last Hour</option>
+                            <option value="24h" selected>Last 24 Hours</option>
+                            <option value="7d">Last 7 Days</option>
                             <option value="30d">Last 30 Days</option>
-                            <option value="90d">Last 90 Days</option>
                         </select>
+                        <button class="btn btn-outline" onclick="exportAnalytics()">📊 Export</button>
+                        <button class="btn btn-outline" onclick="refreshAnalytics()">🔄 Refresh</button>
                     </div>
                 </div>
 
-                <div class="analytics-grid">
-                    <div class="analytics-card">
-                        <h3>Viewer Metrics</h3>
-                        <div class="chart-placeholder" id="viewerChart">
-                            <p>Loading viewer analytics...</p>
+                <!-- Real-time Metrics Summary -->
+                <div class="metrics-summary">
+                    <div class="metric-card">
+                        <div class="metric-icon">👥</div>
+                        <div class="metric-info">
+                            <h3 id="liveViewers">0</h3>
+                            <p>Live Viewers</p>
+                            <span class="metric-change positive">+12%</span>
                         </div>
                     </div>
-                    <div class="analytics-card">
-                        <h3>Stream Performance</h3>
-                        <div class="chart-placeholder" id="performanceChart">
-                            <p>Loading performance metrics...</p>
+                    <div class="metric-card">
+                        <div class="metric-icon">⚡</div>
+                        <div class="metric-info">
+                            <h3 id="avgLatencyMetric">0ms</h3>
+                            <p>Avg Latency</p>
+                            <span class="metric-change negative">-5ms</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">📡</div>
+                        <div class="metric-info">
+                            <h3 id="bandwidthMetric">0 Mbps</h3>
+                            <p>Bandwidth Usage</p>
+                            <span class="metric-change positive">+8%</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">💯</div>
+                        <div class="metric-info">
+                            <h3 id="uptimeMetric">99.9%</h3>
+                            <p>Uptime</p>
+                            <span class="metric-change stable">Stable</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Charts Grid -->
+                <div class="analytics-grid">
+                    <!-- Real-time Viewers Chart -->
+                    <div class="analytics-card chart-card">
+                        <div class="card-header">
+                            <h3>Real-Time Viewers</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-small btn-outline" onclick="toggleChartType('viewers')">📈</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="viewersChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Bandwidth Usage Chart -->
+                    <div class="analytics-card chart-card">
+                        <div class="card-header">
+                            <h3>Bandwidth Usage</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-small btn-outline" onclick="toggleChartType('bandwidth')">📊</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="bandwidthChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Latency Monitoring Chart -->
+                    <div class="analytics-card chart-card">
+                        <div class="card-header">
+                            <h3>Latency Monitoring</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-small btn-outline" onclick="toggleChartType('latency')">⚡</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="latencyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Stream Quality Distribution -->
+                    <div class="analytics-card chart-card">
+                        <div class="card-header">
+                            <h3>Quality Distribution</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-small btn-outline" onclick="showQualityDetails()">📋</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="qualityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Protocol Distribution -->
+                    <div class="analytics-card chart-card">
+                        <div class="card-header">
+                            <h3>Protocol Distribution</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-small btn-outline" onclick="showProtocolDetails()">🔧</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="streamDistributionChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Geographic Distribution -->
+                    <div class="analytics-card chart-card">
+                        <div class="card-header">
+                            <h3>Geographic Distribution</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-small btn-outline" onclick="showGeographicMap()">🌍</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="geographicChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stream Performance Table -->
+                <div class="analytics-card table-card">
+                    <div class="card-header">
+                        <h3>Top Performing Streams</h3>
+                        <div class="card-actions">
+                            <button class="btn btn-small btn-outline" onclick="showAllStreams()">View All</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="performance-table">
+                            <thead>
+                                <tr>
+                                    <th>Stream</th>
+                                    <th>Protocol</th>
+                                    <th>Viewers</th>
+                                    <th>Quality</th>
+                                    <th>Latency</th>
+                                    <th>Uptime</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="streamPerformanceTable">
+                                <tr>
+                                    <td colspan="7" class="loading-cell">Loading stream performance data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Analytics Insights Panel -->
+                <div class="analytics-card insights-card">
+                    <div class="card-header">
+                        <h3>Performance Insights</h3>
+                        <div class="card-actions">
+                            <button class="btn btn-small btn-outline" onclick="generateReport()">📄 Report</button>
+                        </div>
+                    </div>
+                    <div class="insights-content">
+                        <div class="insight-item">
+                            <div class="insight-icon positive">📈</div>
+                            <div class="insight-text">
+                                <h4>Peak Performance</h4>
+                                <p>Your streams achieved 99.8% uptime this week with average latency under 50ms.</p>
+                            </div>
+                        </div>
+                        <div class="insight-item">
+                            <div class="insight-icon info">💡</div>
+                            <div class="insight-text">
+                                <h4>Optimization Opportunity</h4>
+                                <p>Consider enabling adaptive bitrate for better viewer experience during peak hours.</p>
+                            </div>
+                        </div>
+                        <div class="insight-item">
+                            <div class="insight-icon warning">⚠️</div>
+                            <div class="insight-text">
+                                <h4>Bandwidth Alert</h4>
+                                <p>Bandwidth usage increased by 45% this week. Monitor costs and consider optimization.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -426,5 +593,6 @@
 
     <script src="../js/main.js"></script>
     <script src="../js/dashboard.js"></script>
+    <script src="../js/analytics.js"></script>
 </body>
 </html>

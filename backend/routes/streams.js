@@ -12,6 +12,8 @@ const createStreamSchema = Joi.object({
   title: Joi.string().min(3).max(200).required(),
   description: Joi.string().max(1000).optional(),
   protocol: Joi.string().valid('rtmp', 'srt', 'webrtc').default('rtmp'),
+  source_url: Joi.string().uri().required(),
+  destination_url: Joi.string().uri().required(),
   settings: Joi.object({
     quality: Joi.string().valid('720p', '1080p', '4k').default('1080p'),
     bitrate: Joi.number().min(1000).max(50000).default(5000),
@@ -25,6 +27,8 @@ const createStreamSchema = Joi.object({
 const updateStreamSchema = Joi.object({
   title: Joi.string().min(3).max(200).optional(),
   description: Joi.string().max(1000).optional(),
+  source_url: Joi.string().uri().optional(),
+  destination_url: Joi.string().uri().optional(),
   settings: Joi.object({
     quality: Joi.string().valid('720p', '1080p', '4k'),
     bitrate: Joi.number().min(1000).max(50000),
@@ -38,6 +42,16 @@ const updateStreamSchema = Joi.object({
 // Generate stream key
 const generateStreamKey = () => {
   return `stream_${uuidv4().replace(/-/g, '')}`;
+};
+
+// Get default port for protocol
+const getDefaultPort = (protocol) => {
+  switch(protocol) {
+    case 'rtmp': return 1935;
+    case 'srt': return 9999;
+    case 'webrtc': return 3333;
+    default: return 1935;
+  }
 };
 
 // @route   GET /api/streams
@@ -177,6 +191,8 @@ router.post('/', auth, async (req, res) => {
       description: value.description,
       stream_key: streamKey,
       protocol: value.protocol,
+      source_url: value.source_url,
+      destination_url: value.destination_url,
       settings: JSON.stringify(value.settings || {}),
       max_viewers: value.max_viewers,
       is_recording: value.is_recording,
@@ -311,15 +327,26 @@ router.post('/:id/start', auth, async (req, res) => {
 
     logger.info(`Stream started: ${stream.title} by user ${req.user.email}`);
 
+    // Use custom URLs if provided, otherwise generate default URLs
+    const streamUrls = {
+      stream_key: stream.stream_key,
+      source_url: stream.source_url || `${stream.protocol}://localhost:${getDefaultPort(stream.protocol)}/app/${stream.stream_key}`,
+      destination_url: stream.destination_url || `${stream.protocol}://localhost:${getDefaultPort(stream.protocol)}/app/${stream.stream_key}`
+    };
+
+    // Also include the legacy URL format for backward compatibility
+    if (stream.protocol === 'rtmp') {
+      streamUrls.rtmp_url = stream.destination_url || `rtmp://localhost:1935/app/${stream.stream_key}`;
+    } else if (stream.protocol === 'srt') {
+      streamUrls.srt_url = stream.destination_url || `srt://localhost:9999?streamid=${stream.stream_key}`;
+    } else if (stream.protocol === 'webrtc') {
+      streamUrls.webrtc_url = stream.destination_url || `http://localhost:3333/app/${stream.stream_key}`;
+    }
+
     res.json({
       success: true,
       message: 'Stream started successfully',
-      data: {
-        stream_key: stream.stream_key,
-        rtmp_url: `rtmp://localhost:1935/app/${stream.stream_key}`,
-        srt_url: `srt://localhost:9999?streamid=${stream.stream_key}`,
-        webrtc_url: `http://localhost:3333/app/${stream.stream_key}`
-      }
+      data: streamUrls
     });
   } catch (error) {
     logger.error('Start stream error:', error);
