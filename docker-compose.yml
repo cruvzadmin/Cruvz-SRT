@@ -295,8 +295,8 @@ networks:
     ipam:
       driver: default
       config:
-      - subnet: 172.20.0.0/16
-        gateway: 172.20.0.1
+      - subnet: 172.25.0.0/16
+        gateway: 172.25.0.1
     driver_opts:
       com.docker.network.enable_ipv6: "false"
       com.docker.network.bridge.enable_icc: "true"
