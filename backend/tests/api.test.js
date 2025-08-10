@@ -9,7 +9,7 @@ describe('Health Check Endpoint', () => {
 
     expect(response.body).toHaveProperty('status', 'healthy');
     expect(response.body).toHaveProperty('timestamp');
-    expect(response.body).toHaveProperty('version', '1.0.0');
+    expect(response.body).toHaveProperty('version', '2.0.0');
     expect(response.body).toHaveProperty('environment');
   });
 });

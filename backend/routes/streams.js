@@ -12,8 +12,8 @@ const createStreamSchema = Joi.object({
   title: Joi.string().min(3).max(200).required(),
   description: Joi.string().max(1000).optional(),
   protocol: Joi.string().valid('rtmp', 'srt', 'webrtc').default('rtmp'),
-  source_url: Joi.string().uri().required(),
-  destination_url: Joi.string().uri().required(),
+  source_url: Joi.string().uri().allow('').optional(),
+  destination_url: Joi.string().uri().allow('').optional(),
   settings: Joi.object({
     quality: Joi.string().valid('720p', '1080p', '4k').default('1080p'),
     bitrate: Joi.number().min(1000).max(50000).default(5000),

@@ -540,18 +540,18 @@ function showCreateStreamModal() {
                     
                     <!-- Source/Input URL Configuration -->
                     <div class="form-group">
-                        <label for="sourceUrl">Source URL (Input) *</label>
-                        <input type="url" id="sourceUrl" name="source_url" required 
+                        <label for="sourceUrl">Source URL (Input)</label>
+                        <input type="url" id="sourceUrl" name="source_url" 
                                placeholder="rtmp://source.example.com/live/stream_key">
-                        <small class="form-help">The URL where your streaming software will send the stream</small>
+                        <small class="form-help">Optional: The URL where your streaming software will send the stream (auto-generated if empty)</small>
                     </div>
                     
                     <!-- Destination/Output URL Configuration -->
                     <div class="form-group">
-                        <label for="destinationUrl">Destination URL (Output) *</label>
-                        <input type="url" id="destinationUrl" name="destination_url" required 
+                        <label for="destinationUrl">Destination URL (Output)</label>
+                        <input type="url" id="destinationUrl" name="destination_url" 
                                placeholder="rtmp://localhost:1935/app/stream_name">
-                        <small class="form-help">The URL where viewers will access the stream</small>
+                        <small class="form-help">Optional: The URL where viewers will access the stream (auto-generated if empty)</small>
                     </div>
                     
                     <div class="form-group">
