@@ -1,88 +1,79 @@
-// Simplified database configuration for Six Sigma deployment
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const fs = require('fs');
-
-// Ensure data directory exists
-const dataDir = path.join(__dirname, '../data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-
-const dbPath = path.join(dataDir, 'cruvz_streaming.db');
+// Production-ready database configuration for Six Sigma deployment using PostgreSQL (Knex)
+const db = require('./database');
 
 class SimpleDB {
   constructor() {
-    this.db = new sqlite3.Database(dbPath, (err) => {
-      if (err) {
-        console.error('Database connection error:', err);
-      } else {
-        console.log('Connected to SQLite database');
-        this.initializeTables();
-      }
-    });
+    // Initialize tables on creation (async, but fire and forget)
+    this._init();
   }
 
-  initializeTables() {
-    // Create users table
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        name TEXT NOT NULL,
-        role TEXT DEFAULT 'user',
-        is_active INTEGER DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `, (err) => {
-      if (err) console.error('Error creating users table:', err);
-      else console.log('Users table ready');
-    });
-
-    // Create sessions table for JWT tracking
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS user_sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        session_token TEXT UNIQUE,
-        expires_at DATETIME,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-      )
-    `, (err) => {
-      if (err) console.error('Error creating sessions table:', err);
-      else console.log('Sessions table ready');
-    });
+  async _init() {
+    try {
+      await this.initializeTables();
+      console.log('Connected to PostgreSQL database');
+    } catch (err) {
+      console.error('Database connection error:', err);
+    }
   }
 
-  // Promisify database operations
-  run(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.run(sql, params, function(err) {
-        if (err) reject(err);
-        else resolve({ id: this.lastID, changes: this.changes });
+  async initializeTables() {
+    // Create users table if it doesn't exist
+    const hasUsers = await db.schema.hasTable('users');
+    if (!hasUsers) {
+      await db.schema.createTable('users', (table) => {
+        table.increments('id').primary();
+        table.string('email').unique().notNullable();
+        table.string('password').notNullable();
+        table.string('name').notNullable();
+        table.string('role').defaultTo('user');
+        table.boolean('is_active').defaultTo(true);
+        table.timestamp('created_at').defaultTo(db.fn.now());
+        table.timestamp('updated_at').defaultTo(db.fn.now());
       });
-    });
+      console.log('Users table ready');
+    }
+
+    // Create user_sessions table if it doesn't exist
+    const hasSessions = await db.schema.hasTable('user_sessions');
+    if (!hasSessions) {
+      await db.schema.createTable('user_sessions', (table) => {
+        table.increments('id').primary();
+        table.integer('user_id').references('id').inTable('users').onDelete('CASCADE');
+        table.string('session_token').unique();
+        table.timestamp('expires_at');
+        table.timestamp('created_at').defaultTo(db.fn.now());
+      });
+      console.log('Sessions table ready');
+    }
   }
 
-  get(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.get(sql, params, (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+  // Promisify database operations using Knex
+  async run(sql, params = []) {
+    try {
+      const res = await db.raw(sql, params);
+      // For INSERT/UPDATE/DELETE, return affected rows info if available
+      return { rowCount: res.rowCount || (Array.isArray(res.rows) ? res.rows.length : 0) };
+    } catch (err) {
+      throw err;
+    }
   }
 
-  all(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.all(sql, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+  async get(sql, params = []) {
+    try {
+      const res = await db.raw(sql, params);
+      return res.rows && res.rows.length > 0 ? res.rows[0] : null;
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  async all(sql, params = []) {
+    try {
+      const res = await db.raw(sql, params);
+      return res.rows;
+    } catch (err) {
+      throw err;
+    }
   }
 }
 
