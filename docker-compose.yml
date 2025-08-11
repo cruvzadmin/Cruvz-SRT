@@ -1,9 +1,7 @@
 # Cruvz Streaming Production Docker Compose
-# Six Sigma Zero-Error Deployment
-# Complete production-ready configuration with backend API
+# Production-ready configuration with backend API and PostgreSQL
 
 services:
-  # Backend API Service
   backend:
     build:
       context: ./backend
@@ -12,6 +10,8 @@ services:
     restart: always
     depends_on:
       origin:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
     healthcheck:
@@ -31,12 +31,16 @@ services:
           memory: 512M
 
     ports:
-    - "5000:5000"     # Backend API
+    - "5000:5000"
 
     environment:
     - NODE_ENV=production
     - PORT=5000
-    - DATABASE_URL=./data/cruvz_streaming.db
+    - POSTGRES_HOST=postgres
+    - POSTGRES_PORT=5432
+    - POSTGRES_USER=cruvz
+    - POSTGRES_PASSWORD=cruvzpass
+    - POSTGRES_DB=cruvzdb
     - JWT_SECRET=${JWT_SECRET:-your-super-secure-jwt-secret-change-this}
     - JWT_EXPIRES_IN=24h
     - OME_HOST=origin
@@ -44,7 +48,6 @@ services:
     - FRONTEND_URL=http://localhost
 
     volumes:
-    - backend-data:/app/data:rw
     - backend-logs:/app/logs:rw
     - backend-uploads:/app/uploads:rw
     - backend-recordings:/app/recordings:rw
@@ -57,7 +60,6 @@ services:
     - "com.cruvz.six_sigma=enabled"
     - "com.cruvz.component=api"
 
-  # Web Application Service
   web-app:
     image: nginx:alpine
     container_name: cruvz-streaming-webapp
@@ -83,7 +85,7 @@ services:
           memory: 128M
 
     ports:
-    - "80:80"         # Web Application
+    - "80:80"
 
     volumes:
     - ./web-app:/usr/share/nginx/html:ro
@@ -98,14 +100,12 @@ services:
     - "com.cruvz.component=frontend"
 
   origin:
-    # Use optimized build with pre-built OvenMediaEngine
     build:
       context: .
       dockerfile: Dockerfile
     container_name: cruvz-streaming-origin
     restart: always
 
-    # Enhanced health check for OvenMediaEngine
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f OvenMediaEngine > /dev/null || curl -f http://localhost:8080 > /dev/null"]
       interval: 30s
@@ -113,7 +113,6 @@ services:
       retries: 3
       start_period: 60s
 
-    # Resource management
     deploy:
       resources:
         limits:
@@ -123,18 +122,16 @@ services:
           cpus: '1.0'
           memory: 2G
 
-    # Production port mapping
     ports:
-    - "9000:9000"     # OVT(Origin) - Core streaming protocol
-    - "1935:1935"     # RTMP Provider - Legacy streaming
-    - "9999:9999/udp"     # SRT - Secure Reliable Transport  
-    - "3333:3333"     # WebRTC Signaling / LLHLS - Primary streaming
-    - "3334:3334"     # TLS WebRTC Signaling / LLHLS - Secure streaming
-    - "3478:3478"     # WebRTC TURN - NAT traversal
-    - "10000-10004:10000-10004/udp" # WebRTC Candidate - RTP/RTCP
-    - "8080:8080"     # Health check endpoint - Monitoring
+    - "9000:9000"
+    - "1935:1935"
+    - "9999:9999/udp"
+    - "3333:3333"
+    - "3334:3334"
+    - "3478:3478"
+    - "10000-10004:10000-10004/udp"
+    - "8080:8080"
 
-    # Production environment configuration
     environment:
     - OME_HOST_IP=localhost
     - OME_ORIGIN_PORT=9000
@@ -148,16 +145,13 @@ services:
     - LOG_LEVEL=INFO
     - SIX_SIGMA_MODE=true
 
-    # Persistent storage for OvenMediaEngine (optimized)
     volumes:
     - cs-origin-conf:/opt/ovenmediaengine/bin/origin_conf:rw
     - cs-logs:/opt/ovenmediaengine/logs:rw
     - cs-metrics:/opt/ovenmediaengine/metrics:rw
-    # Mount Cruvz configurations if available
     - ./misc/conf_examples/Origin.xml:/opt/ovenmediaengine/bin/origin_conf/Server.xml:ro
     - ./misc/conf_examples/Logger.xml:/opt/ovenmediaengine/bin/origin_conf/Logger.xml:ro
 
-    # Production logging
     logging:
       driver: "json-file"
       options:
@@ -174,7 +168,6 @@ services:
     - "com.cruvz.monitoring=prometheus"
     - "com.cruvz.environment=production"
 
-  # Six Sigma Monitoring Service
   monitoring:
     image: prom/prometheus:latest
     container_name: cruvz-monitoring
@@ -222,7 +215,6 @@ services:
     - "com.cruvz.six_sigma=enabled"
     - "com.cruvz.component=prometheus"
 
-  # Six Sigma Dashboard Service
   grafana:
     image: grafana/grafana:latest
     container_name: cruvz-dashboard
@@ -267,10 +259,25 @@ services:
     - "com.cruvz.six_sigma=enabled"
     - "com.cruvz.component=grafana"
 
-# Six Sigma Persistent Volumes
+  postgres:
+    image: postgres:15
+    container_name: cruvz-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: cruvz
+      POSTGRES_PASSWORD: cruvzpass
+      POSTGRES_DB: cruvzdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cruvz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
-  backend-data:
-    driver: local
   backend-logs:
     driver: local
   backend-uploads:
@@ -287,8 +294,9 @@ volumes:
     driver: local
   grafana-data:
     driver: local
+  postgres-data:
+    driver: local
 
-# Six Sigma Network Configuration
 networks:
   cruvz-network:
     driver: bridge
