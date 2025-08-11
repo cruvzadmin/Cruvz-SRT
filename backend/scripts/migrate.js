@@ -2,19 +2,23 @@ const db = require('../config/database');
 const bcrypt = require('bcryptjs');
 const logger = require('../utils/logger');
 
+// Utility: Check if a table exists in PostgreSQL
+async function tableExists(tableName) {
+  const result = await db('information_schema.tables')
+    .where({ table_name: tableName, table_schema: 'public' });
+  return result.length > 0;
+}
+
+// Utility: Check if a column exists in a table (PostgreSQL)
+async function columnExists(tableName, columnName) {
+  const result = await db('information_schema.columns')
+    .where({ table_name: tableName, column_name: columnName, table_schema: 'public' });
+  return result.length > 0;
+}
+
 async function migrate() {
   try {
     logger.info('Starting database migration...');
-
-    // Check if tables exist before creating them
-    const tableExists = async (tableName) => {
-      try {
-        const result = await db.raw(`SELECT name FROM sqlite_master WHERE type='table' AND name='${tableName}'`);
-        return result.length > 0;
-      } catch (error) {
-        return false;
-      }
-    };
 
     // Users table
     if (!(await tableExists('users'))) {
@@ -77,19 +81,15 @@ async function migrate() {
       logger.info('Streams table created');
     } else {
       logger.info('Streams table already exists');
-      
+
       // Check and add source_url and destination_url columns if they don't exist
-      const columnsExist = await db.raw(`PRAGMA table_info(streams)`);
-      const columnNames = columnsExist.map(col => col.name);
-      
-      if (!columnNames.includes('source_url')) {
+      if (!(await columnExists('streams', 'source_url'))) {
         await db.schema.alterTable('streams', (table) => {
           table.string('source_url').nullable();
         });
         logger.info('Added source_url column to streams table');
       }
-      
-      if (!columnNames.includes('destination_url')) {
+      if (!(await columnExists('streams', 'destination_url'))) {
         await db.schema.alterTable('streams', (table) => {
           table.string('destination_url').nullable();
         });
