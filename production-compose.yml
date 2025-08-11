@@ -1,11 +1,157 @@
 version: '3.8'
 
 # ===============================================================================
-# CRUVZ STREAMING - PRODUCTION DOCKER COMPOSE
-# Single-file production deployment with advanced security and monitoring
+# CRUVZ STREAMING - PRODUCTION DOCKER COMPOSE FOR 1000+ USERS
+# Optimized PostgreSQL setup with Redis caching and horizontal scaling
 # ===============================================================================
 
 services:
+  # ================================
+  # POSTGRESQL DATABASE
+  # ================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: cruvz-postgres-prod
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: cruvzdb
+      POSTGRES_USER: cruvz
+      POSTGRES_PASSWORD: CHANGE_THIS_STRONG_PASSWORD_FOR_PRODUCTION
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./data/postgres-backups:/backups
+      - ./backend/scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    command: [
+      "postgres",
+      "-c", "max_connections=200",
+      "-c", "shared_buffers=256MB",
+      "-c", "effective_cache_size=1GB",
+      "-c", "maintenance_work_mem=64MB",
+      "-c", "checkpoint_completion_target=0.9",
+      "-c", "wal_buffers=16MB",
+      "-c", "default_statistics_target=100",
+      "-c", "random_page_cost=1.1",
+      "-c", "effective_io_concurrency=200",
+      "-c", "work_mem=4MB",
+      "-c", "min_wal_size=1GB",
+      "-c", "max_wal_size=4GB",
+      "-c", "max_worker_processes=8",
+      "-c", "max_parallel_workers_per_gather=4",
+      "-c", "max_parallel_workers=8",
+      "-c", "max_parallel_maintenance_workers=4"
+    ]
+    networks:
+      - cruvz-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cruvz -d cruvzdb"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+    security_opt:
+      - no-new-privileges:true
+
+  # ================================
+  # REDIS CACHE
+  # ================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: cruvz-redis-prod
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./monitoring/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass CHANGE_THIS_REDIS_PASSWORD
+    networks:
+      - cruvz-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "CHANGE_THIS_REDIS_PASSWORD", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+
+  # ================================
+  # BACKEND API SERVER (SCALED)
+  # ================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    container_name: cruvz-backend-prod
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/logs/backend:/app/logs
+      - ./data/uploads:/app/uploads
+      - ./.env.production:/app/.env:ro
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=cruvz
+      - POSTGRES_PASSWORD=CHANGE_THIS_STRONG_PASSWORD_FOR_PRODUCTION
+      - POSTGRES_DB=cruvzdb
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=CHANGE_THIS_REDIS_PASSWORD
+      - LOG_LEVEL=info
+      - ENABLE_CORS=true
+      - ENABLE_HELMET=true
+      - ENABLE_RATE_LIMITING=true
+      - MAX_CONCURRENT_STREAMS=1000
+      - MAX_VIEWERS_PER_STREAM=10000
+    networks:
+      - cruvz-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+    security_opt:
+      - no-new-privileges:true
+
   # ================================
   # CORE STREAMING ENGINE (ORIGIN)
   # ================================
@@ -34,8 +180,11 @@ services:
       - OME_SRT_PROV_PORT=9999
       - OME_WEBRTC_SIGNALLING_PORT=3333
       - OME_API_PORT=8080
+      - MAX_CONCURRENT_STREAMS=1000
     networks:
       - cruvz-network
+    depends_on:
+      - backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/v1/stats/current"]
       interval: 30s
@@ -45,59 +194,13 @@ services:
     deploy:
       resources:
         limits:
+          memory: 4G
+          cpus: '3.0'
+        reservations:
           memory: 2G
           cpus: '2.0'
-        reservations:
-          memory: 1G
-          cpus: '1.0'
     security_opt:
       - no-new-privileges:true
-
-  # ================================
-  # BACKEND API SERVER
-  # ================================
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=production
-    container_name: cruvz-backend
-    restart: unless-stopped
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./data/database:/app/data
-      - ./data/logs/backend:/app/logs
-      - ./data/uploads:/app/uploads
-      - ./.env.production:/app/.env:ro
-    environment:
-      - NODE_ENV=production
-      - PORT=5000
-      - DATABASE_URL=/app/data/cruvz_production.db
-      - LOG_LEVEL=info
-      - ENABLE_CORS=true
-      - ENABLE_HELMET=true
-      - ENABLE_RATE_LIMITING=true
-    networks:
-      - cruvz-network
-    depends_on:
-      - origin
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 45s
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1.0'
-        reservations:
-          memory: 512M
-          cpus: '0.5'
-    security_opt:
       - no-new-privileges:true
 
   # ================================

@@ -4,11 +4,11 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const path = require('path');
-const fs = require('fs');
 require('express-async-errors');
 require('dotenv').config();
 
 const logger = require('./utils/logger');
+const cache = require('./utils/cache');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -16,11 +16,12 @@ const streamRoutes = require('./routes/streams');
 const analyticsRoutes = require('./routes/analytics');
 const apiRoutes = require('./routes/api');
 const sixSigmaRoutes = require('./routes/sixSigma');
+const db = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Production environment setup
+// Production environment setup for 1000+ users
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Trust proxy for production (behind reverse proxy/nginx)
@@ -30,15 +31,15 @@ app.set('trust proxy', 1);
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "ws:", "wss:"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
+      defaultSrc: ['\'self\''],
+      styleSrc: ['\'self\'', '\'unsafe-inline\''],
+      scriptSrc: ['\'self\''],
+      imgSrc: ['\'self\'', 'data:', 'https:'],
+      connectSrc: ['\'self\'', 'ws:', 'wss:'],
+      fontSrc: ['\'self\''],
+      objectSrc: ['\'none\''],
+      mediaSrc: ['\'self\''],
+      frameSrc: ['\'none\''],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -49,225 +50,289 @@ app.use(helmet({
   }
 }));
 
-// Production CORS configuration
+// Enhanced CORS for production streaming
 app.use(cors({
-  origin: isProduction ? ['http://localhost', 'https://localhost'] : ['http://localhost', 'http://localhost:3000'],
+  origin: isProduction 
+    ? process.env.ALLOWED_ORIGINS?.split(',') || ['https://streaming.cruvz.com']
+    : true,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key'],
-  exposedHeaders: ['X-Total-Count', 'X-Page-Count']
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key']
 }));
 
-// Production rate limiting - stricter limits
-const generalLimiter = rateLimit({
-  windowMs: isProduction ? 15 * 60 * 1000 : 60 * 1000, // 15 min in production, 1 min in dev
-  max: isProduction ? 100 : 1000,
-  message: {
-    success: false,
-    error: 'Too many requests from this IP, please try again later.',
-    retryAfter: '15 minutes'
-  },
+// Production-optimized rate limiting for 1000+ users
+const createRateLimiter = (windowMs, max, message) => rateLimit({
+  windowMs,
+  max,
+  message: { error: message },
   standardHeaders: true,
   legacyHeaders: false,
-});
-
-app.use(generalLimiter);
-
-// Authentication rate limiting (more restrictive but reasonable)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 10 : 20, // 10 attempts in production, 20 in dev
-  message: {
-    success: false,
-    error: 'Too many authentication attempts, please try again later.',
-    retryAfter: '15 minutes'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  // Allow for different IPs to have their own limits
-  keyGenerator: (req) => {
-    return req.ip;
-  },
-  // Skip rate limiting for successful requests
-  skipSuccessfulRequests: true
-});
-
-// Streaming API rate limiting (higher limits for active streams)
-const streamingLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: isProduction ? 200 : 500, // Higher limits for streaming operations
-  message: {
-    success: false,
-    error: 'Streaming rate limit exceeded, please wait before retrying.',
-    retryAfter: '5 minutes'
+  handler: (req, res) => {
+    logger.warn(`Rate limit exceeded for IP: ${req.ip}, Path: ${req.path}`);
+    res.status(429).json({ error: message });
   }
 });
 
-// Body parsing middleware with size limits
+// Different rate limits for different endpoints
+app.use('/api/auth', createRateLimiter(15 * 60 * 1000, 10, 'Too many authentication attempts'));
+app.use('/api/streams', createRateLimiter(60 * 1000, 100, 'Too many streaming requests'));
+app.use('/api', createRateLimiter(15 * 60 * 1000, 1000, 'API rate limit exceeded'));
+
+// Enhanced logging for production
+if (isProduction) {
+  app.use(morgan('combined', {
+    stream: { write: message => logger.info(message.trim()) }
+  }));
+} else {
+  app.use(morgan('dev'));
+}
+
+// Body parsing with size limits for streaming data
 app.use(express.json({ 
-  limit: isProduction ? '10mb' : '50mb',
+  limit: '10mb',
   verify: (req, res, buf) => {
-    // Validate JSON structure in production
-    if (isProduction && req.get('content-type') === 'application/json') {
+    req.rawBody = buf;
+  }
+}));
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '10mb' 
+}));
+
+// Health check endpoint with production metrics
+app.get('/health', async (req, res) => {
+  try {
+    const health = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      production: isProduction,
+      uptime: process.uptime(),
+      nodeVersion: process.version,
+      memory: process.memoryUsage(),
+      services: {}
+    };
+
+    // Check database connection
+    try {
+      await db.raw('SELECT 1');
+      health.services.database = 'connected';
+    } catch (error) {
+      health.services.database = 'disconnected';
+      health.status = 'degraded';
+      logger.error('Database health check failed:', error);
+    }
+
+    // Check Redis cache
+    try {
+      const redisHealth = await cache.ping();
+      health.services.cache = redisHealth ? 'connected' : 'disconnected';
+      if (!redisHealth) health.status = 'degraded';
+    } catch (error) {
+      health.services.cache = 'disconnected';
+      health.status = 'degraded';
+      logger.error('Redis health check failed:', error);
+    }
+
+    // Additional production metrics
+    if (isProduction) {
       try {
-        JSON.parse(buf);
-      } catch (e) {
-        throw new Error('Invalid JSON');
+        const dbStats = await db.raw('SELECT * FROM get_db_stats()');
+        health.database_stats = dbStats.rows[0];
+      } catch (error) {
+        logger.error('Database stats error:', error);
       }
     }
-  }
-}));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Production logging
-app.use(morgan(isProduction ? 'combined' : 'dev', {
-  stream: {
-    write: (message) => logger.info(message.trim())
-  },
-  skip: (req, res) => {
-    // Skip health check logs in production to reduce noise
-    return isProduction && req.url === '/health';
+    const statusCode = health.status === 'healthy' ? 200 : 503;
+    res.status(statusCode).json(health);
+  } catch (error) {
+    logger.error('Health check error:', error);
+    res.status(503).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
-}));
-
-// Security middleware - Additional headers
-app.use((req, res, next) => {
-  res.setHeader('X-DNS-Prefetch-Control', 'off');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-Download-Options', 'noopen');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  if (isProduction) {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  }
-  next();
 });
 
-// Health check endpoint with detailed status
-app.get('/health', (req, res) => {
-  const healthData = {
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    version: '2.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    uptime: process.uptime(),
-    memory: process.memoryUsage(),
-    nodeVersion: process.version
-  };
-  
-  if (isProduction) {
-    // In production, include basic system info
-    healthData.production = true;
-    healthData.pid = process.pid;
-  }
-  
-  res.status(200).json(healthData);
-});
-
-// Metrics endpoint for monitoring
-app.get('/metrics', (req, res) => {
-  const metrics = {
-    timestamp: new Date().toISOString(),
-    process: {
+// Production metrics endpoint
+app.get('/metrics', async (req, res) => {
+  try {
+    const metrics = {
+      timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       memory: process.memoryUsage(),
-      cpuUsage: process.cpuUsage(),
-      version: process.version
-    },
-    system: {
-      loadavg: require('os').loadavg(),
-      freemem: require('os').freemem(),
-      totalmem: require('os').totalmem()
+      cpu: process.cpuUsage(),
+      platform: process.platform,
+      nodeVersion: process.version,
+      environment: process.env.NODE_ENV
+    };
+
+    if (isProduction) {
+      // Add streaming-specific metrics
+      try {
+        const activeStreams = await db('streams').where('status', 'active').count('* as count');
+        const totalUsers = await db('users').where('is_active', true).count('* as count');
+        const totalViewers = await db('stream_sessions')
+          .whereNull('left_at')
+          .count('* as count');
+
+        metrics.streaming = {
+          active_streams: parseInt(activeStreams[0].count),
+          total_users: parseInt(totalUsers[0].count),
+          current_viewers: parseInt(totalViewers[0].count)
+        };
+      } catch (error) {
+        logger.error('Metrics collection error:', error);
+      }
     }
-  };
-  res.status(200).json(metrics);
+
+    res.json(metrics);
+  } catch (error) {
+    logger.error('Metrics endpoint error:', error);
+    res.status(500).json({ error: 'Failed to collect metrics' });
+  }
 });
 
-// API routes with appropriate rate limiting
-app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/streams', streamingLimiter, streamRoutes);
+// API routes
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/streams', streamRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/keys', apiRoutes);
 app.use('/api/six-sigma', sixSigmaRoutes);
 
-// Serve static files from web-app directory
-const staticDir = path.join(__dirname, '../web-app');
-app.use(express.static(staticDir));
-
-// Catch-all handler for frontend routes
-app.get('*', (req, res, _next) => {
-  const indexPath = path.join(staticDir, 'index.html');
-  // Only serve if file exists, otherwise respond with a simple message
-  fs.access(indexPath, fs.constants.F_OK, (err) => {
-    if (err) {
-      logger.warn('index.html not found, returning fallback');
-      return res.status(200).send('<html><body><h1>Cruvz Streaming Backend Running</h1></body></html>');
-    }
-    res.sendFile(indexPath);
+// Serve static files in production
+if (isProduction) {
+  app.use(express.static(path.join(__dirname, '../web-app')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../web-app/index.html'));
   });
-});
+}
 
 // Error handling middleware
 app.use(errorHandler);
 
-// Database initialization and migration function
+// Database initialization and security check
 async function initializeDatabase() {
   try {
-    logger.info('Initializing database...');
+    logger.info('Initializing database connection...');
     
-    // Run database migration
-    const migrate = require('./scripts/migrate');
-    await migrate();
-    
-    logger.info('Database initialization completed successfully');
+    // Test database connection
+    await db.raw('SELECT 1');
+    logger.info('✅ Database connection established');
+
+    // Run migrations in production
+    if (isProduction) {
+      logger.info('Running database migrations...');
+      await db.migrate.latest();
+      logger.info('✅ Database migrations completed');
+
+      // Run seeds only if no users exist
+      const userCount = await db('users').count('* as count');
+      if (parseInt(userCount[0].count) === 0) {
+        logger.info('Running database seeds...');
+        await db.seed.run();
+        logger.info('✅ Database seeds completed');
+      }
+    }
+
     return true;
   } catch (error) {
     logger.error('Database initialization failed:', error);
-    return false;
+    throw error;
   }
 }
 
-// Start server with database initialization and security check
-async function startServer() {
-  try {
-    // Run security check first
-    if (process.env.NODE_ENV === 'production') {
-      const securityCheck = require('./scripts/security-check');
-      const securityPassed = securityCheck();
-      if (!securityPassed) {
-        logger.error('Security check failed, server startup blocked');
-        process.exit(1);
-      }
+// Security validation for production
+function performSecurityCheck() {
+  const issues = [];
+  
+  if (isProduction) {
+    // Check JWT secret
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.includes('CHANGE_THIS')) {
+      issues.push('JWT_SECRET contains default value - MUST be changed for production');
     }
     
-    // Initialize database second
-    const dbInitialized = await initializeDatabase();
-    if (!dbInitialized) {
-      logger.error('Failed to initialize database, exiting...');
+    // Check admin password
+    if (!process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD.includes('CHANGE_THIS')) {
+      issues.push('ADMIN_PASSWORD contains default value - MUST be changed for production');
+    }
+    
+    // Check PostgreSQL password
+    if (!process.env.POSTGRES_PASSWORD || process.env.POSTGRES_PASSWORD.includes('CHANGE_THIS')) {
+      issues.push('POSTGRES_PASSWORD contains default value - MUST be changed for production');
+    }
+    
+    // Check Redis password
+    if (!process.env.REDIS_PASSWORD || process.env.REDIS_PASSWORD.includes('CHANGE_THIS')) {
+      issues.push('REDIS_PASSWORD contains default value - MUST be changed for production');
+    }
+  }
+  
+  if (issues.length > 0) {
+    logger.error('Security validation failed:');
+    issues.forEach(issue => logger.error(`- ${issue}`));
+    return false;
+  }
+  
+  logger.info('✅ Security validation passed');
+  return true;
+}
+
+// Graceful shutdown handling
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, shutting down gracefully...');
+  
+  try {
+    await db.destroy();
+    logger.info('Database connections closed');
+    
+    await cache.disconnect();
+    logger.info('Redis cache disconnected');
+    
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during shutdown:', error);
+    process.exit(1);
+  }
+});
+
+// Start server with proper initialization
+async function startServer() {
+  try {
+    // Security check
+    if (!performSecurityCheck()) {
+      logger.error('Security validation failed - stopping server startup');
       process.exit(1);
     }
     
-    // Start the server after all checks pass
-    const server = app.listen(PORT, () => {
-      logger.info(`Cruvz Streaming API server running on port ${PORT}`);
-      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost'}`);
-      logger.info(`Production ready: ${process.env.NODE_ENV === 'production' ? 'YES' : 'NO'}`);
+    // Initialize database
+    await initializeDatabase();
+    
+    // Start server
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      logger.info(`🚀 Cruvz Streaming Server running on port ${PORT}`);
+      logger.info(`📊 Environment: ${process.env.NODE_ENV}`);
+      logger.info(`🎯 Production optimized for 1000+ users: ${isProduction}`);
+      logger.info('💾 Database: PostgreSQL with connection pooling');
+      logger.info('⚡ Cache: Redis for session management');
+      logger.info('🔒 Security: Enhanced production safeguards');
+      
+      if (!isProduction) {
+        logger.info(`🌐 Health check: http://localhost:${PORT}/health`);
+        logger.info(`📈 Metrics: http://localhost:${PORT}/metrics`);
+      }
     });
 
-    // Graceful shutdown handlers
-    const gracefulShutdown = (signal) => {
-      logger.info(`${signal} received, shutting down gracefully`);
-      server.close(() => {
-        logger.info('Process terminated');
-        process.exit(0);
-      });
-    };
+    // Increase server timeout for streaming operations
+    server.timeout = 120000; // 2 minutes
+    server.keepAliveTimeout = 65000; // 65 seconds
+    server.headersTimeout = 66000; // 66 seconds
 
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-    
     return server;
   } catch (error) {
     logger.error('Failed to start server:', error);
@@ -275,7 +340,7 @@ async function startServer() {
   }
 }
 
-// Start the application
+// Start the server only if this is the main module
 if (require.main === module) {
   startServer();
 }
