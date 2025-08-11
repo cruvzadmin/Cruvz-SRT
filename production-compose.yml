@@ -1,5 +1,4 @@
-version: '3.8'
-
+# (Removed obsolete 'version' key to eliminate Compose warning)
 # ===============================================================================
 # CRUVZ STREAMING - PRODUCTION DOCKER COMPOSE FOR 1000+ USERS
 # Optimized PostgreSQL setup with Redis caching and horizontal scaling
@@ -166,7 +165,7 @@ services:
     ports:
       - "8080:8080"      # Origin server
       - "1935:1935"      # RTMP
-      - "9999:9999"      # SRT
+      - "9999:9999/udp"  # SRT (CORRECTION: explicitly marked UDP)
       - "3333:3333"      # WebRTC
       - "10000-10100:10000-10100/udp"  # WebRTC UDP range
     volumes:
@@ -181,6 +180,8 @@ services:
       - OME_WEBRTC_SIGNALLING_PORT=3333
       - OME_API_PORT=8080
       - MAX_CONCURRENT_STREAMS=1000
+      # CORRECTION: add candidate port range to match exposed UDP ports
+      - OME_WEBRTC_CANDIDATE_PORT=10000-10100
     networks:
       - cruvz-network
     depends_on:
@@ -195,10 +196,10 @@ services:
       resources:
         limits:
           memory: 4G
-          cpus: '3.0'
+          cpus: '2.0'      # CORRECTION: reduced from 3.0 to fit 2 vCPU host
         reservations:
           memory: 2G
-          cpus: '2.0'
+          cpus: '1.0'      # CORRECTION: reduced from 2.0
     security_opt:
       - no-new-privileges:true
 
