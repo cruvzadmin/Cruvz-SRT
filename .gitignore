@@ -55,6 +55,14 @@ backend/logs/
 backend/uploads/
 backend/recordings/
 
+# PRODUCTION SECURITY - Exclude environment files with secrets
+.env.local
+.env.development
+.env.test
+.env.production.secure
+backend/.env
+backend/.env.*
+
 # Six Sigma Build and Deployment Artifacts
 *.log
 *.tmp
@@ -78,9 +86,6 @@ temp/
 cache/
 
 # Development and Testing
-.env.local
-.env.test
-.env.development
 test-results/
 coverage/
 

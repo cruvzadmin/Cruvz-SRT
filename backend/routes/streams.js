@@ -2,12 +2,13 @@ const express = require('express');
 const Joi = require('joi');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
+const cache = require('../utils/cache');
 const { auth } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
 const router = express.Router();
 
-// Validation schemas
+// Validation schemas optimized for production streaming
 const createStreamSchema = Joi.object({
   title: Joi.string().min(3).max(200).required(),
   description: Joi.string().max(1000).optional(),
@@ -18,10 +19,14 @@ const createStreamSchema = Joi.object({
     quality: Joi.string().valid('720p', '1080p', '4k').default('1080p'),
     bitrate: Joi.number().min(1000).max(50000).default(5000),
     fps: Joi.number().valid(24, 30, 60).default(30),
-    audio_bitrate: Joi.number().min(64).max(320).default(128)
+    audio_bitrate: Joi.number().min(64).max(320).default(128),
+    enable_transcoding: Joi.boolean().default(true),
+    adaptive_bitrate: Joi.boolean().default(true)
   }).optional(),
-  max_viewers: Joi.number().min(1).max(100000).default(1000),
-  is_recording: Joi.boolean().default(false)
+  max_viewers: Joi.number().min(1).max(100000).default(10000),
+  is_recording: Joi.boolean().default(false),
+  auto_start: Joi.boolean().default(false),
+  geographic_restrictions: Joi.array().items(Joi.string()).optional()
 });
 
 const updateStreamSchema = Joi.object({
@@ -33,13 +38,16 @@ const updateStreamSchema = Joi.object({
     quality: Joi.string().valid('720p', '1080p', '4k'),
     bitrate: Joi.number().min(1000).max(50000),
     fps: Joi.number().valid(24, 30, 60),
-    audio_bitrate: Joi.number().min(64).max(320)
+    audio_bitrate: Joi.number().min(64).max(320),
+    enable_transcoding: Joi.boolean(),
+    adaptive_bitrate: Joi.boolean()
   }).optional(),
   max_viewers: Joi.number().min(1).max(100000).optional(),
-  is_recording: Joi.boolean().optional()
+  is_recording: Joi.boolean().optional(),
+  geographic_restrictions: Joi.array().items(Joi.string()).optional()
 });
 
-// Generate stream key
+// Generate secure stream key
 const generateStreamKey = () => {
   return `stream_${uuidv4().replace(/-/g, '')}`;
 };
@@ -47,26 +55,69 @@ const generateStreamKey = () => {
 // Get default port for protocol
 const getDefaultPort = (protocol) => {
   switch(protocol) {
-    case 'rtmp': return 1935;
-    case 'srt': return 9999;
-    case 'webrtc': return 3333;
-    default: return 1935;
+  case 'rtmp': return 1935;
+  case 'srt': return 9999;
+  case 'webrtc': return 3333;
+  default: return 1935;
+  }
+};
+
+// Build streaming URLs for different protocols
+const buildStreamingUrls = (protocol, streamKey) => {
+  const originHost = process.env.ORIGIN_HOST || 'origin';
+  const port = getDefaultPort(protocol);
+  
+  switch(protocol) {
+  case 'rtmp':
+    return {
+      publish_url: `rtmp://${originHost}:${port}/live`,
+      play_url: `rtmp://${originHost}:${port}/live/${streamKey}`,
+      hls_url: `http://${originHost}:8080/live/${streamKey}/playlist.m3u8`,
+      dash_url: `http://${originHost}:8080/live/${streamKey}/manifest.mpd`,
+      webrtc_url: `ws://${originHost}:3333/live/${streamKey}`
+    };
+  case 'srt':
+    return {
+      publish_url: `srt://${originHost}:${port}?streamid=publish/${streamKey}`,
+      play_url: `srt://${originHost}:${port}?streamid=play/${streamKey}`,
+      hls_url: `http://${originHost}:8080/live/${streamKey}/playlist.m3u8`,
+      dash_url: `http://${originHost}:8080/live/${streamKey}/manifest.mpd`
+    };
+  case 'webrtc':
+    return {
+      publish_url: `ws://${originHost}:3333/live/${streamKey}`,
+      play_url: `ws://${originHost}:3333/live/${streamKey}`,
+      hls_url: `http://${originHost}:8080/live/${streamKey}/playlist.m3u8`
+    };
+  default:
+    return {};
   }
 };
 
 // @route   GET /api/streams
-// @desc    Get all streams for user
+// @desc    Get all streams for user with caching
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10, status, protocol } = req.query;
     const offset = (page - 1) * limit;
+    const cacheKey = `user_streams:${req.user.id}:${page}:${limit}:${status || 'all'}:${protocol || 'all'}`;
+
+    // Try to get from cache first
+    const cachedData = await cache.get(cacheKey);
+    if (cachedData) {
+      return res.json({
+        success: true,
+        data: cachedData,
+        cached: true
+      });
+    }
 
     let query = db('streams')
       .select('*')
       .where({ user_id: req.user.id })
       .orderBy('created_at', 'desc')
-      .limit(limit)
+      .limit(parseInt(limit))
       .offset(offset);
 
     if (status) {
@@ -78,6 +129,16 @@ router.get('/', auth, async (req, res) => {
     }
 
     const streams = await query;
+
+    // Get real-time viewer counts from cache
+    for (const stream of streams) {
+      if (stream.status === 'active') {
+        stream.current_viewers = await cache.getViewerCount(stream.id);
+      }
+      
+      // Add streaming URLs
+      stream.streaming_urls = buildStreamingUrls(stream.protocol, stream.stream_key);
+    }
 
     // Get total count
     let countQuery = db('streams')
@@ -94,23 +155,28 @@ router.get('/', auth, async (req, res) => {
 
     const [{ total }] = await countQuery;
 
+    const responseData = {
+      streams,
+      pagination: {
+        current_page: parseInt(page),
+        per_page: parseInt(limit),
+        total: parseInt(total),
+        total_pages: Math.ceil(total / limit)
+      }
+    };
+
+    // Cache the result for 30 seconds
+    await cache.set(cacheKey, responseData, 30);
+
     res.json({
       success: true,
-      data: {
-        streams,
-        pagination: {
-          current_page: parseInt(page),
-          total_pages: Math.ceil(total / limit),
-          total_items: total,
-          items_per_page: parseInt(limit)
-        }
-      }
+      data: responseData
     });
   } catch (error) {
     logger.error('Get streams error:', error);
     res.status(500).json({
       success: false,
-      error: 'Server error'
+      error: 'Failed to fetch streams'
     });
   }
 });
