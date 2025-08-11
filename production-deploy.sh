@@ -39,9 +39,10 @@ rm -f "$DEPLOYMENT_LOG" 2>/dev/null || true
 log() {
     local level=$1
     shift
-    local timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+    local timestamp
+    timestamp=$(date +'%Y-%m-%d %H:%M:%S')
     local message="[$timestamp] $level: $*"
-    
+
     case $level in
         "INFO")     echo -e "${BLUE}ℹ️  $message${NC}" | tee -a "$DEPLOYMENT_LOG" ;;
         "SUCCESS")  echo -e "${GREEN}✅ $message${NC}" | tee -a "$DEPLOYMENT_LOG" ;;
@@ -57,12 +58,12 @@ handle_error() {
     local exit_code=$?
     log "ERROR" "Production deployment failed with exit code $exit_code"
     log "ERROR" "Check deployment log: $DEPLOYMENT_LOG"
-    
+
     if command -v docker &> /dev/null; then
         log "INFO" "Recent container logs:"
         docker compose -f "$COMPOSE_FILE" logs --tail=20 2>/dev/null || true
     fi
-    
+
     cleanup_on_failure
     exit $exit_code
 }
@@ -93,37 +94,38 @@ print_banner() {
 # Prerequisites validation
 validate_prerequisites() {
     log "STEP" "Step 1/8: Validating Prerequisites..."
-    
+
     local required_commands=("docker" "curl")
     local missing_commands=()
-    
+
     for cmd in "${required_commands[@]}"; do
         if ! command -v "$cmd" &> /dev/null; then
             missing_commands+=("$cmd")
         fi
     done
-    
+
     if ! docker compose version &> /dev/null; then
         missing_commands+=("docker compose")
     fi
-    
+
     if [ ${#missing_commands[@]} -gt 0 ]; then
         log "ERROR" "Missing required commands: ${missing_commands[*]}"
         log "ERROR" "Please install missing dependencies and retry"
         return 1
     fi
-    
+
     if ! docker info &> /dev/null; then
         log "ERROR" "Docker daemon is not running or accessible"
         return 1
     fi
-    
-    local available_space_gb=$(df . | awk 'NR==2 {print int($4/1024/1024)}')
+
+    local available_space_gb
+    available_space_gb=$(df . | awk 'NR==2 {print int($4/1024/1024)}')
     if [ "$available_space_gb" -lt 3 ]; then
         log "ERROR" "Insufficient disk space. Required: 3GB, Available: ${available_space_gb}GB"
         return 1
     fi
-    
+
     log "SUCCESS" "All prerequisites validated"
     return 0
 }
@@ -131,15 +133,15 @@ validate_prerequisites() {
 # Clean up old deployments
 cleanup_previous() {
     log "STEP" "Step 2/8: Cleaning Previous Deployments..."
-    
+
     # Stop all existing services
     log "INFO" "Stopping existing services..."
     docker compose -f "$COMPOSE_FILE" down --remove-orphans -v 2>/dev/null || true
-    
+
     # Clean up old images and containers
     log "INFO" "Cleaning Docker resources..."
     docker system prune -f --volumes 2>/dev/null || true
-    
+
     log "SUCCESS" "Cleanup completed"
     return 0
 }
@@ -147,15 +149,15 @@ cleanup_previous() {
 # Create production environment
 setup_production_environment() {
     log "STEP" "Step 3/8: Setting Up Production Environment..."
-    
+
     # Create data directories
     mkdir -p data/{database,logs,uploads,recordings}
     mkdir -p ssl/{certs,keys}
-    
+
     # Set permissions
     chmod 755 data ssl
     chmod 700 ssl/keys
-    
+
     # Generate production environment file if it doesn't exist
     if [ ! -f ".env.production" ]; then
         log "INFO" "Generating production environment configuration..."
@@ -165,7 +167,11 @@ NODE_ENV=production
 PORT=5000
 
 # Database
-DATABASE_URL=./data/database/cruvz_production.db
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_USER=cruvz
+POSTGRES_PASSWORD=cruvzpass
+POSTGRES_DB=cruvzdb
 
 # Security
 JWT_SECRET=$(openssl rand -hex 32)
@@ -199,7 +205,7 @@ LOG_FILE=./data/logs/cruvz.log
 EOF
         log "SUCCESS" "Production environment file created"
     fi
-    
+
     log "SUCCESS" "Production environment setup completed"
     return 0
 }
@@ -207,19 +213,19 @@ EOF
 # Build and deploy services
 deploy_services() {
     log "STEP" "Step 4/8: Building and Deploying Services..."
-    
+
     log "INFO" "Building all services with production optimizations..."
     if ! docker compose -f "$COMPOSE_FILE" build --no-cache 2>&1 | tee -a "$DEPLOYMENT_LOG"; then
         log "ERROR" "Service build failed"
         return 1
     fi
-    
+
     log "INFO" "Starting all production services..."
     if ! docker compose -f "$COMPOSE_FILE" up -d 2>&1 | tee -a "$DEPLOYMENT_LOG"; then
         log "ERROR" "Service startup failed"
         return 1
     fi
-    
+
     log "SUCCESS" "All services deployed successfully"
     return 0
 }
@@ -227,17 +233,19 @@ deploy_services() {
 # Wait for services to be ready
 wait_for_services() {
     log "STEP" "Step 5/8: Waiting for Services to Initialize..."
-    
+
     local max_wait=$SERVICE_CHECK_TIMEOUT
     local wait_time=0
     local check_interval=10
-    
+
     log "INFO" "Waiting for all services to be healthy (timeout: ${max_wait}s)..."
-    
+
     while [ $wait_time -lt $max_wait ]; do
-        local running_services=$(docker compose -f "$COMPOSE_FILE" ps --filter status=running --format json 2>/dev/null | wc -l)
-        local total_services=$(docker compose -f "$COMPOSE_FILE" ps --format json 2>/dev/null | wc -l)
-        
+        local running_services
+        running_services=$(docker compose -f "$COMPOSE_FILE" ps --filter status=running --format json 2>/dev/null | wc -l)
+        local total_services
+        total_services=$(docker compose -f "$COMPOSE_FILE" ps --format json 2>/dev/null | wc -l)
+
         if [ "$total_services" -gt 0 ] && [ "$running_services" -eq "$total_services" ]; then
             log "SUCCESS" "All services are running ($running_services/$total_services)"
             sleep 20  # Additional stabilization time
@@ -247,11 +255,11 @@ wait_for_services() {
         else
             log "INFO" "Waiting for services to start..."
         fi
-        
+
         sleep $check_interval
         ((wait_time += check_interval))
     done
-    
+
     log "WARN" "Service initialization timeout, but continuing with health checks"
     return 0
 }
@@ -259,7 +267,7 @@ wait_for_services() {
 # Comprehensive health validation
 validate_health() {
     log "STEP" "Step 6/8: Validating Service Health..."
-    
+
     local endpoints=(
         "http://localhost:80|Web Application"
         "http://localhost:5000/health|Backend API"
@@ -267,17 +275,17 @@ validate_health() {
         "http://localhost:9090/-/healthy|Prometheus Monitoring"
         "http://localhost:8080|Streaming Engine"
     )
-    
+
     local healthy_count=0
     local total_count=${#endpoints[@]}
-    
+
     for endpoint_info in "${endpoints[@]}"; do
         IFS='|' read -r endpoint name <<< "$endpoint_info"
-        
+
         local retries=3
         local retry_delay=5
         local endpoint_healthy=false
-        
+
         for ((i=1; i<=retries; i++)); do
             if curl -s -f --max-time 10 "$endpoint" > /dev/null 2>&1; then
                 log "SUCCESS" "$name is healthy"
@@ -291,13 +299,13 @@ validate_health() {
                 fi
             fi
         done
-        
+
         if [ "$endpoint_healthy" = false ]; then
             log "WARN" "$name is not responding after $retries attempts"
         fi
     done
-    
-    # Check database connectivity
+
+    # Check database connectivity (PostgreSQL)
     log "INFO" "Checking database connectivity..."
     if docker compose -f "$COMPOSE_FILE" exec -T backend node -e "const db = require('./config/database'); db.raw('SELECT 1').then(() => console.log('DB OK')).catch(e => { console.error('DB Error:', e.message); process.exit(1); })" 2>/dev/null; then
         log "SUCCESS" "Database connectivity verified"
@@ -305,9 +313,9 @@ validate_health() {
     else
         log "WARN" "Database connectivity check failed"
     fi
-    
+
     log "INFO" "Health validation completed: $healthy_count/$((total_count+1)) services healthy"
-    
+
     if [ $healthy_count -ge 3 ]; then
         return 0  # Minimum viable services are healthy
     else
@@ -319,25 +327,13 @@ validate_health() {
 # Performance optimization
 optimize_performance() {
     log "STEP" "Step 7/8: Applying Performance Optimizations..."
-    
-    # Database optimization
-    log "INFO" "Optimizing database performance..."
-    docker compose -f "$COMPOSE_FILE" exec -T backend node -e "
-const db = require('./config/database');
-const optimizations = [
-  'PRAGMA journal_mode = WAL;',
-  'PRAGMA synchronous = NORMAL;',
-  'PRAGMA cache_size = 10000;',
-  'PRAGMA temp_store = memory;'
-];
-Promise.all(optimizations.map(sql => db.raw(sql)))
-  .then(() => console.log('Database optimized'))
-  .catch(console.error);
-" 2>/dev/null || log "WARN" "Database optimization partially failed"
-    
+
+    # Database optimization (PostgreSQL - handled by server config, so just log)
+    log "INFO" "PostgreSQL performance optimizations are applied by default configuration."
+
     # System resource optimization
     log "INFO" "Applying container resource limits..."
-    
+
     log "SUCCESS" "Performance optimizations applied"
     return 0
 }
@@ -345,10 +341,10 @@ Promise.all(optimizations.map(sql => db.raw(sql)))
 # Final verification and security check
 final_verification() {
     log "STEP" "Step 8/8: Final Security and Functionality Verification..."
-    
+
     # Test critical user journeys
     log "INFO" "Testing critical endpoints..."
-    
+
     # Test user registration endpoint
     local test_email="test-$(date +%s)@cruvz.local"
     if curl -s -X POST -H "Content-Type: application/json" \
@@ -358,30 +354,30 @@ final_verification() {
     else
         log "WARN" "User registration test inconclusive"
     fi
-    
+
     # Test streaming endpoint accessibility
     if curl -s -f "http://localhost:8080" > /dev/null 2>&1; then
         log "SUCCESS" "Streaming engine accessible"
     else
         log "WARN" "Streaming engine accessibility check failed"
     fi
-    
+
     # Security verification
     log "INFO" "Verifying security configurations..."
     local security_score=0
-    
+
     # Check HTTPS headers (if available)
     if curl -s -I "http://localhost:5000" | grep -q "X-Content-Type-Options"; then
         ((security_score++))
     fi
-    
+
     # Check rate limiting
     if curl -s -I "http://localhost:5000" | grep -q "X-RateLimit"; then
         ((security_score++))
     fi
-    
+
     log "INFO" "Security score: $security_score/2 checks passed"
-    
+
     log "SUCCESS" "Final verification completed"
     return 0
 }
@@ -390,9 +386,9 @@ final_verification() {
 generate_report() {
     local status=$1
     local report_file="$LOG_DIR/production-report-$(date +%Y%m%d-%H%M%S).txt"
-    
+
     log "INFO" "Generating comprehensive deployment report..."
-    
+
     {
         echo "==============================================================================="
         echo "CRUVZ STREAMING - PRODUCTION DEPLOYMENT REPORT"
@@ -424,7 +420,7 @@ generate_report() {
         echo "PRODUCTION FEATURES:"
         echo "-------------------"
         echo "✅ Real Backend API with JWT authentication"
-        echo "✅ SQLite database with production schema"
+        echo "✅ PostgreSQL database with production schema"
         echo "✅ Stream management (create, start, stop, delete)"
         echo "✅ User management with role-based access"
         echo "✅ Real-time analytics and monitoring"
@@ -458,14 +454,14 @@ generate_report() {
         echo ""
         echo "==============================================================================="
     } > "$report_file"
-    
+
     log "SUCCESS" "Report generated: $report_file"
 }
 
 # Display final status
 display_final_status() {
     local success=$1
-    
+
     echo ""
     if [ "$success" = true ]; then
         log "HEADER" "============================================================================"
@@ -507,17 +503,17 @@ display_final_status() {
 # Main deployment function
 main() {
     local deploy_success=true
-    
+
     print_banner
-    
+
     log "INFO" "Starting Cruvz Streaming production deployment..."
     log "INFO" "Target: Zero-error production system with advanced features"
     log "INFO" "Deployment log: $DEPLOYMENT_LOG"
     echo ""
-    
+
     # Execute deployment steps
     validate_prerequisites || deploy_success=false
-    
+
     if [ "$deploy_success" = true ]; then
         cleanup_previous || deploy_success=false
         setup_production_environment || deploy_success=false
@@ -527,17 +523,17 @@ main() {
         optimize_performance || deploy_success=false
         final_verification || deploy_success=false
     fi
-    
+
     # Generate report regardless of success/failure
     if [ "$deploy_success" = true ]; then
         generate_report "SUCCESS"
     else
         generate_report "PARTIAL"
     fi
-    
+
     # Display final status
     display_final_status "$deploy_success"
-    
+
     exit 0
 }
 
