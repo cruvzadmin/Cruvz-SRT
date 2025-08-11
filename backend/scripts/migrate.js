@@ -2,18 +2,26 @@ const db = require('../config/database');
 const bcrypt = require('bcryptjs');
 const logger = require('../utils/logger');
 
-// Utility: Check if a table exists in PostgreSQL
+// Utility: Check if a table exists (database-agnostic)
 async function tableExists(tableName) {
-  const result = await db('information_schema.tables')
-    .where({ table_name: tableName, table_schema: 'public' });
-  return result.length > 0;
+  try {
+    const hasTable = await db.schema.hasTable(tableName);
+    return hasTable;
+  } catch (error) {
+    logger.error(`Error checking if table ${tableName} exists:`, error);
+    return false;
+  }
 }
 
-// Utility: Check if a column exists in a table (PostgreSQL)
+// Utility: Check if a column exists in a table (database-agnostic)
 async function columnExists(tableName, columnName) {
-  const result = await db('information_schema.columns')
-    .where({ table_name: tableName, column_name: columnName, table_schema: 'public' });
-  return result.length > 0;
+  try {
+    const hasColumn = await db.schema.hasColumn(tableName, columnName);
+    return hasColumn;
+  } catch (error) {
+    logger.error(`Error checking if column ${columnName} exists in table ${tableName}:`, error);
+    return false;
+  }
 }
 
 async function migrate() {

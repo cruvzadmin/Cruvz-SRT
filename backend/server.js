@@ -228,21 +228,32 @@ async function initializeDatabase() {
   }
 }
 
-// Start server with database initialization
+// Start server with database initialization and security check
 async function startServer() {
   try {
-    // Initialize database first
+    // Run security check first
+    if (process.env.NODE_ENV === 'production') {
+      const securityCheck = require('./scripts/security-check');
+      const securityPassed = securityCheck();
+      if (!securityPassed) {
+        logger.error('Security check failed, server startup blocked');
+        process.exit(1);
+      }
+    }
+    
+    // Initialize database second
     const dbInitialized = await initializeDatabase();
     if (!dbInitialized) {
       logger.error('Failed to initialize database, exiting...');
       process.exit(1);
     }
     
-    // Start the server after database is ready
+    // Start the server after all checks pass
     const server = app.listen(PORT, () => {
       logger.info(`Cruvz Streaming API server running on port ${PORT}`);
       logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost'}`);
+      logger.info(`Production ready: ${process.env.NODE_ENV === 'production' ? 'YES' : 'NO'}`);
     });
 
     // Graceful shutdown handlers
