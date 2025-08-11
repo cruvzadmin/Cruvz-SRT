@@ -1,27 +1,18 @@
-// Production-Ready Cruvz Streaming Backend API with PostgreSQL
+// Minimal working backend with PostgreSQL
 const express = require('express');
 const { Client } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'production-jwt-secret-key-change-this';
+const JWT_SECRET = 'production-jwt-secret-key';
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-// Simple logger
-const logger = {
-  info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
-  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
-  warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args)
-};
 
 // PostgreSQL client setup
 let pgClient = null;
@@ -29,15 +20,15 @@ let pgClient = null;
 async function connectDatabase() {
   try {
     pgClient = new Client({
-      host: process.env.POSTGRES_HOST || 'localhost',
-      user: process.env.POSTGRES_USER || 'cruvz', 
-      password: process.env.POSTGRES_PASSWORD || 'CHANGE_THIS_STRONG_PASSWORD_FOR_PRODUCTION',
-      database: process.env.POSTGRES_DB || 'cruvzdb',
-      port: process.env.POSTGRES_PORT || 5432,
+      host: 'localhost',
+      user: 'cruvz', 
+      password: 'CHANGE_THIS_STRONG_PASSWORD_FOR_PRODUCTION',
+      database: 'cruvzdb',
+      port: 5432,
     });
     
     await pgClient.connect();
-    logger.info('✅ Connected to PostgreSQL database');
+    console.log('✅ Connected to PostgreSQL');
 
     // Create tables if they don't exist
     await pgClient.query(`
