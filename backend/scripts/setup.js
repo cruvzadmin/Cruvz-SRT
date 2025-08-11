@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 // Try to require logger, fallback to console if not found
 let logger;
@@ -18,7 +19,6 @@ async function setup() {
 
     // Create necessary directories
     const directories = [
-      path.join(__dirname, '../data'),
       path.join(__dirname, '../logs'),
       path.join(__dirname, '../uploads'),
       path.join(__dirname, '../recordings')
@@ -31,18 +31,34 @@ async function setup() {
       }
     }
 
-    // Run database migration
-    let migrate;
+    // Install dependencies (if not already installed)
     try {
-      migrate = require('./migrate');
-    } catch (e) {
-      logger.info('No migrate script found. Skipping migrations.');
-      migrate = null;
+      logger.info('Running npm install...');
+      execSync('npm install', { stdio: 'inherit', cwd: path.join(__dirname, '..') });
+      logger.info('npm install completed.');
+    } catch (err) {
+      logger.error('npm install failed:', err);
+      throw err;
     }
-    if (typeof migrate === 'function') {
-      await migrate();
-    } else if (migrate && typeof migrate.default === 'function') {
-      await migrate.default();
+
+    // Run database migrations
+    try {
+      logger.info('Running database migrations...');
+      execSync('npx knex migrate:latest', { stdio: 'inherit', cwd: path.join(__dirname, '..') });
+      logger.info('Database migrations completed.');
+    } catch (err) {
+      logger.error('Database migration failed:', err);
+      throw err;
+    }
+
+    // Run database seeds (optional)
+    try {
+      logger.info('Running database seeds...');
+      execSync('npx knex seed:run', { stdio: 'inherit', cwd: path.join(__dirname, '..') });
+      logger.info('Database seeding completed.');
+    } catch (err) {
+      logger.error('Database seeding failed (continuing):', err);
+      // Not a critical failure, continue setup
     }
 
     logger.info('Backend setup completed successfully');
