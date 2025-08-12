@@ -17,7 +17,7 @@ const auth = async (req, res, next) => {
     
     // Get user from database
     const user = await db('users')
-      .select('id', 'email', 'name', 'role', 'is_active', 'last_login')
+      .select('id', 'email', 'first_name', 'last_name', 'role', 'is_active', 'last_login_at')
       .where({ id: decoded.id })
       .first();
 

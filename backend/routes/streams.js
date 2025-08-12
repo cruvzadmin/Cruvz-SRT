@@ -237,7 +237,7 @@ router.post('/', auth, async (req, res) => {
 
     // Check stream limit based on user role
     const userStreams = await db('streams')
-      .where({ user_id: req.user.id, status: 'live' })
+      .where({ user_id: req.user.id, status: 'active' })
       .count('id as count');
 
     const maxStreams = req.user.role === 'admin' ? 100 : req.user.role === 'premium' ? 10 : 3;
@@ -250,8 +250,10 @@ router.post('/', auth, async (req, res) => {
     }
 
     const streamKey = generateStreamKey();
+    const streamId = uuidv4();
 
-    const [streamId] = await db('streams').insert({
+    await db('streams').insert({
+      id: streamId,
       user_id: req.user.id,
       title: value.title,
       description: value.description,
@@ -311,7 +313,7 @@ router.put('/:id', auth, async (req, res) => {
       });
     }
 
-    if (stream.status === 'live') {
+    if (stream.status === 'active') {
       return res.status(400).json({
         success: false,
         error: 'Cannot update live stream'
@@ -366,30 +368,40 @@ router.post('/:id/start', auth, async (req, res) => {
       });
     }
 
-    if (stream.status === 'live') {
+    if (stream.status === 'active') {
       return res.status(400).json({
         success: false,
-        error: 'Stream is already live'
+        error: 'Stream is already active'
       });
     }
 
     await db('streams')
       .where({ id: req.params.id })
       .update({
-        status: 'live',
+        status: 'active',
         started_at: new Date(),
         ended_at: null
       });
 
-    // Initialize analytics record
-    await db('stream_analytics').insert({
-      stream_id: stream.id,
-      current_viewers: 0,
-      peak_viewers: 0,
-      total_viewers: 0,
-      duration_seconds: 0,
-      recorded_at: new Date()
-    });
+    // Initialize analytics record for today
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const analyticsId = uuidv4();
+    
+    try {
+      await db('stream_analytics').insert({
+        id: analyticsId,
+        stream_id: stream.id,
+        date: today,
+        unique_viewers: 0,
+        total_views: 0,
+        peak_concurrent_viewers: 0,
+        total_watch_time: 0,
+        avg_watch_duration: 0
+      });
+    } catch (error) {
+      // Analytics record might already exist for today - that's fine
+      logger.warn(`Analytics record already exists for stream ${stream.id} on ${today}`);
+    }
 
     logger.info(`Stream started: ${stream.title} by user ${req.user.email}`);
 
@@ -442,10 +454,10 @@ router.post('/:id/stop', auth, async (req, res) => {
       });
     }
 
-    if (stream.status !== 'live') {
+    if (stream.status !== 'active') {
       return res.status(400).json({
         success: false,
-        error: 'Stream is not live'
+        error: 'Stream is not active'
       });
     }
 
@@ -490,7 +502,7 @@ router.delete('/:id', auth, async (req, res) => {
       });
     }
 
-    if (stream.status === 'live') {
+    if (stream.status === 'active') {
       return res.status(400).json({
         success: false,
         error: 'Cannot delete live stream'
