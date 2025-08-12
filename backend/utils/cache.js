@@ -10,6 +10,15 @@ class CacheManager {
 
   init() {
     try {
+      // Check if Redis should be used
+      const useRedis = process.env.USE_REDIS === 'true' || process.env.REDIS_HOST;
+      
+      if (!useRedis) {
+        logger.info('Redis cache disabled - running without cache');
+        this.isConnected = false;
+        return;
+      }
+
       const redisConfig = {
         host: process.env.REDIS_HOST || 'redis',
         port: process.env.REDIS_PORT || 6379,
@@ -35,17 +44,18 @@ class CacheManager {
       });
 
       this.redis.on('error', (err) => {
-        logger.error('Redis cache connection error:', err);
+        logger.warn('Redis cache connection error - continuing without cache:', err.message);
         this.isConnected = false;
       });
 
       this.redis.on('close', () => {
-        logger.warn('Redis cache connection closed');
+        logger.warn('Redis cache connection closed - continuing without cache');
         this.isConnected = false;
       });
 
     } catch (error) {
-      logger.error('Failed to initialize Redis cache:', error);
+      logger.warn('Failed to initialize Redis cache - continuing without cache:', error.message);
+      this.isConnected = false;
     }
   }
 

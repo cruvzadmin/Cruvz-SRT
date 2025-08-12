@@ -307,7 +307,7 @@ async function startServer() {
 
   app.listen(PORT, () => {
     console.log(`🚀 Cruvz Streaming API running on port ${PORT}`);
-    console.log(`🗄️  Connected to PostgreSQL database`);
+    console.log('🗄️  Connected to PostgreSQL database');
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
   });
 }

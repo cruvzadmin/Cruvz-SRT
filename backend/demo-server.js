@@ -31,7 +31,7 @@ app.post('/api/auth/register', (req, res) => {
   }
 
   // Check if user exists
-  for (let user of mockUsers.values()) {
+  for (const user of mockUsers.values()) {
     if (user.email === email) {
       return res.status(400).json({ success: false, error: 'User already exists' });
     }
@@ -67,7 +67,7 @@ app.post('/api/auth/register', (req, res) => {
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
 
-  for (let user of mockUsers.values()) {
+  for (const user of mockUsers.values()) {
     if (user.email === email && user.password_hash === 'hashed_' + password) {
       const token = `jwt_token_${user.id}`;
       const { password_hash, ...userWithoutPassword } = user;
