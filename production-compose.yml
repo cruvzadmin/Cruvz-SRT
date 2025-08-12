@@ -48,8 +48,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U cruvz -d cruvzdb"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5                 # CORRECTION: increase retries
+      start_period: 90s          # CORRECTION: longer init window
     deploy:
       resources:
         limits:
@@ -81,7 +81,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s          # CORRECTION: small grace period
     deploy:
       resources:
         limits:
@@ -136,10 +136,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 45s
+      interval: 25s            # CORRECTION: slightly faster cadence
+      timeout: 8s              # CORRECTION: modest timeout
+      retries: 4               # CORRECTION: more robustness
+      start_period: 50s        # CORRECTION: align with DB readiness
     deploy:
       resources:
         limits:
@@ -190,8 +190,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8080/v1/stats/current"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5              # CORRECTION: increased retries
+      start_period: 75s       # CORRECTION: longer for engine warm-up
     deploy:
       resources:
         limits:
@@ -228,7 +228,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 40s       # CORRECTION: slight buffer for backend readiness
     deploy:
       resources:
         limits:
