@@ -10,7 +10,8 @@ const router = express.Router();
 
 // Validation schemas
 const registerSchema = Joi.object({
-  name: Joi.string().min(2).max(100).required(),
+  first_name: Joi.string().min(2).max(100).required(),
+  last_name: Joi.string().min(2).max(100).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(8).pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])')).required()
     .messages({
@@ -49,7 +50,7 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    const { name, email, password } = value;
+    const { first_name, last_name, email, password } = value;
 
     // Check if user already exists
     const existingUser = await db('users').where({ email }).first();
@@ -64,18 +65,24 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Generate UUID for the user
+    const { v4: uuidv4 } = require('uuid');
+    const userId = uuidv4();
+
     // Create user
-    const [userId] = await db('users').insert({
-      name,
+    await db('users').insert({
+      id: userId,
+      first_name,
+      last_name,
       email,
-      password: hashedPassword,
+      password_hash: hashedPassword,
       role: 'user',
       is_active: true
     });
 
     // Get created user
     const user = await db('users')
-      .select('id', 'name', 'email', 'role', 'created_at')
+      .select('id', 'first_name', 'last_name', 'email', 'role', 'created_at')
       .where({ id: userId })
       .first();
 
@@ -90,7 +97,8 @@ router.post('/register', async (req, res) => {
         token,
         user: {
           id: user.id,
-          name: user.name,
+          first_name: user.first_name,
+          last_name: user.last_name,
           email: user.email,
           role: user.role,
           created_at: user.created_at
@@ -141,7 +149,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -152,7 +160,7 @@ router.post('/login', async (req, res) => {
     // Update last login
     await db('users')
       .where({ id: user.id })
-      .update({ last_login: new Date() });
+      .update({ last_login_at: new Date() });
 
     // Generate token
     const token = generateToken(user);
@@ -165,10 +173,11 @@ router.post('/login', async (req, res) => {
         token,
         user: {
           id: user.id,
-          name: user.name,
+          first_name: user.first_name,
+          last_name: user.last_name,
           email: user.email,
           role: user.role,
-          last_login: new Date()
+          last_login_at: new Date()
         }
       }
     });
@@ -187,7 +196,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await db('users')
-      .select('id', 'name', 'email', 'role', 'is_active', 'avatar_url', 'preferences', 'last_login', 'created_at')
+      .select('id', 'first_name', 'last_name', 'email', 'role', 'is_active', 'avatar_url', 'last_login_at', 'created_at')
       .where({ id: req.user.id })
       .first();
 

@@ -4,7 +4,7 @@ const path = require('path');
 
 // Create logs directory if it doesn't exist
 const fs = require('fs');
-const logDir = path.join(__dirname, '../logs');
+const logDir = path.join(__dirname, '../../data/logs');
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }

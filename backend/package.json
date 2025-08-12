@@ -1,6 +1,6 @@
 {
   "name": "cruvz-streaming-api",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Production-ready API backend for Cruvz Streaming Platform",
   "main": "server.js",
   "scripts": {

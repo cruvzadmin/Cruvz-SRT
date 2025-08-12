@@ -2,18 +2,28 @@ const knex = require('knex');
 const path = require('path');
 const fs = require('fs');
 
-// Production-grade PostgreSQL configuration for 1000+ users
+// Production-grade database configuration with SQLite/PostgreSQL flexibility
 const isProduction = process.env.NODE_ENV === 'production';
-const databaseUrl = process.env.DATABASE_URL;
+const usePostgres = process.env.USE_POSTGRES === 'true' || process.env.DATABASE_URL?.includes('postgres');
+
+// Ensure directories exist
+const dataDir = path.join(__dirname, '../../data');
+const dbDir = path.join(dataDir, 'database');
+const logsDir = path.join(dataDir, 'logs');
+
+[dataDir, dbDir, logsDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 let config;
 
-// Force PostgreSQL for production to handle 1000+ concurrent users
-if (isProduction) {
+if (isProduction && usePostgres) {
   // Production PostgreSQL with connection pooling and optimization
   config = {
     client: 'pg',
-    connection: databaseUrl || {
+    connection: process.env.DATABASE_URL || {
       host: process.env.POSTGRES_HOST || 'postgres',
       user: process.env.POSTGRES_USER || 'cruvz',
       password: process.env.POSTGRES_PASSWORD || 'cruvzpass',
@@ -39,31 +49,15 @@ if (isProduction) {
     seeds: {
       directory: path.join(__dirname, '../scripts/seeds')
     },
-    // Performance optimizations for streaming workloads
-    postProcessResponse: (result, queryContext) => {
-      // Optimize for streaming data queries
-      if (queryContext.method === 'select' && Array.isArray(result)) {
-        return result;
-      }
-      return result;
-    },
     acquireConnectionTimeout: 60000,
     asyncStackTraces: false // Disable for production performance
   };
-} else if (databaseUrl && databaseUrl.endsWith('.db')) {
-  // SQLite only for development/testing - NOT production
-  const dbPath = path.resolve(databaseUrl);
-  const dbDir = path.dirname(dbPath);
-  
-  // Ensure database directory exists
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
-  }
-  
+} else if (isProduction) {
+  // Production SQLite configuration
   config = {
     client: 'sqlite3',
     connection: {
-      filename: dbPath
+      filename: path.join(dbDir, 'cruvz_production.db')
     },
     useNullAsDefault: true,
     migrations: {
@@ -71,14 +65,25 @@ if (isProduction) {
     },
     seeds: {
       directory: path.join(__dirname, '../scripts/seeds')
+    },
+    pool: {
+      min: 5,
+      max: 20,
+      afterCreate: (conn, cb) => {
+        conn.run('PRAGMA foreign_keys = ON', cb);
+        conn.run('PRAGMA journal_mode = WAL', cb);
+        conn.run('PRAGMA synchronous = NORMAL', cb);
+        conn.run('PRAGMA cache_size = 1000', cb);
+        conn.run('PRAGMA temp_store = memory', cb);
+      }
     }
   };
-} else {
+} else if (usePostgres) {
   // Development PostgreSQL with basic pooling
   config = {
     client: 'pg',
     connection: {
-      host: process.env.POSTGRES_HOST || 'postgres',
+      host: process.env.POSTGRES_HOST || 'localhost',
       user: process.env.POSTGRES_USER || 'cruvz',
       password: process.env.POSTGRES_PASSWORD || 'cruvzpass',
       database: process.env.POSTGRES_DB || 'cruvzdb',
@@ -91,6 +96,26 @@ if (isProduction) {
       directory: path.join(__dirname, '../scripts/seeds')
     },
     pool: { min: 2, max: 20 }
+  };
+} else {
+  // Development SQLite
+  config = {
+    client: 'sqlite3',
+    connection: {
+      filename: path.join(dbDir, 'cruvz_development.db')
+    },
+    useNullAsDefault: true,
+    migrations: {
+      directory: path.join(__dirname, '../scripts/migrations')
+    },
+    seeds: {
+      directory: path.join(__dirname, '../scripts/seeds')
+    },
+    pool: {
+      afterCreate: (conn, cb) => {
+        conn.run('PRAGMA foreign_keys = ON', cb);
+      }
+    }
   };
 }
 

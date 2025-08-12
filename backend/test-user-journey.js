@@ -8,10 +8,12 @@ let authToken = '';
 let userId = '';
 let streamId = '';
 
-// Test user data
+// Test user data - use timestamp to ensure uniqueness
+const timestamp = Date.now();
 const testUser = {
-  name: 'John Streamer',
-  email: 'john@example.com',
+  first_name: 'John',
+  last_name: 'Streamer',
+  email: `john${timestamp}@example.com`,
   password: 'SecurePass123!'
 };
 
@@ -53,7 +55,7 @@ async function testAPI() {
       { headers: { Authorization: `Bearer ${authToken}` } }
     );
     console.log('✅ Stream Created:', createStreamResponse.data);
-    streamId = createStreamResponse.data.data.stream.id;
+    streamId = createStreamResponse.data.data.id;
 
     // 5. Get User Streams
     console.log('\n5️⃣ Testing Get User Streams...');
