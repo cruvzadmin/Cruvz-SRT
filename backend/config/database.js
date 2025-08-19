@@ -6,16 +6,19 @@ const fs = require('fs');
 const isProduction = process.env.NODE_ENV === 'production';
 const usePostgres = process.env.USE_POSTGRES === 'true' || process.env.DATABASE_URL?.includes('postgres');
 
-// Ensure directories exist
-const dataDir = path.join(__dirname, '../../data');
+// Ensure directories exist (only for SQLite)
+const dataDir = path.join(__dirname, '../data');
 const dbDir = path.join(dataDir, 'database');
 const logsDir = path.join(dataDir, 'logs');
 
-[dataDir, dbDir, logsDir].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
+// Only create directories if we're using SQLite
+if (!usePostgres) {
+  [dataDir, dbDir, logsDir].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
+}
 
 let config;
 
