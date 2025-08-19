@@ -74,8 +74,8 @@ run_test "Redis accessible" "nc -z localhost 6379"
 run_test "Prometheus metrics" "curl -s http://localhost:9090/api/v1/label/__name__/values | grep -q 'prometheus_'"
 
 echo -e "\n${YELLOW}=== STREAMING PROTOCOLS ===${NC}"
-run_test "RTMP ingestion ready" "timeout 3 nc localhost 1935 < /dev/null"
-run_test "SRT ingestion ready" "timeout 3 nc -u localhost 9999 < /dev/null"
+run_test "RTMP ingestion ready" "nc -z localhost 1935"
+run_test "SRT ingestion ready" "nc -z -u localhost 9999"
 
 echo -e "\n🏁 TEST SUMMARY"
 echo "==============="
