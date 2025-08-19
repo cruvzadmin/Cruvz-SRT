@@ -67,7 +67,7 @@ run_test_with_output "Streaming status" "curl -s http://localhost:5000/api/statu
 
 echo -e "\n${YELLOW}=== NGINX PROXY ===${NC}"
 run_test_with_output "API proxy through nginx" "curl -s http://localhost/api/status"
-run_test "Static files served" "curl -s http://localhost/css/styles.css | grep -q 'body\|html'"
+run_test "Static files served" "curl -s http://localhost/css/style.css | grep -q 'body\|html'"
 
 echo -e "\n${YELLOW}=== MONITORING ===${NC}"
 run_test "Redis accessible" "nc -z localhost 6379"
