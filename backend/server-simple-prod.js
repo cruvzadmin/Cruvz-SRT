@@ -133,8 +133,8 @@ app.post('/api/auth/register', async (req, res) => {
     // Generate token
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
 
-    // Remove password hash from response
-    const { password_hash: _, ...userWithoutPassword } = user;
+    // Remove password hash from response (not used in response)
+    const { password_hash: _unused1, ...userWithoutPassword } = user;
 
     res.status(201).json({
       success: true,
@@ -174,8 +174,8 @@ app.post('/api/auth/login', async (req, res) => {
     // Generate token
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
 
-    // Remove password hash from response
-    const { password_hash: _, ...userWithoutPassword } = user;
+    // Remove password hash from response (not used in response)
+    const { password_hash: _unused2, ...userWithoutPassword } = user;
 
     res.json({
       success: true,
@@ -192,7 +192,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Get user profile
 app.get('/api/auth/profile', authenticate, async (req, res) => {
   try {
-    const { password_hash: _, ...userWithoutPassword } = req.user;
+    const { password_hash: _unused3, ...userWithoutPassword } = req.user;
     res.json({
       success: true,
       data: { user: userWithoutPassword }
@@ -215,7 +215,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // Error handling
-app.use((error, req, res, next) => {
+app.use((error, req, res, _next) => {
   logger.error('API Error:', error);
   res.status(500).json({ 
     success: false, 
@@ -244,7 +244,7 @@ async function startServer() {
       logger.info(`✅ Cruvz Streaming API running on port ${PORT}`);
       logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
       logger.info(`📊 API Status: http://localhost:${PORT}/api/status`);
-      logger.info(`🔐 Auth endpoints: /api/auth/register, /api/auth/login`);
+      logger.info('🔐 Auth endpoints: /api/auth/register, /api/auth/login');
     });
   } catch (error) {
     logger.error('Failed to start server:', error);

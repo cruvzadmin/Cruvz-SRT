@@ -18,7 +18,7 @@ describe('Stream Input/Output Fields Tests', () => {
       password: 'TestPassword123!'
     };
 
-    const registerResponse = await request(app)
+    await request(app)
       .post('/api/auth/register')
       .send(userData);
 
