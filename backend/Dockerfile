@@ -12,13 +12,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package definition files first for better Docker layer caching
-COPY package-simple.json package.json
+COPY package.json ./
 
 # Install dependencies
 RUN npm install --production --no-optional
 
 # Copy application source
-COPY server-simple-prod.js server.js
+COPY server.js ./
 
 # Create a non-root user for security
 RUN useradd -r -u 1001 -m appuser \
