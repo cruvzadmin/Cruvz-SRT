@@ -1,12 +1,9 @@
-// Production-Ready Cruvz Streaming Backend API with PostgreSQL
+// Simple Production-Ready Cruvz Streaming Backend API
 const express = require('express');
 const { Client } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -23,7 +20,7 @@ const logger = {
   warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args)
 };
 
-// PostgreSQL client setup
+// PostgreSQL client
 let pgClient = null;
 
 async function connectDatabase() {
@@ -53,27 +50,12 @@ async function connectDatabase() {
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-
-      CREATE TABLE IF NOT EXISTS streams (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        title VARCHAR(200) NOT NULL,
-        description TEXT,
-        stream_key VARCHAR(100) NOT NULL UNIQUE,
-        protocol VARCHAR(20) DEFAULT 'rtmp',
-        status VARCHAR(20) DEFAULT 'inactive',
-        max_viewers INTEGER DEFAULT 1000,
-        current_viewers INTEGER DEFAULT 0,
-        started_at TIMESTAMP,
-        ended_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
     `);
     
-    console.log('✅ Database tables created/verified');
+    logger.info('✅ Database tables created/verified');
     return true;
   } catch (error) {
-    console.error('❌ Database connection failed:', error.message);
+    logger.error('❌ Database connection failed:', error.message);
     return false;
   }
 }
@@ -84,7 +66,7 @@ async function query(text, params = []) {
     const result = await pgClient.query(text, params);
     return result;
   } catch (error) {
-    console.error('Query error:', error);
+    logger.error('Query error:', error);
     throw error;
   }
 }
@@ -94,7 +76,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy', service: 'cruvz-streaming-api' });
 });
 
-// Auth middleware
+// Auth middleware  
 async function authenticate(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
@@ -159,9 +141,9 @@ app.post('/api/auth/register', async (req, res) => {
       data: { token, user: userWithoutPassword }
     });
 
-    console.log(`✅ User registered: ${email}`);
+    logger.info(`✅ User registered: ${email}`);
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error('Registration error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -200,116 +182,87 @@ app.post('/api/auth/login', async (req, res) => {
       data: { token, user: userWithoutPassword }
     });
 
-    console.log(`✅ User logged in: ${email}`);
+    logger.info(`✅ User logged in: ${email}`);
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('Login error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
-// Create stream endpoint
-app.post('/api/streams', authenticate, async (req, res) => {
+// Get user profile
+app.get('/api/auth/profile', authenticate, async (req, res) => {
   try {
-    const { title, description } = req.body;
-
-    if (!title) {
-      return res.status(400).json({ success: false, error: 'Title is required' });
-    }
-
-    // Generate unique stream key
-    const streamKey = crypto.randomBytes(16).toString('hex');
-
-    // Create stream
-    const result = await query(
-      'INSERT INTO streams (user_id, title, description, stream_key) VALUES ($1, $2, $3, $4) RETURNING *',
-      [req.user.id, title, description || '', streamKey]
-    );
-
-    const stream = result.rows[0];
-
-    res.status(201).json({
-      success: true,
-      data: { stream }
-    });
-
-    console.log(`✅ Stream created: ${title} by ${req.user.email}`);
-  } catch (error) {
-    console.error('Stream creation error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-});
-
-// Get user streams
-app.get('/api/streams', authenticate, async (req, res) => {
-  try {
-    const result = await query(
-      'SELECT * FROM streams WHERE user_id = $1 ORDER BY created_at DESC',
-      [req.user.id]
-    );
-
+    const { password_hash: _, ...userWithoutPassword } = req.user;
     res.json({
       success: true,
-      data: { streams: result.rows }
+      data: { user: userWithoutPassword }
     });
   } catch (error) {
-    console.error('Get streams error:', error);
+    logger.error('Profile fetch error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
-// Start stream
-app.post('/api/streams/:id/start', authenticate, async (req, res) => {
-  try {
-    const streamId = req.params.id;
+// Basic API status endpoint
+app.get('/api/status', (req, res) => {
+  res.json({ 
+    success: true,
+    status: 'running',
+    service: 'Cruvz Streaming API',
+    version: '2.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
 
-    // Check if stream exists and belongs to user
-    const streamResult = await query(
-      'SELECT * FROM streams WHERE id = $1 AND user_id = $2',
-      [streamId, req.user.id]
-    );
+// Error handling
+app.use((error, req, res, next) => {
+  logger.error('API Error:', error);
+  res.status(500).json({ 
+    success: false, 
+    error: 'Internal server error' 
+  });
+});
 
-    if (streamResult.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Stream not found' });
-    }
-
-    // Update stream status
-    const result = await query(
-      'UPDATE streams SET status = $1, started_at = $2 WHERE id = $3 RETURNING *',
-      ['active', new Date(), streamId]
-    );
-
-    const updatedStream = result.rows[0];
-
-    res.json({
-      success: true,
-      data: {
-        stream: updatedStream,
-        rtmp_url: `rtmp://localhost:1935/app/${updatedStream.stream_key}`,
-        webrtc_url: `http://localhost:3333/app/${updatedStream.stream_key}`,
-        srt_url: `srt://localhost:9999?streamid=app/${updatedStream.stream_key}`
-      }
-    });
-
-    console.log(`✅ Stream started: ${updatedStream.title}`);
-  } catch (error) {
-    console.error('Start stream error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    error: 'Endpoint not found' 
+  });
 });
 
 // Start server
 async function startServer() {
-  const connected = await connectDatabase();
-  if (!connected) {
-    console.error('❌ Failed to connect to database. Exiting...');
+  try {
+    const dbConnected = await connectDatabase();
+    if (!dbConnected) {
+      logger.error('Failed to connect to database. Exiting...');
+      process.exit(1);
+    }
+
+    app.listen(PORT, '0.0.0.0', () => {
+      logger.info(`✅ Cruvz Streaming API running on port ${PORT}`);
+      logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
+      logger.info(`📊 API Status: http://localhost:${PORT}/api/status`);
+      logger.info(`🔐 Auth endpoints: /api/auth/register, /api/auth/login`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
     process.exit(1);
   }
-
-  app.listen(PORT, () => {
-    console.log(`🚀 Cruvz Streaming API running on port ${PORT}`);
-    console.log('🗄️  Connected to PostgreSQL database');
-    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  });
 }
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  if (pgClient) pgClient.end();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, shutting down gracefully');
+  if (pgClient) pgClient.end();
+  process.exit(0);
+});
 
 startServer();

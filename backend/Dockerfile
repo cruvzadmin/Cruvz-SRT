@@ -1,41 +1,32 @@
-# Production-Ready Backend with Full Dependencies
+# Simple Production Backend with Essential Dependencies Only
 FROM node:18-slim
 
 # Set working directory
 WORKDIR /app
 
-# Define environment (improves some library behaviors & enables production optimizations)
-ENV NODE_ENV=production
-
-# Install essential build/runtime dependencies (needed for native modules like sqlite3, bcrypt, etc.)
+# Install essential build dependencies (needed for native modules like bcrypt, pg)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
     g++ \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package definition files first for better Docker layer caching
-# (package-lock.json will be honored by npm ci)
-COPY package*.json ./
+COPY package-simple.json package.json
 
-# Install production dependencies reproducibly
-# - Use npm install instead of npm ci for better compatibility
-RUN npm config set registry https://registry.npmjs.org/ \
- && npm set audit false \
- && npm set fund false \
- && npm install --production --no-optional
+# Install dependencies
+RUN npm install --production --no-optional
 
-# Copy application source AFTER dependencies (so code changes don't bust dependency cache)
-COPY . .
+# Copy application source
+COPY server-simple-prod.js server.js
 
-# (Optional hardening) Create a non-root user and adjust ownership
+# Create a non-root user for security
 RUN useradd -r -u 1001 -m appuser \
- && mkdir -p data logs uploads recordings \
+ && mkdir -p data logs \
  && chown -R appuser:appuser /app \
- && chmod 755 data logs uploads recordings
+ && chmod 755 data logs
 
-# Switch to non-root user for runtime security
+# Switch to non-root user
 USER appuser
 
 # Expose port
@@ -43,7 +34,7 @@ EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+    CMD node -e "require('http').get('http://localhost:5000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 # Start application
 CMD ["node", "server.js"]

@@ -1,313 +1,420 @@
-# Cruvz Streaming Production Docker Compose
-# Production-ready configuration with backend API and PostgreSQL
+# (Removed obsolete 'version' key to eliminate Compose warning)
+# ===============================================================================
+# CRUVZ STREAMING - PRODUCTION DOCKER COMPOSE FOR 1000+ USERS
+# Optimized PostgreSQL setup with Redis caching and horizontal scaling
+# ===============================================================================
 
 services:
+  # ================================
+  # POSTGRESQL DATABASE
+  # ================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: cruvz-postgres-prod
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: cruvzdb
+      POSTGRES_USER: cruvz
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./data/postgres-backups:/backups
+      - ./backend/scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    command: [
+      "postgres",
+      "-c", "max_connections=200",
+      "-c", "shared_buffers=256MB",
+      "-c", "effective_cache_size=1GB",
+      "-c", "maintenance_work_mem=64MB",
+      "-c", "checkpoint_completion_target=0.9",
+      "-c", "wal_buffers=16MB",
+      "-c", "default_statistics_target=100",
+      "-c", "random_page_cost=1.1",
+      "-c", "effective_io_concurrency=200",
+      "-c", "work_mem=4MB",
+      "-c", "min_wal_size=1GB",
+      "-c", "max_wal_size=4GB",
+      "-c", "max_worker_processes=8",
+      "-c", "max_parallel_workers_per_gather=4",
+      "-c", "max_parallel_workers=8",
+      "-c", "max_parallel_maintenance_workers=4"
+    ]
+    networks:
+      - cruvz-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cruvz -d cruvzdb"]
+      interval: 30s
+      timeout: 10s
+      retries: 5                 # CORRECTION: increase retries
+      start_period: 90s          # CORRECTION: longer init window
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+    security_opt:
+      - no-new-privileges:true
+
+  # ================================
+  # REDIS CACHE
+  # ================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: cruvz-redis-prod
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./monitoring/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD}
+    networks:
+      - cruvz-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s          # CORRECTION: small grace period
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+
+  # ================================
+  # BACKEND API SERVER (SCALED)
+  # ================================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: cruvz-streaming-backend
-    restart: always
+      args:
+        - NODE_ENV=production
+    container_name: cruvz-backend-prod
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/logs/backend:/app/logs
+      - ./data/uploads:/app/uploads
+      - ./.env.production:/app/.env:ro
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=cruvz
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=cruvzdb
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - LOG_LEVEL=info
+      - ENABLE_CORS=true
+      - ENABLE_HELMET=true
+      - ENABLE_RATE_LIMITING=true
+      - MAX_CONCURRENT_STREAMS=1000
+      - MAX_VIEWERS_PER_STREAM=10000
+    networks:
+      - cruvz-network
     depends_on:
-      origin:
-        condition: service_healthy
       postgres:
         condition: service_healthy
-
-    healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-
-    ports:
-    - "5000:5000"
-
-    environment:
-    - NODE_ENV=production
-    - PORT=5000
-    - POSTGRES_HOST=postgres
-    - POSTGRES_PORT=5432
-    - POSTGRES_USER=cruvz
-    - POSTGRES_PASSWORD=cruvzpass
-    - POSTGRES_DB=cruvzdb
-    - JWT_SECRET=${JWT_SECRET:-your-super-secure-jwt-secret-change-this}
-    - JWT_EXPIRES_IN=24h
-    - OME_HOST=origin
-    - OME_PORT=3333
-    - FRONTEND_URL=http://localhost
-
-    volumes:
-    - backend-logs:/app/logs:rw
-    - backend-uploads:/app/uploads:rw
-    - backend-recordings:/app/recordings:rw
-
-    networks:
-    - cruvz-network
-
-    labels:
-    - "com.cruvz.service=backend"
-    - "com.cruvz.six_sigma=enabled"
-    - "com.cruvz.component=api"
-
-  web-app:
-    image: nginx:alpine
-    container_name: cruvz-streaming-webapp
-    restart: always
-    depends_on:
-      backend:
+      redis:
         condition: service_healthy
-
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:80 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 25s            # CORRECTION: slightly faster cadence
+      timeout: 8s              # CORRECTION: modest timeout
+      retries: 4               # CORRECTION: more robustness
+      start_period: 50s        # CORRECTION: align with DB readiness
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 256M
+          memory: 2G
+          cpus: '2.0'
         reservations:
-          cpus: '0.25'
-          memory: 128M
+          memory: 1G
+          cpus: '1.0'
+    security_opt:
+      - no-new-privileges:true
 
-    ports:
-    - "80:80"
-
-    volumes:
-    - ./web-app:/usr/share/nginx/html:ro
-    - ./web-app/server.conf:/etc/nginx/conf.d/default.conf:ro
-
-    networks:
-    - cruvz-network
-
-    labels:
-    - "com.cruvz.service=webapp"
-    - "com.cruvz.six_sigma=enabled"
-    - "com.cruvz.component=frontend"
-
+  # ================================
+  # CORE STREAMING ENGINE (ORIGIN)
+  # ================================
   origin:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: cruvz-streaming-origin
-    restart: always
-
+      args:
+        - BUILD_MODE=production
+    container_name: cruvz-origin
+    restart: unless-stopped
+    ports:
+      - "8080:8080"      # Origin server
+      - "1935:1935"      # RTMP
+      - "9999:9999/udp"  # SRT (CORRECTION: explicitly marked UDP)
+      - "3333:3333"      # WebRTC
+      - "10000-10100:10000-10100/udp"  # WebRTC UDP range
+    volumes:
+      - ./configs:/opt/cruvzstreaming/bin/origin_conf:ro
+      - ./data/recordings:/opt/cruvzstreaming/recordings
+      - ./data/logs/origin:/opt/cruvzstreaming/logs
+      - ./ssl:/opt/cruvzstreaming/ssl:ro
+    environment:
+      - OME_HOST_IP=0.0.0.0
+      - OME_RTMP_PROV_PORT=1935
+      - OME_SRT_PROV_PORT=9999
+      - OME_WEBRTC_SIGNALLING_PORT=3333
+      - OME_API_PORT=8080
+      - MAX_CONCURRENT_STREAMS=1000
+      # CORRECTION: add candidate port range to match exposed UDP ports
+      - OME_WEBRTC_CANDIDATE_PORT=10000-10100
+    networks:
+      - cruvz-network
+    depends_on:
+      - backend
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f OvenMediaEngine > /dev/null || curl -f http://localhost:8080 > /dev/null"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/stats/current"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
-
+      retries: 5              # CORRECTION: increased retries
+      start_period: 75s       # CORRECTION: longer for engine warm-up
     deploy:
       resources:
         limits:
-          cpus: '2.0'
           memory: 4G
+          cpus: '2.0'      # CORRECTION: reduced from 3.0 to fit 2 vCPU host
         reservations:
-          cpus: '1.0'
           memory: 2G
+          cpus: '1.0'      # CORRECTION: reduced from 2.0
+    security_opt:
+      - no-new-privileges:true
 
+  # ================================
+  # WEB APPLICATION (NGINX)
+  # ================================
+  web-app:
+    image: nginx:alpine
+    container_name: cruvz-web-app
+    restart: unless-stopped
     ports:
-    - "9000:9000"
-    - "1935:1935"
-    - "9999:9999/udp"
-    - "3333:3333"
-    - "3334:3334"
-    - "3478:3478"
-    - "10000-10004:10000-10004/udp"
-    - "8080:8080"
-
-    environment:
-    - OME_HOST_IP=localhost
-    - OME_ORIGIN_PORT=9000
-    - OME_RTMP_PROV_PORT=1935
-    - OME_SRT_PROV_PORT=9999
-    - OME_LLHLS_STREAM_PORT=3333
-    - OME_WEBRTC_SIGNALLING_PORT=3333
-    - OME_WEBRTC_SIGNALLING_TLS_PORT=3334
-    - OME_WEBRTC_TCP_RELAY_PORT=3478
-    # CORRECTION: removed '/udp' suffix so it's a pure port range value
-    - OME_WEBRTC_CANDIDATE_PORT=10000-10004
-    - LOG_LEVEL=INFO
-    - SIX_SIGMA_MODE=true
-
+      - "80:80"
+      - "443:443"
     volumes:
-    - cs-origin-conf:/opt/ovenmediaengine/bin/origin_conf:rw
-    - cs-logs:/opt/ovenmediaengine/logs:rw
-    - cs-metrics:/opt/ovenmediaengine/metrics:rw
-    - ./misc/conf_examples/Origin.xml:/opt/ovenmediaengine/bin/origin_conf/Server.xml:ro
-    - ./misc/conf_examples/Logger.xml:/opt/ovenmediaengine/bin/origin_conf/Logger.xml:ro
-
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "10"
-        labels: "service=cruvz-streaming-origin,environment=production,six_sigma=true"
-
+      - ./web-app:/usr/share/nginx/html:ro
+      - ./web-app/server.conf:/etc/nginx/conf.d/default.conf:ro
+    environment:
+      - BACKEND_API_URL=http://backend:5000
+      - ENVIRONMENT=production
     networks:
-    - cruvz-network
-
-    labels:
-    - "com.cruvz.service=origin"
-    - "com.cruvz.six_sigma=enabled"
-    - "com.cruvz.monitoring=prometheus"
-    - "com.cruvz.environment=production"
-
-  monitoring:
-    image: prom/prometheus:latest
-    container_name: cruvz-monitoring
-    restart: always
-
+      - cruvz-network
+    depends_on:
+      - backend
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s       # CORRECTION: slight buffer for backend readiness
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+
+  # ================================
+  # MONITORING - PROMETHEUS
+  # ================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: cruvz-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--query.max-concurrency=20'
+      - '--storage.tsdb.wal-compression'
+    networks:
+      - cruvz-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-
     deploy:
       resources:
         limits:
-          cpus: '1.0'
           memory: 1G
+          cpus: '1.0'
         reservations:
-          cpus: '0.5'
           memory: 512M
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
 
-    ports:
-    - "9090:9090"
-
-    volumes:
-    - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    - ./monitoring/rules:/etc/prometheus/rules:ro
-    - prometheus-data:/prometheus:rw
-
-    command:
-    - '--config.file=/etc/prometheus/prometheus.yml'
-    - '--storage.tsdb.path=/prometheus'
-    - '--web.console.libraries=/etc/prometheus/console_libraries'
-    - '--web.console.templates=/etc/prometheus/consoles'
-    - '--storage.tsdb.retention.time=30d'
-    - '--web.enable-lifecycle'
-    - '--web.enable-admin-api'
-    - '--query.max-concurrency=20'
-
-    networks:
-    - cruvz-network
-
-    labels:
-    - "com.cruvz.service=monitoring"
-    - "com.cruvz.six_sigma=enabled"
-    - "com.cruvz.component=prometheus"
-
+  # ================================
+  # MONITORING - GRAFANA
+  # ================================
   grafana:
-    image: grafana/grafana:latest
-    container_name: cruvz-dashboard
-    restart: always
+    image: grafana/grafana-oss:10.2.2
+    container_name: cruvz-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./data/logs/grafana:/var/log/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=cruvz123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_RENDERING_SERVER_URL=http://renderer:8081/render
+      - GF_RENDERING_CALLBACK_URL=http://grafana:3000/
+      - GF_LOG_LEVEL=warn
+      - GF_PATHS_LOGS=/var/log/grafana
+    networks:
+      - cruvz-network
     depends_on:
-      - monitoring
-
+      - prometheus
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
-
+      start_period: 45s
     deploy:
       resources:
         limits:
-          cpus: '0.5'
           memory: 512M
+          cpus: '0.5'
         reservations:
-          cpus: '0.25'
           memory: 256M
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
 
+  # ================================
+  # METRICS EXPORTER
+  # ================================
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: cruvz-node-exporter
+    restart: unless-stopped
     ports:
-    - "3000:3000"
-
-    environment:
-    - GF_SECURITY_ADMIN_PASSWORD=cruvz123
-    - GF_USERS_ALLOW_SIGN_UP=false
-    - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/six-sigma-overview.json
-
+      - "9100:9100"
     volumes:
-    - grafana-data:/var/lib/grafana:rw
-    - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
-    - ./monitoring/grafana-datasources:/etc/grafana/provisioning/datasources:ro
-
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--no-collector.ipvs'
     networks:
-    - cruvz-network
+      - cruvz-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    security_opt:
+      - no-new-privileges:true
 
-    labels:
-    - "com.cruvz.service=dashboard"
-    - "com.cruvz.six_sigma=enabled"
-    - "com.cruvz.component=grafana"
-
-  postgres:
-    image: postgres:15
-    container_name: cruvz-postgres
-    restart: always
-    environment:
-      POSTGRES_USER: cruvz
-      POSTGRES_PASSWORD: cruvzpass
-      POSTGRES_DB: cruvzdb
-    ports:
-      - "5432:5432"
+  # ================================
+  # LOG AGGREGATION
+  # ================================
+  log-aggregator:
+    image: fluent/fluent-bit:2.2.0
+    container_name: cruvz-logs
+    restart: unless-stopped
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cruvz"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./data/logs:/var/log:ro
+      - ./monitoring/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+    networks:
+      - cruvz-network
+    depends_on:
+      - backend
+      - origin
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    security_opt:
+      - no-new-privileges:true
 
-volumes:
-  backend-logs:
-    driver: local
-  backend-uploads:
-    driver: local
-  backend-recordings:
-    driver: local
-  cs-origin-conf:
-    driver: local
-  cs-logs:
-    driver: local
-  cs-metrics:
-    driver: local
-  prometheus-data:
-    driver: local
-  grafana-data:
-    driver: local
-  postgres-data:
-    driver: local
-
+# ================================
+# NETWORKS
+# ================================
 networks:
   cruvz-network:
+    name: cruvz-production
     driver: bridge
     ipam:
       driver: default
       config:
-      - subnet: 172.25.0.0/16
-        gateway: 172.25.0.1
+        - subnet: 172.21.0.0/16
+          gateway: 172.21.0.1
     driver_opts:
-      com.docker.network.enable_ipv6: "false"
+      com.docker.network.bridge.name: cruvz-br0
       com.docker.network.bridge.enable_icc: "true"
       com.docker.network.bridge.enable_ip_masquerade: "true"
-      com.docker.network.bridge.host_binding_ipv4: "0.0.0.0"
+
+# ================================
+# VOLUMES
+# ================================
+volumes:
+  postgres-data:
+    name: cruvz-postgres-data
+    driver: local
+  prometheus-data:
+    name: cruvz-prometheus-data
+    driver: local
+  grafana-data:
+    name: cruvz-grafana-data
+    driver: local
+  redis-data:
+    name: cruvz-redis-data
+    driver: local
