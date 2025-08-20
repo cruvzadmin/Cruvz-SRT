@@ -70,7 +70,7 @@ app.post('/api/auth/login', (req, res) => {
   for (const user of mockUsers.values()) {
     if (user.email === email && user.password_hash === 'hashed_' + password) {
       const token = `jwt_token_${user.id}`;
-      const { password_hash, ...userWithoutPassword } = user;
+      const { password_hash: _unusedPasswordHash, ...userWithoutPassword } = user;
       
       res.json({
         success: true,

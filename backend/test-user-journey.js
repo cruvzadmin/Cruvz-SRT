@@ -5,7 +5,6 @@ const axios = require('axios');
 
 const API_BASE = 'http://localhost:5000';
 let authToken = '';
-let userId = '';
 let streamId = '';
 
 // Test user data - use timestamp to ensure uniqueness
@@ -37,7 +36,6 @@ async function testAPI() {
     const registerResponse = await axios.post(`${API_BASE}/api/auth/register`, testUser);
     console.log('✅ Registration:', registerResponse.data);
     authToken = registerResponse.data.data.token;
-    userId = registerResponse.data.data.user.id;
 
     // 3. User Login (Test with same credentials)
     console.log('\n3️⃣ Testing User Login...');

@@ -124,7 +124,7 @@ app.get('/api/analytics', (req, res) => {
 });
 
 // Error handling
-app.use((error, req, res, next) => {
+app.use((error, req, res, _next) => {
   console.error('API Error:', error);
   res.status(500).json({ 
     success: false, 

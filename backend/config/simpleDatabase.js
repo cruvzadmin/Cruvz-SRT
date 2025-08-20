@@ -50,31 +50,19 @@ class SimpleDB {
 
   // Promisify database operations using Knex
   async run(sql, params = []) {
-    try {
-      const res = await db.raw(sql, params);
-      // For INSERT/UPDATE/DELETE, return affected rows info if available
-      return { rowCount: res.rowCount || (Array.isArray(res.rows) ? res.rows.length : 0) };
-    } catch (err) {
-      throw err;
-    }
+    const res = await db.raw(sql, params);
+    // For INSERT/UPDATE/DELETE, return affected rows info if available
+    return { rowCount: res.rowCount || (Array.isArray(res.rows) ? res.rows.length : 0) };
   }
 
   async get(sql, params = []) {
-    try {
-      const res = await db.raw(sql, params);
-      return res.rows && res.rows.length > 0 ? res.rows[0] : null;
-    } catch (err) {
-      throw err;
-    }
+    const res = await db.raw(sql, params);
+    return res.rows && res.rows.length > 0 ? res.rows[0] : null;
   }
 
   async all(sql, params = []) {
-    try {
-      const res = await db.raw(sql, params);
-      return res.rows;
-    } catch (err) {
-      throw err;
-    }
+    const res = await db.raw(sql, params);
+    return res.rows;
   }
 }
 
