@@ -48,9 +48,9 @@ run_test_with_output() {
 
 echo -e "\n${YELLOW}=== INFRASTRUCTURE HEALTH ===${NC}"
 run_test "Docker containers running" "[ \$(docker ps | grep -c 'cruvz') -ge 5 ]"
-run_test "Backend API health" "curl -s http://localhost:5000/health | grep -q 'ok'"
-run_test "Origin streaming health" "curl -s http://localhost:8080 | grep -q 'healthy'"
-run_test "Web app responding" "curl -s http://localhost | grep -q 'Cruvz Streaming'"
+run_test "Backend API health" "curl -s http://localhost:5000/health | grep -q 'healthy'"
+run_test "Origin streaming health" "curl -s http://localhost:8080/v1/stats/current | grep -q 'healthy'"
+run_test "Web app responding" "curl -s http://localhost:8000 | grep -q 'Cruvz Streaming'"
 run_test "Grafana responding" "curl -s http://localhost:3000/api/health | grep -q 'database.*ok'"
 run_test "Prometheus responding" "curl -s http://localhost:9090/-/healthy | grep -q 'Prometheus Server is Healthy'"
 

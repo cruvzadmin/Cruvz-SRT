@@ -5,7 +5,7 @@ async function testConnection() {
   const client = new Client({
     host: 'localhost',
     user: 'cruvz',
-    password: 'CHANGE_THIS_STRONG_PASSWORD_FOR_PRODUCTION',
+    password: 'cruvzpass',
     database: 'cruvzdb',
     port: 5432,
   });
