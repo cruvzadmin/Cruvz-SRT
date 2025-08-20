@@ -102,10 +102,10 @@ async function authenticate(req, res, next) {
 // Register endpoint
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { first_name, last_name, name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, error: 'Name, email and password are required' });
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Email and password are required' });
     }
 
     // Check if user exists
@@ -117,10 +117,15 @@ app.post('/api/auth/register', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
     
-    // Split name
-    const nameParts = name.split(' ');
-    const firstName = nameParts[0] || name;
-    const lastName = nameParts.slice(1).join(' ') || '';
+    // Handle name fields
+    let firstName = first_name || '';
+    let lastName = last_name || '';
+    
+    if (!firstName && !lastName && name) {
+      const nameParts = name.split(' ');
+      firstName = nameParts[0] || name;
+      lastName = nameParts.slice(1).join(' ') || '';
+    }
 
     // Create user
     const result = await query(
@@ -138,6 +143,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     res.status(201).json({
       success: true,
+      token,
       data: { token, user: userWithoutPassword }
     });
 
@@ -179,6 +185,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     res.json({
       success: true,
+      token,
       data: { token, user: userWithoutPassword }
     });
 
@@ -199,6 +206,50 @@ app.get('/api/auth/profile', authenticate, async (req, res) => {
     });
   } catch (error) {
     logger.error('Profile fetch error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Create stream endpoint
+app.post('/api/streams', authenticate, async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    
+    if (!title) {
+      return res.status(400).json({ success: false, error: 'Stream title is required' });
+    }
+
+    // Generate a unique stream ID
+    const streamId = `stream_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    
+    // Generate streaming URLs for all protocols
+    const rtmpUrl = `rtmp://localhost:1935/app/${streamId}`;
+    const webrtcUrl = `http://localhost:3333/app/${streamId}`;
+    const srtUrl = `srt://localhost:9999?streamid=app/${streamId}`;
+
+    const streamData = {
+      id: streamId,
+      title: title,
+      description: description || '',
+      user_id: req.user.id,
+      rtmp_url: rtmpUrl,
+      webrtc_url: webrtcUrl,
+      srt_url: srtUrl,
+      status: 'ready',
+      created_at: new Date().toISOString()
+    };
+
+    logger.info(`✅ Stream created: ${streamId} for user ${req.user.email}`);
+
+    res.status(201).json({
+      success: true,
+      data: streamData,
+      rtmp_url: rtmpUrl,
+      webrtc_url: webrtcUrl,
+      srt_url: srtUrl
+    });
+  } catch (error) {
+    logger.error('Stream creation error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });

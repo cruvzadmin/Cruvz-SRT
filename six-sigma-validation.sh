@@ -120,7 +120,7 @@ echo -e "\n${YELLOW}=== STREAMING PROTOCOL VALIDATION ===${NC}"
 # Streaming Protocol Tests
 run_test "RTMP Port Accessibility" "nc -z localhost 1935"
 run_test "WebRTC Port Accessibility" "nc -z localhost 3333"
-run_test "SRT Port Accessibility" "nc -z -u localhost 9999"
+run_test "SRT Port Accessibility" "timeout 1 bash -c 'echo test | nc -u localhost 9999' >/dev/null 2>&1"
 run_test "Origin API Port Accessibility" "nc -z localhost 8080"
 
 echo -e "\n${YELLOW}=== USER WORKFLOW VALIDATION ===${NC}"
@@ -138,8 +138,8 @@ if echo "$REGISTER_RESPONSE" | grep -q '"success":true'; then
     echo -e "${GREEN}✅ PASS${NC}: User Registration"
     TESTS_PASSED=$((TESTS_PASSED + 1))
     
-    # Extract token
-    USER_TOKEN=$(echo "$REGISTER_RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+    # Extract token  
+    USER_TOKEN=$(echo "$REGISTER_RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4 | tr -d '\n\r')
 else
     echo -e "${RED}❌ FAIL${NC}: User Registration"
     TESTS_FAILED=$((TESTS_FAILED + 1))
@@ -157,7 +157,7 @@ if echo "$LOGIN_RESPONSE" | grep -q '"success":true'; then
     TESTS_PASSED=$((TESTS_PASSED + 1))
     
     # Update token from login
-    USER_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+    USER_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4 | tr -d '\n\r')
 else
     echo -e "${RED}❌ FAIL${NC}: User Login"
     TESTS_FAILED=$((TESTS_FAILED + 1))
