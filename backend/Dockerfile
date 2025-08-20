@@ -20,13 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package*.json ./
 
 # Install production dependencies reproducibly
-# - npm config set registry kept from original intent
-# - npm ci uses package-lock.json (more deterministic than npm install)
-# - --omit=dev excludes devDependencies (Node 18+ npm supports this flag)
+# - Use npm install instead of npm ci for better compatibility
 RUN npm config set registry https://registry.npmjs.org/ \
  && npm set audit false \
  && npm set fund false \
- && npm ci --omit=dev
+ && npm install --production --no-optional
 
 # Copy application source AFTER dependencies (so code changes don't bust dependency cache)
 COPY . .
