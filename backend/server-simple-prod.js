@@ -28,7 +28,7 @@ async function connectDatabase() {
     pgClient = new Client({
       host: process.env.POSTGRES_HOST || 'localhost',
       user: process.env.POSTGRES_USER || 'cruvz', 
-      password: process.env.POSTGRES_PASSWORD || 'CHANGE_THIS_STRONG_PASSWORD_FOR_PRODUCTION',
+      password: process.env.POSTGRES_PASSWORD || 'cruvzpass',
       database: process.env.POSTGRES_DB || 'cruvzdb',
       port: process.env.POSTGRES_PORT || 5432,
     });
