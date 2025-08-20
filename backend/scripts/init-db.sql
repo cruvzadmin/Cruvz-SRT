@@ -5,10 +5,10 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
 
--- Optimized settings for streaming workloads
-ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';
-ALTER SYSTEM SET track_activity_query_size = 2048;
-ALTER SYSTEM SET pg_stat_statements.track = 'all';
+-- Optimized settings for streaming workloads (commented out problematic settings)
+-- ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';
+-- ALTER SYSTEM SET track_activity_query_size = 2048;
+-- ALTER SYSTEM SET pg_stat_statements.track = 'all';
 
 -- Create performance monitoring functions
 CREATE OR REPLACE FUNCTION get_db_stats()

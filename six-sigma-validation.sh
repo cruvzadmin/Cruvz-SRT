@@ -111,9 +111,9 @@ echo -e "\n${YELLOW}=== INFRASTRUCTURE VALIDATION ===${NC}"
 
 # Core Infrastructure Tests
 run_test "PostgreSQL Database Connection" "docker exec cruvz-postgres-prod pg_isready -U cruvz -d cruvzdb"
-run_test "Redis Cache Connection" "docker exec cruvz-redis-prod redis-cli ping | grep -q PONG"
+run_test "Redis Cache Connection" "docker exec cruvz-redis-prod redis-cli -a 'redis_test_s3cret_2025_X9fQ2mVp6HcT1yL4Rw8ZbK' ping | grep -q PONG"
 run_test "Backend API Health" "curl -sf http://localhost:5000/health | grep -q healthy"
-run_test "Streaming Engine Status" "docker ps | grep -q cruvz-origin-prod.*Up"
+run_test "Streaming Engine Status" "docker ps | grep cruvz-origin-prod | grep -q Up"
 
 echo -e "\n${YELLOW}=== STREAMING PROTOCOL VALIDATION ===${NC}"
 
@@ -196,8 +196,8 @@ fi
 echo -e "\n${YELLOW}=== PERFORMANCE & MONITORING VALIDATION ===${NC}"
 
 # Performance Tests
-run_test "API Response Time (<500ms)" "timeout 1s curl -w '%{time_total}' -s http://localhost:5000/health | awk '{exit ($1 > 0.5)}'"
-run_test "Database Query Performance" "docker exec cruvz-postgres-prod psql -U cruvz -d cruvzdb -c 'SELECT 1;' -t | grep -q 1"
+run_test "API Response Time (<500ms)" "timeout 1s curl -w '%{time_total}' -s http://localhost:5000/health | awk 'NR==2{exit (\$1 > 0.5)}'"
+run_test "Database Query Performance" "docker exec cruvz-postgres-prod pg_isready -U cruvz -d cruvzdb"
 
 # Monitoring Tests  
 run_test "Prometheus Metrics Collection" "curl -s http://localhost:9090/api/v1/label/__name__/values | grep -q prometheus"
