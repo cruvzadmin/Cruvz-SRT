@@ -10,8 +10,8 @@ let streamId = '';
 // Test user data - use timestamp to ensure uniqueness
 const timestamp = Date.now();
 const testUser = {
-  first_name: 'John',
-  last_name: 'Streamer',
+  firstName: 'John',
+  lastName: 'Streamer',
   email: `john${timestamp}@example.com`,
   password: 'SecurePass123!'
 };
@@ -75,7 +75,7 @@ async function testAPI() {
     // 7. Get Analytics
     console.log('\n7️⃣ Testing Analytics...');
     const analyticsResponse = await axios.get(
-      `${API_BASE}/api/analytics`,
+      `${API_BASE}/api/analytics/dashboard`,
       { headers: { Authorization: `Bearer ${authToken}` } }
     );
     console.log('✅ Analytics:', analyticsResponse.data);
