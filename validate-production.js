@@ -175,8 +175,7 @@ async function testAuthentication() {
   
   await runTest('authentication', 'user_registration', async () => {
     const testUser = {
-      firstName: 'Validation',
-      lastName: 'Test',
+      name: 'Validation Test',
       email: `test-${Date.now()}@cruvz.com`,
       password: 'TestPass123!'
     };
@@ -198,7 +197,7 @@ async function testAuthentication() {
     const response = await makeRequest(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'demo@cruvz.com', password: 'demo123' })
+      body: JSON.stringify({ email: 'demo@cruvz.com', password: 'demo12345' })
     });
     
     if (response.status === 200 && response.data.success && response.data.data.token) {
@@ -324,6 +323,45 @@ async function testProtocols() {
     }
     return { success: false, message: 'SRT port (9999) is not accessible' };
   });
+
+  await runTest('protocols', 'webrtc_udp_range', async () => {
+    // Test a few ports in the WebRTC UDP range
+    const testPorts = [10000, 10005, 10010];
+    let successCount = 0;
+    
+    for (const port of testPorts) {
+      const isAccessible = await checkPort(STREAMING_HOST, port, 'udp');
+      if (isAccessible) successCount++;
+    }
+    
+    if (successCount > 0) {
+      return { success: true, message: `WebRTC UDP ports accessible (${successCount}/${testPorts.length} tested)` };
+    }
+    return { success: false, message: 'WebRTC UDP port range not accessible' };
+  });
+
+  await runTest('protocols', 'streaming_api_endpoints', async () => {
+    // Test key streaming API endpoints
+    const endpoints = [
+      '/v1/stats/current',
+      '/v1/vhosts'
+    ];
+    
+    let successCount = 0;
+    for (const endpoint of endpoints) {
+      try {
+        const response = await makeRequest(`http://${STREAMING_HOST}:8080${endpoint}`);
+        if (response.status === 200) successCount++;
+      } catch (error) {
+        // Continue testing other endpoints
+      }
+    }
+    
+    if (successCount === endpoints.length) {
+      return { success: true, message: 'All streaming API endpoints accessible' };
+    }
+    return { success: false, message: `Only ${successCount}/${endpoints.length} streaming API endpoints accessible` };
+  });
 }
 
 // Test Integration
@@ -334,13 +372,13 @@ async function testIntegration() {
     const response = await makeRequest(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'demo@cruvz.com', password: 'demo123' })
+      body: JSON.stringify({ email: 'demo@cruvz.com', password: 'demo12345' })
     });
     
     if (response.status === 200 && response.data.success) {
       return { success: true, message: 'API proxy through web app working' };
     }
-    return { success: false, message: `API proxy failed: ${response.status}` };
+    return { success: false, message: `API proxy failed: ${response.status}`, details: JSON.stringify(response.data) };
   });
 
   await runTest('integration', 'web_health_proxy', async () => {
@@ -349,6 +387,25 @@ async function testIntegration() {
       return { success: true, message: 'Health endpoint accessible through proxy' };
     }
     return { success: false, message: `Health proxy failed: ${response.status}` };
+  });
+
+  await runTest('integration', 'database_connectivity', async () => {
+    const response = await makeRequest(`${API_URL}/health`);
+    if (response.status === 200 && response.data.database && response.data.database.connected) {
+      return { success: true, message: 'Database connectivity verified' };
+    }
+    return { success: false, message: 'Database connectivity check failed' };
+  });
+
+  await runTest('integration', 'streaming_integration', async () => {
+    // Test if streaming engine can communicate with backend
+    const backendResponse = await makeRequest(`${API_URL}/health`);
+    const streamingResponse = await makeRequest(`http://${STREAMING_HOST}:8080/v1/stats/current`);
+    
+    if (backendResponse.status === 200 && streamingResponse.status === 200) {
+      return { success: true, message: 'Backend and streaming engine integration working' };
+    }
+    return { success: false, message: 'Backend-streaming integration failed' };
   });
 }
 

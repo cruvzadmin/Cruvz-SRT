@@ -1,32 +1,31 @@
-# Simple Production Backend with Essential Dependencies Only
+# Production Backend with PostgreSQL and Full Feature Set
 FROM node:18-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install essential build dependencies (needed for native modules like bcrypt, pg)
+# Install essential build dependencies and curl for health checks
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
     g++ \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy package definition files first for better Docker layer caching
-COPY package-simple.json ./package.json
+# Copy package files and install dependencies first for better caching
+COPY package*.json ./
 
-# Install dependencies with timeout and disable SSL verification for build
-RUN npm config set strict-ssl false && \
-    npm install --production --no-optional --timeout=300000 && \
-    npm config set strict-ssl true
+# Install dependencies with timeout
+RUN npm ci --production --no-optional --timeout=300000
 
-# Copy application source
-COPY server-simple.js ./server.js
+# Copy application source and configuration
+COPY . .
 
 # Create a non-root user for security
 RUN useradd -r -u 1001 -m appuser \
- && mkdir -p data logs \
+ && mkdir -p data logs uploads \
  && chown -R appuser:appuser /app \
- && chmod 755 data logs
+ && chmod 755 data logs uploads
 
 # Switch to non-root user
 USER appuser
@@ -36,7 +35,7 @@ EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:5000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+    CMD curl -f http://localhost:5000/health || exit 1
 
 # Start application
 CMD ["node", "server.js"]

@@ -205,7 +205,7 @@ async function query(text, params = []) {
 }
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
   const healthData = { 
     status: 'healthy', 
     service: 'cruvz-streaming-api',
@@ -213,6 +213,22 @@ app.get('/health', (req, res) => {
     version: '2.0.0',
     environment: process.env.NODE_ENV || 'development'
   };
+  
+  // Check database connectivity
+  try {
+    if (dbConnection && !dbConnection.isMock) {
+      await query('SELECT 1');
+      healthData.database = { connected: true, type: 'postgresql' };
+    } else if (dbConnection && dbConnection.isMock) {
+      healthData.database = { connected: true, type: 'in-memory' };
+    } else {
+      healthData.database = { connected: false, type: 'unknown' };
+    }
+  } catch (error) {
+    healthData.database = { connected: false, error: error.message };
+    healthData.status = 'degraded';
+  }
+  
   res.json(healthData);
 });
 
@@ -382,21 +398,27 @@ app.post('/api/streams', authenticate, async (req, res) => {
       mockDb.streams.set(streamData.id, streamData);
       result = { rows: [streamData] };
     } else {
-      // Handle PostgreSQL - extend table if needed
+      // Handle PostgreSQL - use only existing columns
       result = await query(
-        'INSERT INTO streams (user_id, title, description, stream_key, protocol, source_url, destination_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-        [req.user.id, title, description || '', streamKey, protocol || 'rtmp', source_url || '', destination_url || '']
+        'INSERT INTO streams (user_id, title, description, stream_key, protocol) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [req.user.id, title, description || '', streamKey, protocol || 'rtmp']
       );
     }
 
     const stream = result.rows[0];
 
+    // Generate streaming URLs based on protocol and stream key
+    const streamingUrls = {
+      rtmp: `rtmp://localhost:1935/app/${stream.stream_key}`,
+      webrtc: `http://localhost:3333/app/${stream.stream_key}`,
+      srt: `srt://localhost:9999?streamid=app/${stream.stream_key}`
+    };
+
     // Include URLs in response
     const response = {
       id: stream.id,
       stream,
-      source_url: stream.source_url,
-      destination_url: stream.destination_url,
+      streaming_urls: streamingUrls,
       protocol: stream.protocol
     };
 
