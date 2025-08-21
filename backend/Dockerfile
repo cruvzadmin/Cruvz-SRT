@@ -12,10 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package definition files first for better Docker layer caching
-COPY package.json ./
+COPY package-simple.json ./package.json
 
-# Install dependencies
-RUN npm install --production --no-optional
+# Install dependencies with timeout
+RUN npm install --production --no-optional --timeout=300000
 
 # Copy application source
 COPY server.js ./
