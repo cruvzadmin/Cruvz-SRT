@@ -94,12 +94,17 @@ dist/
 release/
 packages/
 
-# Production Deployment Files (ignore generated)
-deployment/logs/*
-/tmp/cruvz-*
-*-report-*.txt
-deployment-*.log
+# Root level Node.js dependencies
+node_modules/
+package-lock.json
+npm-debug.log*
 
-# Keep essential directories but ignore contents
-deployment/logs/.gitkeep
-scripts/legacy/.gitkeep
+# Temporary and build files
+*.log
+*.tmp
+tmp/
+logs/
+
+# Old deployment scripts (moved to backup)
+deploy-old.sh
+deploy-production-old.sh
