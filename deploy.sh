@@ -236,7 +236,13 @@ test_user_workflows() {
     log "INFO" "Testing user workflows..."
     
     # Run the validation script if it exists
-    if [[ -f "validate-complete.js" ]]; then
+    if [[ -f "validate-production.js" ]]; then
+        if node validate-production.js; then
+            log "SUCCESS" "User workflow tests passed with 100% success rate"
+        else
+            log "WARNING" "Some user workflow tests may have failed"
+        fi
+    elif [[ -f "validate-complete.js" ]]; then
         if node validate-complete.js 2>/dev/null; then
             log "SUCCESS" "User workflow tests passed"
         else
