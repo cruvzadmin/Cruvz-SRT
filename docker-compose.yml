@@ -17,7 +17,7 @@ services:
     environment:
       POSTGRES_DB: cruvzdb
       POSTGRES_USER: cruvz
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: pg_T3st_P@ssw0rd_4dm1n_2025!_Aq7eY6x9J2vL5sQ8rF1zC0wM3nB4kH
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -116,11 +116,11 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=cruvz
-      - POSTGRES_PASSWORD=cruvz_secure_prod_2024
+      - POSTGRES_PASSWORD=pg_T3st_P@ssw0rd_4dm1n_2025!_Aq7eY6x9J2vL5sQ8rF1zC0wM3nB4kH
       - POSTGRES_DB=cruvzdb
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=cruvz_redis_2024
+      - REDIS_PASSWORD=
       - LOG_LEVEL=info
       - ENABLE_CORS=true
       - ENABLE_HELMET=true
@@ -221,13 +221,14 @@ services:
     networks:
       - cruvz-network
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80", "||", "exit", "1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s       # CORRECTION: slight buffer for backend readiness
+      start_period: 40s
     deploy:
       resources:
         limits:
@@ -300,11 +301,16 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SECURITY_ALLOW_EMBEDDING=true
       - GF_AUTH_ANONYMOUS_ENABLED=false
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      # Remove plugin installation to avoid network issues
+      # - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
       - GF_RENDERING_SERVER_URL=http://renderer:8081/render
       - GF_RENDERING_CALLBACK_URL=http://grafana:3000/
       - GF_LOG_LEVEL=warn
       - GF_PATHS_LOGS=/var/log/grafana
+      # Disable analytics and telemetry for offline deployment
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
     networks:
       - cruvz-network
     depends_on:
