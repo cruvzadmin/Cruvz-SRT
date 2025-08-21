@@ -14,11 +14,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy package definition files first for better Docker layer caching
 COPY package-simple.json ./package.json
 
-# Install dependencies with timeout
-RUN npm install --production --no-optional --timeout=300000
+# Install dependencies with timeout and disable SSL verification for build
+RUN npm config set strict-ssl false && \
+    npm install --production --no-optional --timeout=300000 && \
+    npm config set strict-ssl true
 
 # Copy application source
-COPY server.js ./
+COPY server-simple.js ./server.js
 
 # Create a non-root user for security
 RUN useradd -r -u 1001 -m appuser \

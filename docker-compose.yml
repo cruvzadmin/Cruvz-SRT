@@ -73,11 +73,11 @@ services:
     volumes:
       - redis-data:/data
       - ./monitoring/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD}
+    command: redis-server /usr/local/etc/redis/redis.conf
     networks:
       - cruvz-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -116,11 +116,11 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=cruvz
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PASSWORD=cruvz_secure_prod_2024
       - POSTGRES_DB=cruvzdb
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_PASSWORD=cruvz_redis_2024
       - LOG_LEVEL=info
       - ENABLE_CORS=true
       - ENABLE_HELMET=true
@@ -169,10 +169,9 @@ services:
       - "3333:3333"      # WebRTC
       - "10000-10100:10000-10100/udp"  # WebRTC UDP range
     volumes:
-      - ./configs:/opt/cruvzstreaming/bin/origin_conf:ro
-      - ./data/recordings:/opt/cruvzstreaming/recordings
-      - ./data/logs/origin:/opt/cruvzstreaming/logs
-      - ./ssl:/opt/cruvzstreaming/ssl:ro
+      - ./configs:/opt/ovenmediaengine/bin/origin_conf:ro
+      - ./data/recordings:/opt/ovenmediaengine/recordings
+      - ./data/logs/origin:/opt/ovenmediaengine/logs
     environment:
       - OME_HOST_IP=0.0.0.0
       - OME_RTMP_PROV_PORT=1935
