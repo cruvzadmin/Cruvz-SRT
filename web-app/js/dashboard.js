@@ -1,7 +1,7 @@
 // Dashboard-specific JavaScript functionality
 
-// Use existing apiBaseUrl from main.js or create one if not available
-let apiBaseUrl = window.API_BASE_URL || `http://${window.location.hostname}:5000/api`;
+// Always use relative path for API calls so Nginx can proxy to backend
+let apiBaseUrl = '/api';
 
 // Dashboard state
 let currentSection = 'overview';
