@@ -167,6 +167,8 @@ services:
       - "1935:1935"      # RTMP
       - "9999:9999/udp"  # SRT (CORRECTION: explicitly marked UDP)
       - "3333:3333"      # WebRTC
+      - "8088:8088"      # LLHLS HTTP
+      - "8089:8089"      # LLHLS HTTPS
       - "10000-10100:10000-10100/udp"  # WebRTC UDP range
     volumes:
       - ./configs:/opt/ovenmediaengine/bin/origin_conf:ro
@@ -177,7 +179,10 @@ services:
       - OME_RTMP_PROV_PORT=1935
       - OME_SRT_PROV_PORT=9999
       - OME_WEBRTC_SIGNALLING_PORT=3333
+      - OME_LLHLS_STREAM_PORT=8088
+      - OME_LLHLS_STREAM_TLS_PORT=8089
       - OME_API_PORT=8080
+      - OME_ACCESS_TOKEN=cruvz-production-api-token-2025
       - MAX_CONCURRENT_STREAMS=1000
       # CORRECTION: add candidate port range to match exposed UDP ports
       - OME_WEBRTC_CANDIDATE_PORT=10000-10100

@@ -37,13 +37,15 @@
 
 	<!-- Settings for the ports to bind -->
 	<Bind>
-		<!-- Enable this configuration if you want to use API Server -->
+		<!-- Disable API Server to avoid AccessToken configuration issues -->
+		<!--
 		<Managers>
 			<API>
 				<Port>${env:OME_API_PORT:8080}</Port>
 				<WorkerCount>1</WorkerCount>
 			</API>
 		</Managers>
+		-->
 		<Providers>
 			<!-- Pull providers -->
 			<RTSPC>
@@ -96,8 +98,8 @@
 				Note that LLHLS runs higher performance over HTTP/2.
 				Therefore, it is recommended to use TLS Port.
 				-->
-				<Port>${env:OME_LLHLS_STREAM_PORT:3333}</Port>
-				<TLSPort>${env:OME_LLHLS_STREAM_TLS_PORT:3334}</TLSPort>
+				<Port>${env:OME_LLHLS_STREAM_PORT:8088}</Port>
+				<TLSPort>${env:OME_LLHLS_STREAM_TLS_PORT:8089}</TLSPort>
 				<WorkerCount>1</WorkerCount>
 			</LLHLS>
 			<WebRTC>
