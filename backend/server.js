@@ -20,76 +20,61 @@ const logger = {
   warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args)
 };
 
-// Database configuration based on environment
+// Database configuration for production/development only
 let dbConnection = null;
-let isTestEnv = process.env.NODE_ENV === 'test';
 
-// Simple in-memory mock for testing
-const mockDb = {
-  users: new Map(),
-  streams: new Map(),
-  nextId: 1
-};
-
-// Initialize database connection
 async function initializeDatabase() {
-  if (isTestEnv) {
-    // Use simple mock for testing
-    dbConnection = { isMock: true };
-    return true;
-  } else {
-    // Use PostgreSQL for production/development
-    const { Client } = require('pg');
-    try {
-      const pgClient = new Client({
-        host: process.env.POSTGRES_HOST || 'localhost',
-        user: process.env.POSTGRES_USER || 'cruvz', 
-        password: process.env.POSTGRES_PASSWORD || 'cruvzpass',
-        database: process.env.POSTGRES_DB || 'cruvzdb',
-        port: process.env.POSTGRES_PORT || 5432,
-      });
+  // Use PostgreSQL for production/development only (no test/mock)
+  const { Client } = require('pg');
+  try {
+    const pgClient = new Client({
+      host: process.env.POSTGRES_HOST || 'localhost',
+      user: process.env.POSTGRES_USER || 'cruvz', 
+      password: process.env.POSTGRES_PASSWORD || 'cruvzpass',
+      database: process.env.POSTGRES_DB || 'cruvzdb',
+      port: process.env.POSTGRES_PORT || 5432,
+    });
+    
+    await pgClient.connect();
+    logger.info('✅ Connected to PostgreSQL database');
+    
+    // Create tables if they don't exist
+    await pgClient.query(`
+      CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
       
-      await pgClient.connect();
-      logger.info('✅ Connected to PostgreSQL database');
-      
-      // Create tables if they don't exist
-      await pgClient.query(`
-        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-        
-        CREATE TABLE IF NOT EXISTS users (
-          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-          email VARCHAR(255) NOT NULL UNIQUE,
-          password_hash VARCHAR(255) NOT NULL,
-          first_name VARCHAR(100),
-          last_name VARCHAR(100),
-          role VARCHAR(20) DEFAULT 'user',
-          is_active BOOLEAN DEFAULT true,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        first_name VARCHAR(100),
+        last_name VARCHAR(100),
+        role VARCHAR(20) DEFAULT 'user',
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
 
-        CREATE TABLE IF NOT EXISTS streams (
-          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-          title VARCHAR(200) NOT NULL,
-          description TEXT,
-          stream_key VARCHAR(100) NOT NULL UNIQUE,
-          protocol VARCHAR(20) DEFAULT 'rtmp',
-          status VARCHAR(20) DEFAULT 'inactive',
-          max_viewers INTEGER DEFAULT 1000,
-          current_viewers INTEGER DEFAULT 0,
-          started_at TIMESTAMP,
-          ended_at TIMESTAMP,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      
-      console.log('✅ Database tables created/verified');
-      dbConnection = { pgClient };
-      return true;
-    } catch (error) {
-      console.error('❌ Database connection failed:', error.message);
-      return false;
-    }
+      CREATE TABLE IF NOT EXISTS streams (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        stream_key VARCHAR(100) NOT NULL UNIQUE,
+        protocol VARCHAR(20) DEFAULT 'rtmp',
+        status VARCHAR(20) DEFAULT 'inactive',
+        max_viewers INTEGER DEFAULT 1000,
+        current_viewers INTEGER DEFAULT 0,
+        started_at TIMESTAMP,
+        ended_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    logger.info('✅ Database tables created/verified');
+    dbConnection = { pgClient };
+    return true;
+  } catch (error) {
+    logger.error('❌ Database connection failed:', error.message);
+    return false;
   }
 }
 
@@ -98,108 +83,11 @@ async function query(text, params = []) {
   if (!dbConnection) {
     throw new Error('Database not connected');
   }
-  
   try {
-    if (dbConnection.isMock) {
-      // Mock database for testing
-      const sql = text.toLowerCase();
-      
-      if (sql.includes('select') && sql.includes('users') && sql.includes('email')) {
-        // Check if user exists by email
-        const email = params[0];
-        const user = Array.from(mockDb.users.values()).find(u => u.email === email);
-        return { rows: user ? [user] : [] };
-      }
-
-      if (sql.includes('select') && sql.includes('users') && sql.includes('id')) {
-        // Get user by ID (for auth middleware)
-        const userId = params[0];
-        const user = mockDb.users.get(userId);
-        return { rows: user ? [user] : [] };
-      }
-      
-      if (sql.includes('insert into users')) {
-        // Create user
-        const [firstName, lastName, email, passwordHash] = params;
-        const user = {
-          id: `user_${mockDb.nextId++}`,
-          first_name: firstName,
-          last_name: lastName,
-          email,
-          password_hash: passwordHash,
-          role: 'user',
-          is_active: true,
-          created_at: new Date()
-        };
-        mockDb.users.set(user.id, user);
-        return { rows: [user] };
-      }
-      
-      if (sql.includes('insert into streams')) {
-        // Create stream with extended fields
-        const [userId, title, description, streamKey, protocol, sourceUrl, destinationUrl] = params;
-        const stream = {
-          id: `stream_${mockDb.nextId++}`,
-          user_id: userId,
-          title,
-          description,
-          stream_key: streamKey,
-          protocol: protocol || 'rtmp',
-          source_url: sourceUrl || '',
-          destination_url: destinationUrl || '',
-          status: 'inactive',
-          max_viewers: 1000,
-          current_viewers: 0,
-          created_at: new Date()
-        };
-        mockDb.streams.set(stream.id, stream);
-        return { rows: [stream] };
-      }
-      
-      if (sql.includes('select') && sql.includes('streams') && sql.includes('user_id') && !sql.includes('order by')) {
-        // Get specific stream by ID and user_id
-        const [streamId, userId] = params;
-        const stream = mockDb.streams.get(streamId);
-        if (stream && stream.user_id === userId) {
-          return { rows: [stream] };
-        }
-        return { rows: [] };
-      }
-      
-      if (sql.includes('select') && sql.includes('streams') && sql.includes('user_id') && sql.includes('order by')) {
-        // Get user streams
-        const userId = params[0];
-        const streams = Array.from(mockDb.streams.values()).filter(s => s.user_id === userId);
-        return { rows: streams };
-      }
-      
-      if (sql.includes('update streams') && sql.includes('status')) {
-        // Update stream status
-        const [status, startTime, streamId] = params;
-        const stream = mockDb.streams.get(streamId);
-        if (stream) {
-          stream.status = status;
-          if (status === 'active') {
-            stream.started_at = startTime || new Date();
-            // Generate default URLs if not set
-            if (!stream.source_url) stream.source_url = `rtmp://localhost:1935/app/${stream.stream_key}`;
-            if (!stream.destination_url) stream.destination_url = `rtmp://localhost:1935/app/${stream.stream_key}`;
-          }
-          if (status === 'inactive') stream.ended_at = new Date();
-          return { rows: [stream] };
-        }
-        return { rows: [] };
-      }
-      
-      // Default empty response for unhandled queries
-      return { rows: [] };
-    } else {
-      // Use PostgreSQL
-      const result = await dbConnection.pgClient.query(text, params);
-      return result;
-    }
+    const result = await dbConnection.pgClient.query(text, params);
+    return result;
   } catch (error) {
-    console.error('Query error:', error);
+    logger.error('Query error:', error);
     throw error;
   }
 }
@@ -216,11 +104,9 @@ app.get('/health', async (req, res) => {
   
   // Check database connectivity
   try {
-    if (dbConnection && !dbConnection.isMock) {
+    if (dbConnection) {
       await query('SELECT 1');
       healthData.database = { connected: true, type: 'postgresql' };
-    } else if (dbConnection && dbConnection.isMock) {
-      healthData.database = { connected: true, type: 'in-memory' };
     } else {
       healthData.database = { connected: false, type: 'unknown' };
     }
@@ -241,7 +127,18 @@ async function authenticate(req, res, next) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!JWT_SECRET) {
+      return res.status(500).json({ success: false, error: 'JWT_SECRET is not set on server' });
+    }
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ success: false, error: 'Token expired, please login again' });
+      }
+      return res.status(401).json({ success: false, error: 'Invalid token' });
+    }
     
     const result = await query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.id]);
     if (result.rows.length === 0) {
@@ -308,9 +205,9 @@ app.post('/api/auth/register', async (req, res) => {
       data: { token, user: userWithoutPassword }
     });
 
-    console.log(`✅ User registered: ${email}`);
+    logger.info(`✅ User registered: ${email}`);
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error('Registration error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -349,9 +246,9 @@ app.post('/api/auth/login', async (req, res) => {
       data: { token, user: userWithoutPassword }
     });
 
-    console.log(`✅ User logged in: ${email}`);
+    logger.info(`✅ User logged in: ${email}`);
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('Login error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -377,33 +274,10 @@ app.post('/api/streams', authenticate, async (req, res) => {
     const streamKey = crypto.randomBytes(16).toString('hex');
 
     // Create stream with extended fields
-    const streamData = {
-      user_id: req.user.id,
-      title,
-      description: description || '',
-      stream_key: streamKey,
-      protocol: protocol || 'rtmp',
-      source_url: source_url || '',
-      destination_url: destination_url || '',
-      status: 'inactive',
-      max_viewers: 1000,
-      current_viewers: 0,
-      created_at: new Date()
-    };
-
-    let result;
-    if (dbConnection.isMock) {
-      // Handle mock database
-      streamData.id = `stream_${mockDb.nextId++}`;
-      mockDb.streams.set(streamData.id, streamData);
-      result = { rows: [streamData] };
-    } else {
-      // Handle PostgreSQL - use only existing columns
-      result = await query(
-        'INSERT INTO streams (user_id, title, description, stream_key, protocol) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [req.user.id, title, description || '', streamKey, protocol || 'rtmp']
-      );
-    }
+    const result = await query(
+      'INSERT INTO streams (user_id, title, description, stream_key, protocol) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [req.user.id, title, description || '', streamKey, protocol || 'rtmp']
+    );
 
     const stream = result.rows[0];
 
@@ -427,9 +301,9 @@ app.post('/api/streams', authenticate, async (req, res) => {
       data: response
     });
 
-    console.log(`✅ Stream created: ${title} by ${req.user.email}`);
+    logger.info(`✅ Stream created: ${title} by ${req.user.email}`);
   } catch (error) {
-    console.error('Stream creation error:', error);
+    logger.error('Stream creation error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -458,7 +332,7 @@ app.get('/api/streams', authenticate, async (req, res) => {
       data: { streams: result.rows }
     });
   } catch (error) {
-    console.error('Get streams error:', error);
+    logger.error('Get streams error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -499,9 +373,9 @@ app.post('/api/streams/:id/start', authenticate, async (req, res) => {
       }
     });
 
-    console.log(`✅ Stream started: ${updatedStream.title}`);
+    logger.info(`✅ Stream started: ${updatedStream.title}`);
   } catch (error) {
-    console.error('Start stream error:', error);
+    logger.error('Start stream error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -520,61 +394,41 @@ app.put('/api/streams/:id', authenticate, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid destination URL format' });
     }
 
-    let result;
-    if (dbConnection.isMock) {
-      // Handle mock database
-      const stream = mockDb.streams.get(streamId);
-      if (!stream || stream.user_id !== req.user.id) {
-        return res.status(404).json({ success: false, error: 'Stream not found' });
-      }
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
 
-      // Update stream fields
-      if (title !== undefined) stream.title = title;
-      if (description !== undefined) stream.description = description;
-      if (source_url !== undefined) stream.source_url = source_url;
-      if (destination_url !== undefined) stream.destination_url = destination_url;
-      if (protocol !== undefined) stream.protocol = protocol;
-      stream.updated_at = new Date();
+    if (title !== undefined) {
+      updateFields.push(`title = $${paramIndex++}`);
+      updateValues.push(title);
+    }
+    if (description !== undefined) {
+      updateFields.push(`description = $${paramIndex++}`);
+      updateValues.push(description);
+    }
+    if (source_url !== undefined) {
+      updateFields.push(`source_url = $${paramIndex++}`);
+      updateValues.push(source_url);
+    }
+    if (destination_url !== undefined) {
+      updateFields.push(`destination_url = $${paramIndex++}`);
+      updateValues.push(destination_url);
+    }
+    if (protocol !== undefined) {
+      updateFields.push(`protocol = $${paramIndex++}`);
+      updateValues.push(protocol);
+    }
 
-      result = { rows: [stream] };
-    } else {
-      // Handle PostgreSQL
-      const updateFields = [];
-      const updateValues = [];
-      let paramIndex = 1;
+    if (updateFields.length === 0) {
+      return res.status(400).json({ success: false, error: 'No fields to update' });
+    }
 
-      if (title !== undefined) {
-        updateFields.push(`title = $${paramIndex++}`);
-        updateValues.push(title);
-      }
-      if (description !== undefined) {
-        updateFields.push(`description = $${paramIndex++}`);
-        updateValues.push(description);
-      }
-      if (source_url !== undefined) {
-        updateFields.push(`source_url = $${paramIndex++}`);
-        updateValues.push(source_url);
-      }
-      if (destination_url !== undefined) {
-        updateFields.push(`destination_url = $${paramIndex++}`);
-        updateValues.push(destination_url);
-      }
-      if (protocol !== undefined) {
-        updateFields.push(`protocol = $${paramIndex++}`);
-        updateValues.push(protocol);
-      }
-
-      if (updateFields.length === 0) {
-        return res.status(400).json({ success: false, error: 'No fields to update' });
-      }
-
-      updateValues.push(streamId, req.user.id);
-      const sql = `UPDATE streams SET ${updateFields.join(', ')} WHERE id = $${paramIndex++} AND user_id = $${paramIndex++} RETURNING *`;
-      
-      result = await query(sql, updateValues);
-      if (result.rows.length === 0) {
-        return res.status(404).json({ success: false, error: 'Stream not found' });
-      }
+    updateValues.push(streamId, req.user.id);
+    const sql = `UPDATE streams SET ${updateFields.join(', ')} WHERE id = $${paramIndex++} AND user_id = $${paramIndex++} RETURNING *`;
+    
+    const result = await query(sql, updateValues);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Stream not found' });
     }
 
     const updatedStream = result.rows[0];
@@ -589,9 +443,9 @@ app.put('/api/streams/:id', authenticate, async (req, res) => {
       }
     });
 
-    console.log(`✅ Stream updated: ${updatedStream.title} by ${req.user.email}`);
+    logger.info(`✅ Stream updated: ${updatedStream.title} by ${req.user.email}`);
   } catch (error) {
-    console.error('Stream update error:', error);
+    logger.error('Stream update error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -605,7 +459,7 @@ app.get('/api/users/profile', authenticate, async (req, res) => {
       data: { user: userWithoutPassword }
     });
   } catch (error) {
-    console.error('Profile fetch error:', error);
+    logger.error('Profile fetch error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -613,80 +467,49 @@ app.get('/api/users/profile', authenticate, async (req, res) => {
 // Analytics dashboard endpoint
 app.get('/api/analytics/dashboard', authenticate, async (req, res) => {
   try {
-    let analytics;
-    if (dbConnection.isMock) {
-      analytics = {
-        total_streams: Array.from(mockDb.streams.values()).length,
-        active_streams: Array.from(mockDb.streams.values()).filter(s => s.status === 'active').length,
-        total_users: Array.from(mockDb.users.values()).length,
-        total_views: 1250,
-        uptime: '99.9%'
-      };
-    } else {
-      // Get real analytics from PostgreSQL
-      const streamsResult = await query('SELECT COUNT(*) as total FROM streams');
-      const activeStreamsResult = await query('SELECT COUNT(*) as active FROM streams WHERE status = $1', ['active']);
-      const usersResult = await query('SELECT COUNT(*) as total FROM users');
-      
-      analytics = {
-        total_streams: parseInt(streamsResult.rows[0].total),
-        active_streams: parseInt(activeStreamsResult.rows[0].active),
-        total_users: parseInt(usersResult.rows[0].total),
-        total_views: 1250,
-        uptime: '99.9%'
-      };
-    }
+    // Get real analytics from PostgreSQL
+    const streamsResult = await query('SELECT COUNT(*) as total FROM streams');
+    const activeStreamsResult = await query('SELECT COUNT(*) as active FROM streams WHERE status = $1', ['active']);
+    const usersResult = await query('SELECT COUNT(*) as total FROM users');
+    
+    const analytics = {
+      total_streams: parseInt(streamsResult.rows[0].total),
+      active_streams: parseInt(activeStreamsResult.rows[0].active),
+      total_users: parseInt(usersResult.rows[0].total),
+      total_views: 1250,
+      uptime: '99.9%'
+    };
     
     res.json({
       success: true,
       data: analytics
     });
   } catch (error) {
-    console.error('Analytics error:', error);
+    logger.error('Analytics error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
-// Static files / frontend fallback
-app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head><title>Cruvz Streaming Platform</title></head>
-    <body>
-      <h1>🚀 Cruvz Streaming Platform</h1>
-      <p>API server is running successfully!</p>
-      <ul>
-        <li><a href="/health">Health Check</a></li>
-        <li>API endpoints: /api/auth/*, /api/streams/*, /api/analytics/*</li>
-      </ul>
-    </body>
-    </html>
-  `);
-});
+// Remove static UI for production deployment
+// No app.get('/') endpoint
 
 // Start server (only if not in test environment)
 async function startServer() {
   const connected = await initializeDatabase();
   if (!connected) {
-    console.error('❌ Failed to connect to database. Exiting...');
+    logger.error('❌ Failed to connect to database. Exiting...');
     process.exit(1);
   }
 
   app.listen(PORT, () => {
-    console.log(`🚀 Cruvz Streaming API running on port ${PORT}`);
-    console.log('🗄️  Connected to database');
-    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    logger.info(`🚀 Cruvz Streaming API running on port ${PORT}`);
+    logger.info('🗄️  Connected to database');
+    logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
   });
 }
 
 // Export app for testing
 module.exports = app;
-
-// Initialize database for tests
-if (isTestEnv) {
-  initializeDatabase().catch(console.error);
-}
 
 // Only start server if not in test environment
 if (require.main === module) {
