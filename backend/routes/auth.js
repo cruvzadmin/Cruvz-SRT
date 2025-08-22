@@ -26,6 +26,11 @@ const loginSchema = Joi.object({
 
 // Generate JWT token
 const generateToken = (user) => {
+  // FIX: Handle missing JWT_SECRET gracefully
+  if (!process.env.JWT_SECRET) {
+    logger.error('JWT_SECRET is not set in environment variables.');
+    throw new Error('Internal server error');
+  }
   return jwt.sign(
     { 
       id: user.id, 
@@ -87,7 +92,15 @@ router.post('/register', async (req, res) => {
       .first();
 
     // Generate token
-    const token = generateToken(user);
+    let token;
+    try {
+      token = generateToken(user);
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: 'JWT secret not configured on server'
+      });
+    }
 
     logger.info(`New user registered: ${email}`);
 
@@ -163,7 +176,15 @@ router.post('/login', async (req, res) => {
       .update({ last_login_at: new Date() });
 
     // Generate token
-    const token = generateToken(user);
+    let token;
+    try {
+      token = generateToken(user);
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: 'JWT secret not configured on server'
+      });
+    }
 
     logger.info(`User logged in: ${email}`);
 
