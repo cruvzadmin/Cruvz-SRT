@@ -13,11 +13,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files and install dependencies first for better caching
-COPY package-simple.json package.json
-COPY package-lock.json* ./
+COPY package-simple.json ./package.json
+RUN rm -f package-lock.json
 
 # Install dependencies with timeout - use npm install for production
-RUN npm install --only=production --timeout=300000
+RUN npm config set strict-ssl false && \
+    npm install --only=production --timeout=300000
 
 # Copy application source and configuration
 COPY . .
