@@ -31,8 +31,11 @@ async function apiRequest(endpoint, options = {}) {
         ...options
     };
 
-    if (config.body && typeof config.body === 'object') {
+    // FIX: Ensure body is only set for non-GET requests
+    if (config.body && typeof config.body === 'object' && config.method && config.method.toUpperCase() !== 'GET') {
         config.body = JSON.stringify(config.body);
+    } else if (config.method && config.method.toUpperCase() === 'GET') {
+        delete config.body;
     }
 
     try {
