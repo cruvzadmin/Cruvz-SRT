@@ -589,7 +589,7 @@ async function startServer() {
     process.exit(1);
   }
 
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     logger.info(`🚀 Cruvz Streaming API running on port ${PORT}`);
     logger.info('🗄️  Connected to database');
     logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
