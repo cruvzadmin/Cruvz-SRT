@@ -414,6 +414,7 @@ volumes:
   postgres-data:
     name: cruvz-postgres-data
     driver: local
+    external: true   # CORRECTION: mark as external to connect to pre-existing volume
   prometheus-data:
     name: cruvz-prometheus-data
     driver: local
