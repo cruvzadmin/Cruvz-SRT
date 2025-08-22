@@ -14,7 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class OvenMediaEngineKeygen {
-    private static final String SECRET_KEY = "ome_is_the_best";
+    // CORRECTION: Fetch secret from environment variable, fallback to previous value for dev/test
+    private static final String SECRET_KEY = System.getenv().getOrDefault("OME_SECRET_KEY", "ome_is_the_best");
     private static final String BASE_RTMP_URL = "rtmp://localhost:1935/app/stream";
     private static final String BASE_WS_URL = "ws://localhost:3333/app/stream";
 
