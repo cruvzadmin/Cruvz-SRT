@@ -234,7 +234,10 @@ validate_deployment() {
 # Run user workflow tests
 test_user_workflows() {
     log "INFO" "Testing comprehensive user workflows..."
-    
+
+    # Set API_URL variable for manual workflow testing
+    API_URL="http://localhost:5000"
+
     # Test database connectivity first
     log "INFO" "Testing database connectivity..."
     if docker compose -f "$COMPOSE_FILE" exec -T backend node -e "
