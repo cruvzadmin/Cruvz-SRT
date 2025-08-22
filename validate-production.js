@@ -175,7 +175,8 @@ async function testAuthentication() {
   
   await runTest('authentication', 'user_registration', async () => {
     const testUser = {
-      name: 'Validation Test',
+      firstName: 'Validation',
+      lastName: 'Test', 
       email: `test-${Date.now()}@cruvz.com`,
       password: 'TestPass123!'
     };
@@ -197,7 +198,7 @@ async function testAuthentication() {
     const response = await makeRequest(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'demo@cruvz.com', password: 'demo12345' })
+      body: JSON.stringify({ email: 'demo@cruvz.com', password: 'demo123' })
     });
     
     if (response.status === 200 && response.data.success && response.data.data.token) {
@@ -372,7 +373,7 @@ async function testIntegration() {
     const response = await makeRequest(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'demo@cruvz.com', password: 'demo12345' })
+      body: JSON.stringify({ email: 'demo@cruvz.com', password: 'demo123' })
     });
     
     if (response.status === 200 && response.data.success) {
