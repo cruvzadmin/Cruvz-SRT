@@ -17,7 +17,7 @@ services:
     environment:
       POSTGRES_DB: cruvzdb
       POSTGRES_USER: cruvz
-      POSTGRES_PASSWORD: pg_T3st_P@ssw0rd_4dm1n_2025!_Aq7eY6x9J2vL5sQ8rF1zC0wM3nB4kH
+      POSTGRES_PASSWORD: cruvzSRT91
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -116,7 +116,7 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=cruvz
-      - POSTGRES_PASSWORD=pg_T3st_P@ssw0rd_4dm1n_2025!_Aq7eY6x9J2vL5sQ8rF1zC0wM3nB4kH
+      - POSTGRES_PASSWORD=cruvzSRT91
       - POSTGRES_DB=cruvzdb
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -412,7 +412,7 @@ networks:
 # ================================
 volumes:
   postgres-data:
-    external: true
+    driver: local
     name: cruvz-postgres-data
   prometheus-data:
     driver: local

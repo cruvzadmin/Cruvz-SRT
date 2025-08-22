@@ -37,14 +37,12 @@
 	<!-- Settings for the ports to bind -->
 	<Bind>
 		<!-- Enable this configuration if you want to use API Server -->
-		<!--
 		<Managers>
 			<API>
-				<Port>${env:OME_API_PORT:8081}</Port>
+				<Port>${env:OME_API_PORT:8080}</Port>
 				<WorkerCount>1</WorkerCount>
 			</API>
 		</Managers>
-		-->
 		<Providers>
 			<!-- Pull providers -->
 			<RTSPC>
@@ -77,7 +75,7 @@
 					<WorkerCount>1</WorkerCount>
 				</Signalling>
 				<IceCandidates>
-					<IceCandidate>${env:OME_HOST_IP:*}:${env:OME_WEBRTC_CANDIDATE_PORT:10000-10004/udp}</IceCandidate>
+					<IceCandidate>${env:OME_HOST_IP:*}:${env:OME_WEBRTC_CANDIDATE_PORT:10000-10100/udp}</IceCandidate>
 					<TcpRelay>${env:OME_HOST_IP:*}:${env:OME_WEBRTC_TCP_RELAY_PORT:3478}</TcpRelay>
 					<TcpForce>true</TcpForce>
 					<TcpRelayWorkerCount>1</TcpRelayWorkerCount>
@@ -108,7 +106,7 @@
 					<WorkerCount>1</WorkerCount>
 				</Signalling>
 				<IceCandidates>
-					<IceCandidate>${env:OME_HOST_IP:*}:${env:OME_WEBRTC_CANDIDATE_PORT:10000-10004/udp}</IceCandidate>
+					<IceCandidate>${env:OME_HOST_IP:*}:${env:OME_WEBRTC_CANDIDATE_PORT:10000-10100/udp}</IceCandidate>
 					<TcpRelay>${env:OME_HOST_IP:*}:${env:OME_WEBRTC_TCP_RELAY_PORT:3478}</TcpRelay>
 					<TcpForce>true</TcpForce>
 					<TcpRelayWorkerCount>1</TcpRelayWorkerCount>
@@ -139,11 +137,13 @@
 					-->
 					<Name>*</Name>
 				</Names>
+				<!-- Disable TLS for production deployment without certificates
 				<TLS>
 					<CertPath>./cert.crt</CertPath>
 					<KeyPath>./cert.key</KeyPath>
 					<ChainCertPath>./cert.ca-bundle</ChainCertPath>
 				</TLS>
+				-->
 			</Host>
 
 			<!-- Refer https://airensoft.gitbook.io/ovenmediaengine/signedpolicy
