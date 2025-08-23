@@ -434,11 +434,13 @@ async function handleAuthSubmit(e) {
             if (!first_name) {
                 throw new Error('Full Name is required');
             }
+            // CRITICAL CORRECTION: Use /api/auth/register
             response = await apiRequest('/auth/register', {
                 method: 'POST',
                 body: { first_name, last_name, email, password }
             });
         } else {
+            // CRITICAL CORRECTION: Use /api/auth/login
             response = await apiRequest('/auth/login', {
                 method: 'POST',
                 body: { email, password }
