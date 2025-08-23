@@ -118,6 +118,19 @@ app.get('/health', async (req, res) => {
   res.json(healthData);
 });
 
+// Prometheus metrics endpoint for production monitoring
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', 'text/plain; version=0.0.4');
+  // You can replace these with real metrics using prom-client if desired
+  res.send(`# HELP cruvz_up 1 if the API backend is up
+# TYPE cruvz_up gauge
+cruvz_up 1
+# HELP cruvz_active_users Number of active users (dummy)
+# TYPE cruvz_active_users gauge
+cruvz_active_users 1
+`);
+});
+
 // Auth middleware
 async function authenticate(req, res, next) {
   try {
@@ -591,6 +604,7 @@ async function startServer() {
     logger.info(`🚀 Cruvz Streaming API running on port ${PORT}`);
     logger.info('🗄️  Connected to database');
     logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
+    logger.info(`🔗 Metrics endpoint: http://localhost:${PORT}/metrics`);
   });
 }
 
