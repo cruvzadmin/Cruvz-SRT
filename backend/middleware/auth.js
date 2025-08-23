@@ -13,7 +13,6 @@ const auth = async (req, res, next) => {
       });
     }
 
-    // FIX: Handle missing JWT_SECRET more gracefully
     if (!process.env.JWT_SECRET) {
       logger.error('JWT_SECRET is not set in environment variables.');
       return res.status(500).json({
@@ -47,7 +46,6 @@ const auth = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    // FIX: Give more specific error message for JWT expiration
     if (error.name === 'TokenExpiredError') {
       logger.warn('JWT token expired:', error);
       return res.status(401).json({
