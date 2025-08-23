@@ -27,12 +27,12 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Simple auth without bcrypt to avoid build issues
+// Auth: Register (expects first_name, last_name, email, password)
 app.post('/api/auth/register', (req, res) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
-    
-    if (!firstName || !lastName || !email || !password) {
+    const { first_name, last_name, email, password } = req.body;
+
+    if (!first_name || !last_name || !email || !password) {
       return res.status(400).json({ success: false, error: 'All fields are required' });
     }
 
@@ -42,8 +42,8 @@ app.post('/api/auth/register', (req, res) => {
 
     const user = {
       id: `user_${nextId++}`,
-      firstName,
-      lastName,
+      first_name,
+      last_name,
       email,
       password, // In production, this would be hashed
       createdAt: new Date()
@@ -60,8 +60,8 @@ app.post('/api/auth/register', (req, res) => {
         token,
         user: {
           id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
+          first_name: user.first_name,
+          last_name: user.last_name,
           email: user.email
         }
       }
@@ -74,10 +74,11 @@ app.post('/api/auth/register', (req, res) => {
   }
 });
 
+// Auth: Login
 app.post('/api/auth/login', (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     if (!email || !password) {
       return res.status(400).json({ success: false, error: 'Email and password are required' });
     }
@@ -96,8 +97,8 @@ app.post('/api/auth/login', (req, res) => {
         token,
         user: {
           id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
+          first_name: user.first_name,
+          last_name: user.last_name,
           email: user.email
         }
       }
@@ -121,7 +122,6 @@ function authenticate(req, res, next) {
     const token = authHeader.substring(7);
     const decoded = Buffer.from(token, 'base64').toString();
     const [userId] = decoded.split(':');
-    
     // Find user
     const user = Array.from(users.values()).find(u => u.id === userId);
     if (!user) {
@@ -321,12 +321,12 @@ app.get('/api/six-sigma/dashboard', authenticate, (req, res) => {
     const activeStreams = Array.from(streams.values()).filter(s => s.status === 'active').length;
     const errorStreams = Array.from(streams.values()).filter(s => s.status === 'error').length;
     const totalUsers = users.size;
-    
+
     // Calculate Six Sigma metrics (real, not mock)
     const defectRate = totalStreams > 0 ? (errorStreams / totalStreams) * 100 : 0;
     const uptimePercentage = 99.97; // Calculate from actual uptime monitoring
     const overallSigmaLevel = defectRate < 0.1 ? 6.0 : defectRate < 1 ? 5.5 : defectRate < 5 ? 4.0 : 3.0;
-    
+
     const sixSigmaData = {
       overview: {
         overall_sigma_level: overallSigmaLevel,
@@ -379,17 +379,17 @@ app.get('/api/six-sigma/dashboard', authenticate, (req, res) => {
         success_rate: 100 - defectRate
       }
     };
-    
+
     res.json({
       success: true,
       data: sixSigmaData
     });
-    
+
     console.log('✅ Six Sigma dashboard data provided');
   } catch (error) {
     console.error('Six Sigma dashboard error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Failed to load Six Sigma metrics',
       message: 'Six Sigma API is operational but data collection failed'
     });
@@ -430,8 +430,8 @@ app.listen(PORT, '0.0.0.0', () => {
 setTimeout(() => {
   const demoUser = {
     id: 'demo_user',
-    firstName: 'Demo',
-    lastName: 'User',
+    first_name: 'Demo',
+    last_name: 'User',
     email: 'demo@cruvz.com',
     password: 'demo123',
     createdAt: new Date()
