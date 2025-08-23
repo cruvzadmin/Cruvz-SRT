@@ -15,406 +15,292 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 32px 15px;
         }
         .card {
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.10);
             border: none;
-            border-radius: 15px;
+            border-radius: 16px;
             backdrop-filter: blur(10px);
-            background: rgba(255,255,255,0.95);
+            background: rgba(255,255,255,0.97);
         }
         .card-header {
             background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
             color: white;
             border: none;
-            border-radius: 15px 15px 0 0 !important;
-            padding: 20px;
+            border-radius: 16px 16px 0 0 !important;
+            padding: 28px 20px 18px 20px;
+            text-align: center;
         }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
-            transition: all 0.3s ease;
+        .status-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+            padding: 18px 0 14px 0;
+            margin-bottom: 20px;
+            min-height: 120px;
+            transition: box-shadow 0.2s;
         }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        .form-control {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 12px 15px;
-            transition: all 0.3s ease;
-        }
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .stream-info {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
+        .status-card .fa-2x {
+            margin-bottom: 10px;
         }
         .protocol-card {
             border: 2px solid #e9ecef;
             border-radius: 10px;
-            padding: 15px;
+            padding: 18px 12px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 15px;
+            transition: all 0.22s;
+            margin-bottom: 0;
+            background: #f3f6fb;
         }
-        .protocol-card:hover {
+        .protocol-card.selected, .protocol-card:hover {
             border-color: #667eea;
-            transform: translateY(-2px);
+            background: linear-gradient(135deg, #e3eafe 0%, #e0f7fa 100%);
+            transform: translateY(-2px) scale(1.04);
         }
-        .protocol-card.selected {
-            border-color: #4CAF50;
-            background: rgba(76, 175, 80, 0.1);
+        .form-label {
+            font-weight: 500;
         }
-        .metrics-card {
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-            color: white;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 15px;
+        .form-check-label {
+            font-size: 1rem;
+            font-weight: 400;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 24px;
+            font-size: 1.2rem;
+            padding: 12px 0;
+            transition: background 0.2s, box-shadow 0.2s;
+            font-weight: 600;
+        }
+        .btn-primary:active, .btn-primary:focus, .btn-primary:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.12);
+        }
+        .alert {
+            font-size: 1rem;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-10">
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="mb-0">
-                            <i class="fas fa-broadcast-tower me-2"></i>
-                            Create Professional Streaming Service
-                        </h2>
-                        <p class="mb-0 mt-2">Deploy production-ready streaming for 1000+ concurrent viewers</p>
-                    </div>
-                    <div class="card-body">
-                        <!-- System Status -->
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <div class="metrics-card">
-                                    <i class="fas fa-database fa-2x mb-2"></i>
-                                    <h5>PostgreSQL</h5>
-                                    <p class="mb-0">Production Database</p>
-                                    <small id="db-status" class="badge bg-success">Connected</small>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="metrics-card" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
-                                    <i class="fas fa-bolt fa-2x mb-2"></i>
-                                    <h5>Redis Cache</h5>
-                                    <p class="mb-0">Real-time Data</p>
-                                    <small id="redis-status" class="badge bg-light text-dark">Connected</small>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="metrics-card" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
-                                    <i class="fas fa-users fa-2x mb-2"></i>
-                                    <h5>Capacity</h5>
-                                    <p class="mb-0">1000+ Users</p>
-                                    <small id="capacity-status" class="badge bg-light text-dark">Ready</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <form id="streamForm">
-                            <div class="row">
-                                <!-- Basic Information -->
-                                <div class="col-md-6">
-                                    <h4 class="mb-3"><i class="fas fa-info-circle me-2"></i>Stream Details</h4>
-                                    
-                                    <div class="mb-3">
-                                        <label for="title" class="form-label">Stream Title *</label>
-                                        <input type="text" class="form-control" id="title" name="title" 
-                                               placeholder="My Professional Live Stream" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="description" class="form-label">Description</label>
-                                        <textarea class="form-control" id="description" name="description" rows="3"
-                                                  placeholder="Describe your streaming content..."></textarea>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="maxViewers" class="form-label">Maximum Concurrent Viewers</label>
-                                        <select class="form-control" id="maxViewers" name="maxViewers">
-                                            <option value="100">100 viewers</option>
-                                            <option value="500">500 viewers</option>
-                                            <option value="1000" selected>1,000 viewers</option>
-                                            <option value="5000">5,000 viewers</option>
-                                            <option value="10000">10,000 viewers</option>
-                                            <option value="50000">50,000 viewers</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <!-- Protocol Selection -->
-                                <div class="col-md-6">
-                                    <h4 class="mb-3"><i class="fas fa-network-wired me-2"></i>Streaming Protocol</h4>
-                                    
-                                    <div class="protocol-card" data-protocol="rtmp">
-                                        <i class="fas fa-video fa-2x mb-2" style="color: #e74c3c;"></i>
-                                        <h5>RTMP</h5>
-                                        <p class="mb-0">Real-Time Messaging Protocol</p>
-                                        <small class="text-muted">Best for OBS, XSplit, streaming software</small>
-                                    </div>
-
-                                    <div class="protocol-card" data-protocol="srt">
-                                        <i class="fas fa-shield-alt fa-2x mb-2" style="color: #3498db;"></i>
-                                        <h5>SRT</h5>
-                                        <p class="mb-0">Secure Reliable Transport</p>
-                                        <small class="text-muted">Low latency, error correction</small>
-                                    </div>
-
-                                    <div class="protocol-card" data-protocol="webrtc">
-                                        <i class="fas fa-globe fa-2x mb-2" style="color: #27ae60;"></i>
-                                        <h5>WebRTC</h5>
-                                        <p class="mb-0">Web Real-Time Communication</p>
-                                        <small class="text-muted">Ultra-low latency, browser-native</small>
-                                    </div>
-
-                                    <input type="hidden" id="protocol" name="protocol" value="rtmp">
-                                </div>
-                            </div>
-
-                            <!-- Advanced Settings -->
-                            <div class="row mt-4">
-                                <div class="col-12">
-                                    <h4 class="mb-3"><i class="fas fa-cogs me-2"></i>Quality Settings</h4>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="quality" class="form-label">Resolution</label>
-                                    <select class="form-control" id="quality" name="quality">
-                                        <option value="720p">HD 720p</option>
-                                        <option value="1080p" selected>Full HD 1080p</option>
-                                        <option value="4k">4K Ultra HD</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="bitrate" class="form-label">Video Bitrate (kbps)</label>
-                                    <input type="number" class="form-control" id="bitrate" name="bitrate" 
-                                           value="5000" min="1000" max="50000">
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="fps" class="form-label">Frame Rate</label>
-                                    <select class="form-control" id="fps" name="fps">
-                                        <option value="24">24 FPS</option>
-                                        <option value="30" selected>30 FPS</option>
-                                        <option value="60">60 FPS</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="audioBitrate" class="form-label">Audio Bitrate (kbps)</label>
-                                    <select class="form-control" id="audioBitrate" name="audioBitrate">
-                                        <option value="64">64 kbps</option>
-                                        <option value="128" selected>128 kbps</option>
-                                        <option value="192">192 kbps</option>
-                                        <option value="320">320 kbps</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- Recording Options -->
-                            <div class="row mt-4">
-                                <div class="col-12">
-                                    <h4 class="mb-3"><i class="fas fa-record-vinyl me-2"></i>Recording & Features</h4>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="isRecording" name="isRecording">
-                                        <label class="form-check-label" for="isRecording">
-                                            <strong>Enable Recording</strong><br>
-                                            <small class="text-muted">Save stream to cloud storage</small>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="adaptiveBitrate" name="adaptiveBitrate" checked>
-                                        <label class="form-check-label" for="adaptiveBitrate">
-                                            <strong>Adaptive Bitrate</strong><br>
-                                            <small class="text-muted">Automatically adjust quality based on viewer connection</small>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Create Button -->
-                            <div class="row mt-4">
-                                <div class="col-12 text-center">
-                                    <button type="submit" class="btn btn-primary btn-lg">
-                                        <i class="fas fa-rocket me-2"></i>
-                                        Create Streaming Service
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-
-                        <!-- Stream Information Display -->
-                        <div id="streamInfo" class="stream-info" style="display: none;">
-                            <h4 class="mb-3"><i class="fas fa-check-circle text-success me-2"></i>Stream Created Successfully!</h4>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h5>Streaming URLs:</h5>
-                                    <div class="mb-2">
-                                        <strong>RTMP Publish:</strong><br>
-                                        <code id="rtmpUrl" class="text-break"></code>
-                                    </div>
-                                    <div class="mb-2">
-                                        <strong>Stream Key:</strong><br>
-                                        <code id="streamKey" class="text-break"></code>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <h5>Viewer URLs:</h5>
-                                    <div class="mb-2">
-                                        <strong>HLS:</strong><br>
-                                        <code id="hlsUrl" class="text-break"></code>
-                                    </div>
-                                    <div class="mb-2">
-                                        <strong>WebRTC:</strong><br>
-                                        <code id="webrtcUrl" class="text-break"></code>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mt-3">
-                                <a href="/pages/dashboard.html" class="btn btn-success">
-                                    <i class="fas fa-tachometer-alt me-2"></i>View Dashboard
-                                </a>
-                                <button class="btn btn-secondary" onclick="copyStreamInfo()">
-                                    <i class="fas fa-copy me-2"></i>Copy Stream Info
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <div class="container py-5">
+      <div class="row justify-content-center">
+        <div class="col-lg-8">
+          <div class="card shadow-lg border-0 mb-4">
+            <div class="card-header">
+              <h2><i class="fas fa-broadcast-tower me-2"></i>Create Professional Streaming Service</h2>
+              <p class="mb-0">Deploy production-ready streaming for 1000+ concurrent viewers</p>
             </div>
+            <div class="card-body">
+              <!-- System Status Row -->
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <div class="status-card text-center">
+                    <i class="fas fa-database fa-2x text-success"></i>
+                    <h6 class="mt-2 mb-1">PostgreSQL</h6>
+                    <span id="db-status" class="badge bg-secondary">Checking...</span>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="status-card text-center">
+                    <i class="fas fa-bolt fa-2x text-warning"></i>
+                    <h6 class="mt-2 mb-1">Redis Cache</h6>
+                    <span id="redis-status" class="badge bg-secondary">Checking...</span>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="status-card text-center">
+                    <i class="fas fa-users fa-2x text-info"></i>
+                    <h6 class="mt-2 mb-1">Capacity</h6>
+                    <span class="badge bg-info text-dark">1000+ Users</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Feedback -->
+              <div id="feedback" style="display:none"></div>
+              <!-- Stream Form -->
+              <form id="streamForm" autocomplete="off">
+                <div class="mb-3">
+                  <label for="streamTitle" class="form-label">Stream Title</label>
+                  <input type="text" class="form-control" id="streamTitle" name="title" required maxlength="200" placeholder="Give your stream a catchy name">
+                </div>
+                <div class="mb-3">
+                  <label for="streamDescription" class="form-label">Description</label>
+                  <textarea class="form-control" id="streamDescription" name="description" rows="2" maxlength="500" placeholder="Describe your stream..."></textarea>
+                </div>
+                <div class="mb-3">
+                  <label for="maxViewers" class="form-label">Maximum Concurrent Viewers</label>
+                  <select class="form-select" id="maxViewers" name="maxViewers">
+                    <option value="1000">1,000 viewers</option>
+                    <option value="5000">5,000 viewers</option>
+                    <option value="10000">10,000 viewers</option>
+                  </select>
+                </div>
+                <!-- Protocol Selection -->
+                <div class="mb-4">
+                  <label class="form-label">Streaming Protocol</label>
+                  <div class="d-flex gap-3 flex-wrap">
+                    <div class="protocol-card flex-fill" data-protocol="rtmp">
+                      <strong>RTMP</strong><br>
+                      <small>For OBS, XSplit</small>
+                    </div>
+                    <div class="protocol-card flex-fill" data-protocol="srt">
+                      <strong>SRT</strong><br>
+                      <small>Low latency, error correction</small>
+                    </div>
+                    <div class="protocol-card flex-fill" data-protocol="webrtc">
+                      <strong>WebRTC</strong><br>
+                      <small>Ultra low latency</small>
+                    </div>
+                  </div>
+                  <input type="hidden" id="protocol" name="protocol" value="rtmp">
+                </div>
+                <!-- Quality Settings -->
+                <div class="row mb-3">
+                  <div class="col">
+                    <label for="resolution" class="form-label">Resolution</label>
+                    <select class="form-select" id="resolution" name="quality">
+                      <option value="1080p">Full HD 1080p</option>
+                      <option value="720p">HD 720p</option>
+                      <option value="480p">SD 480p</option>
+                    </select>
+                  </div>
+                  <div class="col">
+                    <label for="bitrate" class="form-label">Video Bitrate (kbps)</label>
+                    <input type="number" class="form-control" id="bitrate" name="bitrate" value="5000" min="500" max="12000">
+                  </div>
+                  <div class="col">
+                    <label for="frameRate" class="form-label">Frame Rate</label>
+                    <select class="form-select" id="frameRate" name="frameRate">
+                      <option value="30">30 FPS</option>
+                      <option value="60">60 FPS</option>
+                    </select>
+                  </div>
+                </div>
+                <!-- Features -->
+                <div class="mb-3 form-check">
+                  <input type="checkbox" class="form-check-input" id="enableRecording" name="isRecording">
+                  <label class="form-check-label" for="enableRecording">Enable Recording</label>
+                </div>
+                <div class="mb-3 form-check">
+                  <input type="checkbox" class="form-check-input" id="adaptiveBitrate" name="adaptive" checked>
+                  <label class="form-check-label" for="adaptiveBitrate">Adaptive Bitrate</label>
+                </div>
+                <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+                  <span id="submitBtnText">Create Streaming Service</span>
+                  <span id="submitSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Protocol selection
-        document.querySelectorAll('.protocol-card').forEach(card => {
-            card.addEventListener('click', function() {
-                document.querySelectorAll('.protocol-card').forEach(c => c.classList.remove('selected'));
-                this.classList.add('selected');
-                document.getElementById('protocol').value = this.dataset.protocol;
-            });
+      // Protocol selection logic
+      document.querySelectorAll('.protocol-card').forEach(card => {
+        card.addEventListener('click', function() {
+          document.querySelectorAll('.protocol-card').forEach(c => c.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('protocol').value = this.dataset.protocol;
         });
+      });
+      // Default RTMP selected
+      document.querySelector('[data-protocol="rtmp"]').classList.add('selected');
 
-        // Default select RTMP
-        document.querySelector('[data-protocol="rtmp"]').classList.add('selected');
+      // System status polling
+      async function checkSystemStatus() {
+        try {
+          const response = await fetch('/health');
+          if (!response.ok) throw new Error('Health check failed');
+          const health = await response.json();
+          // The backend should return string values: 'connected'/'disconnected'
+          document.getElementById('db-status').textContent = health.services?.database === 'connected' ? 'Connected' : 'Disconnected';
+          document.getElementById('db-status').className = 'badge ' + (health.services?.database === 'connected' ? 'bg-success' : 'bg-danger');
+          document.getElementById('redis-status').textContent = health.services?.cache === 'connected' ? 'Connected' : 'Disconnected';
+          document.getElementById('redis-status').className = 'badge ' + (health.services?.cache === 'connected' ? 'bg-success' : 'bg-danger');
+        } catch (error) {
+          document.getElementById('db-status').textContent = 'Error';
+          document.getElementById('db-status').className = 'badge bg-danger';
+          document.getElementById('redis-status').textContent = 'Error';
+          document.getElementById('redis-status').className = 'badge bg-danger';
+        }
+      }
+      checkSystemStatus();
+      setInterval(checkSystemStatus, 15000); // Poll every 15 seconds
 
-        // Check system status
-        async function checkSystemStatus() {
-            try {
-                const response = await fetch('/health');
-                const health = await response.json();
-                
-                // Update status indicators
-                document.getElementById('db-status').textContent = health.services?.database === 'connected' ? 'Connected' : 'Disconnected';
-                document.getElementById('db-status').className = health.services?.database === 'connected' ? 'badge bg-success' : 'badge bg-danger';
-                
-                document.getElementById('redis-status').textContent = health.services?.cache === 'connected' ? 'Connected' : 'Disconnected';
-                document.getElementById('redis-status').className = health.services?.cache === 'connected' ? 'badge bg-light text-dark' : 'badge bg-danger';
-                
-                document.getElementById('capacity-status').textContent = health.production ? 'Production Ready' : 'Development';
-                document.getElementById('capacity-status').className = health.production ? 'badge bg-light text-dark' : 'badge bg-warning text-dark';
-                
-            } catch (error) {
-                console.error('Failed to check system status:', error);
+      // Feedback display
+      function showFeedback(type, message) {
+        const feedback = document.getElementById('feedback');
+        feedback.style.display = '';
+        feedback.className = 'alert alert-' + (type === 'success' ? 'success' : 'danger') + ' mt-3';
+        feedback.innerHTML = message;
+      }
+      function hideFeedback() {
+        const feedback = document.getElementById('feedback');
+        feedback.style.display = 'none';
+        feedback.className = '';
+        feedback.innerHTML = '';
+      }
+
+      // Form submission with real backend call
+      document.getElementById('streamForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        hideFeedback();
+        const btn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('submitBtnText');
+        const spinner = document.getElementById('submitSpinner');
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        btnText.textContent = 'Creating...';
+
+        try {
+          const formData = new FormData(this);
+          const streamData = {
+            title: formData.get('title').trim(),
+            description: formData.get('description').trim(),
+            protocol: formData.get('protocol'),
+            max_viewers: parseInt(formData.get('maxViewers')),
+            is_recording: formData.get('isRecording') === 'on',
+            adaptive: formData.get('adaptive') === 'on',
+            settings: {
+              quality: formData.get('quality'),
+              bitrate: parseInt(formData.get('bitrate')),
+              frameRate: parseInt(formData.get('frameRate'))
             }
+          };
+
+          // Validate required fields
+          if (!streamData.title) throw new Error('Stream title is required.');
+
+          const response = await fetch('/api/streams', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              // Add authentication headers if your API requires it
+              // 'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(streamData)
+          });
+
+          const result = await response.json();
+          if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to create stream.');
+          }
+          showFeedback('success', 'Stream created successfully! <br> <b>Stream Key:</b> ' + (result.data?.stream?.stream_key || 'N/A'));
+          this.reset();
+          // Optionally, redirect or update list after creation
+        } catch (error) {
+          showFeedback('error', error.message || 'Failed to create stream.');
+        } finally {
+          btn.disabled = false;
+          spinner.classList.add('d-none');
+          btnText.textContent = 'Create Streaming Service';
         }
-
-        // Form submission
-        document.getElementById('streamForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const streamData = {
-                title: formData.get('title'),
-                description: formData.get('description'),
-                protocol: formData.get('protocol'),
-                max_viewers: parseInt(formData.get('maxViewers')),
-                is_recording: formData.get('isRecording') === 'on',
-                settings: {
-                    quality: formData.get('quality'),
-                    bitrate: parseInt(formData.get('bitrate')),
-                    fps: parseInt(formData.get('fps')),
-                    audio_bitrate: parseInt(formData.get('audioBitrate')),
-                    adaptive_bitrate: formData.get('adaptiveBitrate') === 'on'
-                }
-            };
-
-            try {
-                const response = await fetch('/api/streams', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // In real implementation, you'd include JWT token here
-                        'Authorization': 'Bearer demo_token'
-                    },
-                    body: JSON.stringify(streamData)
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    displayStreamInfo(result.data);
-                } else {
-                    const error = await response.json();
-                    alert('Failed to create stream: ' + (error.error || 'Unknown error'));
-                }
-            } catch (error) {
-                console.error('Stream creation error:', error);
-                // For demo purposes, show success with mock data
-                displayStreamInfo({
-                    id: 'demo-stream-' + Date.now(),
-                    stream_key: 'stream_' + Math.random().toString(36).substr(2, 16),
-                    protocol: streamData.protocol,
-                    streaming_urls: {
-                        publish_url: `rtmp://origin:1935/live`,
-                        hls_url: `http://origin:8080/live/demo_stream/playlist.m3u8`,
-                        webrtc_url: `ws://origin:3333/live/demo_stream`
-                    }
-                });
-            }
-        });
-
-        function displayStreamInfo(stream) {
-            document.getElementById('streamKey').textContent = stream.stream_key;
-            document.getElementById('rtmpUrl').textContent = stream.streaming_urls.publish_url;
-            document.getElementById('hlsUrl').textContent = stream.streaming_urls.hls_url;
-            document.getElementById('webrtcUrl').textContent = stream.streaming_urls.webrtc_url;
-            
-            document.getElementById('streamInfo').style.display = 'block';
-            document.getElementById('streamForm').style.display = 'none';
-        }
-
-        function copyStreamInfo() {
-            const streamKey = document.getElementById('streamKey').textContent;
-            const rtmpUrl = document.getElementById('rtmpUrl').textContent;
-            const hlsUrl = document.getElementById('hlsUrl').textContent;
-            
-            const info = `Stream Key: ${streamKey}\nRTMP URL: ${rtmpUrl}\nHLS URL: ${hlsUrl}`;
-            
-            navigator.clipboard.writeText(info).then(() => {
-                alert('Stream information copied to clipboard!');
-            });
-        }
-
-        // Initialize
-        checkSystemStatus();
-        setInterval(checkSystemStatus, 30000); // Check every 30 seconds
+      });
     </script>
 </body>
 </html>
