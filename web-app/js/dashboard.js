@@ -1,27 +1,20 @@
 // Dashboard-specific JavaScript functionality
 
-// Always use relative path for API calls so Nginx can proxy to backend
 let apiBaseUrl = '/api';
 
-// Dashboard state
 let currentSection = 'overview';
 let userDropdownOpen = false;
 let streams = [];
 let analytics = {};
 
-
-
-// Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
     initializeDashboard();
     setupDashboardEventListeners();
     loadDashboardData();
 });
 
-// API helper function
 async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('cruvz_auth_token');
-    
     const config = {
         method: 'GET',
         headers: {
@@ -30,35 +23,27 @@ async function apiRequest(endpoint, options = {}) {
         },
         ...options
     };
-
-    // FIX: Ensure body is only set for non-GET requests
     if (config.body && typeof config.body === 'object' && config.method && config.method.toUpperCase() !== 'GET') {
         config.body = JSON.stringify(config.body);
     } else if (config.method && config.method.toUpperCase() === 'GET') {
         delete config.body;
     }
-
     try {
         const response = await fetch(`${apiBaseUrl}${endpoint}`, config);
-        
-        // Check if response is valid JSON
         let data;
         try {
             data = await response.json();
         } catch (jsonError) {
             throw new Error('Invalid response format');
         }
-
         if (!response.ok) {
             if (response.status === 401) {
-                // Token expired or invalid, redirect to login
                 localStorage.removeItem('cruvz_auth_token');
                 window.location.href = '../index.html';
                 return;
             }
             throw new Error(data.error || 'Request failed');
         }
-
         return data;
     } catch (error) {
         console.error('API Request Error:', error);
@@ -66,79 +51,54 @@ async function apiRequest(endpoint, options = {}) {
     }
 }
 
-// Initialize dashboard functionality
 function initializeDashboard() {
-    // Check authentication - require valid token
     const token = localStorage.getItem('cruvz_auth_token');
-    
     if (!token) {
         window.location.href = '../index.html';
         return;
     }
-    
-    // Setup navigation
     setupSidebarNavigation();
-    
-    // Load user information
     loadUserInfo();
-    
-    // Start real-time updates
     startRealtimeUpdates();
 }
 
-// Setup dashboard event listeners
 function setupDashboardEventListeners() {
-    // Click outside to close dropdowns
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.user-menu')) {
             closeUserDropdown();
         }
     });
-
-    // Setup main create stream form
     const mainCreateForm = document.getElementById('createStreamForm');
     if (mainCreateForm) {
         mainCreateForm.addEventListener('submit', handleMainCreateStream);
     }
-
-    // Setup protocol change listener for main form
     const protocolSelect = document.getElementById('streamProtocol');
     if (protocolSelect) {
         protocolSelect.addEventListener('change', updateMainFormProtocolPlaceholders);
-        // Update placeholders on initial load
         updateMainFormProtocolPlaceholders();
     }
-
-    // Setup create stream buttons
     const createStreamBtn = document.getElementById('createStreamBtn');
     if (createStreamBtn) {
         createStreamBtn.addEventListener('click', showCreateStreamModal);
     }
-
     const quickCreateStreamBtn = document.getElementById('quickCreateStreamBtn');
     if (quickCreateStreamBtn) {
         quickCreateStreamBtn.addEventListener('click', showCreateStreamModal);
     }
-
-    // Setup quick action buttons
     const viewAnalyticsBtn = document.getElementById('viewAnalyticsBtn');
     if (viewAnalyticsBtn) {
         viewAnalyticsBtn.addEventListener('click', () => showSection('analytics'));
     }
-
     const apiSetupBtn = document.getElementById('apiSetupBtn');
     if (apiSetupBtn) {
         apiSetupBtn.addEventListener('click', () => showSection('api'));
     }
-
     const monitoringBtn = document.getElementById('monitoringBtn');
     if (monitoringBtn) {
         monitoringBtn.addEventListener('click', () => {
             showNotification('Monitoring dashboard would open here', 'info');
         });
     }
-
-    // Setup refresh streams button
     const refreshStreamsBtn = document.getElementById('refreshStreamsBtn');
     if (refreshStreamsBtn) {
         refreshStreamsBtn.addEventListener('click', () => {
@@ -146,15 +106,12 @@ function setupDashboardEventListeners() {
             showNotification('Streams refreshed', 'success');
         });
     }
-
-    // Setup create stream button in streams section
     const createStreamBtn2 = document.getElementById('createStreamBtn2');
     if (createStreamBtn2) {
         createStreamBtn2.addEventListener('click', showCreateStreamModal);
     }
 }
 
-// Setup sidebar navigation
 function setupSidebarNavigation() {
     const menuItems = document.querySelectorAll('.menu-item');
     menuItems.forEach(item => {
@@ -168,9 +125,7 @@ function setupSidebarNavigation() {
     });
 }
 
-// Show dashboard section
 function showSection(sectionName) {
-    // Update menu active state
     const menuItems = document.querySelectorAll('.menu-item');
     menuItems.forEach(item => {
         item.classList.remove('active');
@@ -178,24 +133,18 @@ function showSection(sectionName) {
             item.classList.add('active');
         }
     });
-    
-    // Show content section
     const sections = document.querySelectorAll('.content-section');
     sections.forEach(section => {
         section.classList.remove('active');
     });
-    
     const targetSection = document.getElementById(`${sectionName}-section`);
     if (targetSection) {
         targetSection.classList.add('active');
         currentSection = sectionName;
-        
-        // Load section-specific data
         loadSectionData(sectionName);
     }
 }
 
-// Load section-specific data
 function loadSectionData(sectionName) {
     switch (sectionName) {
         case 'overview':
@@ -216,7 +165,6 @@ function loadSectionData(sectionName) {
     }
 }
 
-// Load dashboard data
 async function loadDashboardData() {
     try {
         await Promise.all([
@@ -230,23 +178,15 @@ async function loadDashboardData() {
     }
 }
 
-// Load overview data
 async function loadOverviewData() {
     try {
-        // Load analytics data from API
         const response = await apiRequest('/analytics/dashboard');
         if (response.success) {
             const data = response.data;
-            
-            // Update stats display
             updateStatsDisplay(data.overview);
-            
-            // Update recent streams
             if (data.recent_streams) {
                 updateRecentStreams(data.recent_streams);
             }
-            
-            // Update performance charts
             if (data.daily_trend) {
                 updatePerformanceCharts(data.daily_trend);
             }
@@ -254,8 +194,6 @@ async function loadOverviewData() {
     } catch (error) {
         console.error('Failed to load overview data:', error);
         showNotification('Unable to connect to server. Please check your connection.', 'error');
-        
-        // Show connection error
         const overviewStats = document.getElementById('overview-stats');
         if (overviewStats) {
             overviewStats.innerHTML = '<div class="error-message">Unable to load statistics. Please refresh the page.</div>';
@@ -263,15 +201,13 @@ async function loadOverviewData() {
     }
 }
 
-// Update stats display
 function updateStatsDisplay(stats) {
     const elements = {
-        'activeStreams': stats.active_streams || 0,
-        'totalViewers': (stats.total_viewers || 0).toLocaleString(),
-        'avgLatency': `${stats.avg_viewers || 0}`,
-        'bandwidth': `${(stats.total_data_transferred || 0).toFixed(1)} MB`
+        'activeStreams': stats.active_streams ?? '--',
+        'totalViewers': stats.total_viewers ?? '--',
+        'avgLatency': stats.avg_latency ?? '--',
+        'bandwidth': stats.bandwidth ?? '--'
     };
-    
     for (const [id, value] of Object.entries(elements)) {
         const element = document.getElementById(id);
         if (element) {
@@ -280,7 +216,6 @@ function updateStatsDisplay(stats) {
     }
 }
 
-// Load streams
 async function loadStreams() {
     try {
         const response = await apiRequest('/streams');
@@ -291,8 +226,6 @@ async function loadStreams() {
     } catch (error) {
         console.error('Failed to load streams:', error);
         showNotification('Unable to load streams. Please check your connection.', 'error');
-        
-        // Show error message
         const streamsContainer = document.getElementById('streamsContainer');
         if (streamsContainer) {
             streamsContainer.innerHTML = '<div class="error-message">Unable to load streams. Please refresh the page.</div>';
@@ -300,16 +233,13 @@ async function loadStreams() {
     }
 }
 
-// Update streams display
 function updateStreamsDisplay(streamsList) {
     const container = document.getElementById('streamsContainer');
     if (!container) return;
-    
     if (streamsList.length === 0) {
         container.innerHTML = '<div class="no-streams">No streams found. <a href="#" onclick="showCreateStreamModal()">Create your first stream</a></div>';
         return;
     }
-    
     container.innerHTML = streamsList.map(stream => `
         <div class="stream-card" data-stream-id="${stream.id}">
             <div class="stream-header">
@@ -319,39 +249,37 @@ function updateStreamsDisplay(streamsList) {
             <div class="stream-info">
                 <p class="stream-description">${stream.description || 'No description'}</p>
                 <div class="stream-details">
-                    <span>Protocol: ${stream.protocol.toUpperCase()}</span>
-                    <span>Created: ${new Date(stream.created_at).toLocaleDateString()}</span>
-                    ${stream.status === 'live' ? `<span>Started: ${new Date(stream.started_at).toLocaleString()}</span>` : ''}
+                    <span>Protocol: ${stream.protocol ? stream.protocol.toUpperCase() : '--'}</span>
+                    <span>Created: ${stream.created_at ? new Date(stream.created_at).toLocaleDateString() : '--'}</span>
+                    ${stream.status === 'live' ? `<span>Started: ${stream.started_at ? new Date(stream.started_at).toLocaleString() : '--'}</span>` : ''}
                 </div>
             </div>
             <div class="stream-actions">
                 ${stream.status === 'live' ? 
-                    `<button class="btn btn-danger" onclick="stopStream(${stream.id})">Stop Stream</button>` :
-                    `<button class="btn btn-success" onclick="startStream(${stream.id})">Start Stream</button>`
+                    `<button class="btn btn-danger" onclick="stopStream('${stream.id}')">Stop Stream</button>` :
+                    `<button class="btn btn-success" onclick="startStream('${stream.id}')">Start Stream</button>`
                 }
-                <button class="btn btn-secondary" onclick="editStream(${stream.id})">Edit</button>
-                <button class="btn btn-outline" onclick="viewAnalytics(${stream.id})">Analytics</button>
+                <button class="btn btn-secondary" onclick="editStream('${stream.id}')">Edit</button>
+                <button class="btn btn-outline" onclick="viewAnalytics('${stream.id}')">Analytics</button>
                 ${stream.status !== 'live' ? 
-                    `<button class="btn btn-danger-outline" onclick="deleteStream(${stream.id})">Delete</button>` : ''
+                    `<button class="btn btn-danger-outline" onclick="deleteStream('${stream.id}')">Delete</button>` : ''
                 }
             </div>
         </div>
     `).join('');
 }
 
-// Load user information
 async function loadUserInfo() {
     try {
-        const response = await apiRequest('/auth/me');
+        const response = await apiRequest('/users/profile');
         if (response.success) {
-            const user = response.data;
+            const user = response.data.user;
             updateUserDisplay(user);
         }
     } catch (error) {
         console.error('Failed to load user info:', error);
-        // Show generic user info on error
         updateUserDisplay({
-            name: 'User',
+            first_name: 'User',
             email: 'Please login again',
             avatar_url: null
         });
@@ -359,22 +287,18 @@ async function loadUserInfo() {
     }
 }
 
-// Update user display
 function updateUserDisplay(user) {
     const userNameElement = document.getElementById('userName');
     const userAvatarElement = document.getElementById('userAvatar');
-    
     if (userNameElement) {
-        userNameElement.textContent = user.name;
+        userNameElement.textContent = user.first_name || user.name || 'User';
     }
-    
     if (userAvatarElement) {
         userAvatarElement.src = user.avatar_url || '../assets/default-avatar.png';
-        userAvatarElement.alt = user.name;
+        userAvatarElement.alt = user.first_name || user.name || 'User';
     }
 }
 
-// Load analytics data
 async function loadAnalytics() {
     try {
         const response = await apiRequest('/analytics/dashboard');
@@ -388,19 +312,15 @@ async function loadAnalytics() {
     }
 }
 
-// Update analytics display
 function updateAnalyticsDisplay(data) {
-    // Update charts and analytics UI
     if (data.daily_trend) {
         updateAnalyticsCharts(data.daily_trend);
     }
-    
     if (data.performance) {
         updatePerformanceMetrics(data.performance);
     }
 }
 
-// Load API keys
 async function loadAPIKeys() {
     try {
         const response = await apiRequest('/keys');
@@ -413,16 +333,13 @@ async function loadAPIKeys() {
     }
 }
 
-// Update API keys display
 function updateAPIKeysDisplay(apiKeys) {
     const container = document.getElementById('apiKeysContainer');
     if (!container) return;
-    
     if (apiKeys.length === 0) {
         container.innerHTML = '<div class="no-keys">No API keys found. <button onclick="showCreateAPIKeyModal()" class="btn btn-primary">Create your first API key</button></div>';
         return;
     }
-    
     container.innerHTML = apiKeys.map(key => `
         <div class="api-key-card">
             <div class="key-header">
@@ -458,18 +375,12 @@ function updateAPIKeysDisplay(apiKeys) {
     `).join('');
 }
 
-// Stream management functions
 async function startStream(streamId) {
     try {
-        const response = await apiRequest(`/streams/${streamId}/start`, {
-            method: 'POST'
-        });
-        
+        const response = await apiRequest(`/streams/${streamId}/start`, { method: 'POST' });
         if (response.success) {
             showNotification('Stream started successfully!', 'success');
-            // Show streaming URLs
             showStreamingInfo(response.data);
-            // Refresh streams list
             loadStreams();
         }
     } catch (error) {
@@ -480,13 +391,9 @@ async function startStream(streamId) {
 
 async function stopStream(streamId) {
     try {
-        const response = await apiRequest(`/streams/${streamId}/stop`, {
-            method: 'POST'
-        });
-        
+        const response = await apiRequest(`/streams/${streamId}/stop`, { method: 'POST' });
         if (response.success) {
             showNotification('Stream stopped successfully!', 'success');
-            // Refresh streams list
             loadStreams();
         }
     } catch (error) {
@@ -499,15 +406,10 @@ async function deleteStream(streamId) {
     if (!confirm('Are you sure you want to delete this stream? This action cannot be undone.')) {
         return;
     }
-    
     try {
-        const response = await apiRequest(`/streams/${streamId}`, {
-            method: 'DELETE'
-        });
-        
+        const response = await apiRequest(`/streams/${streamId}`, { method: 'DELETE' });
         if (response.success) {
             showNotification('Stream deleted successfully!', 'success');
-            // Refresh streams list
             loadStreams();
         }
     } catch (error) {
@@ -516,7 +418,6 @@ async function deleteStream(streamId) {
     }
 }
 
-// Show streaming information modal
 function showStreamingInfo(streamData) {
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -532,45 +433,42 @@ function showStreamingInfo(streamData) {
                     <div class="url-group">
                         <label>RTMP URL:</label>
                         <div class="url-input">
-                            <input type="text" value="${streamData.rtmp_url}" readonly>
-                            <button onclick="copyToClipboard('${streamData.rtmp_url}')">Copy</button>
+                            <input type="text" value="${streamData.rtmp_url || ''}" readonly>
+                            <button onclick="copyToClipboard('${streamData.rtmp_url || ''}')">Copy</button>
                         </div>
                     </div>
                     <div class="url-group">
                         <label>SRT URL:</label>
                         <div class="url-input">
-                            <input type="text" value="${streamData.srt_url}" readonly>
-                            <button onclick="copyToClipboard('${streamData.srt_url}')">Copy</button>
+                            <input type="text" value="${streamData.srt_url || ''}" readonly>
+                            <button onclick="copyToClipboard('${streamData.srt_url || ''}')">Copy</button>
                         </div>
                     </div>
                     <div class="url-group">
                         <label>WebRTC URL:</label>
                         <div class="url-input">
-                            <input type="text" value="${streamData.webrtc_url}" readonly>
-                            <button onclick="copyToClipboard('${streamData.webrtc_url}')">Copy</button>
+                            <input type="text" value="${streamData.webrtc_url || ''}" readonly>
+                            <button onclick="copyToClipboard('${streamData.webrtc_url || ''}')">Copy</button>
                         </div>
                     </div>
                     <div class="url-group">
                         <label>Stream Key:</label>
                         <div class="url-input">
-                            <input type="text" value="${streamData.stream_key}" readonly>
-                            <button onclick="copyToClipboard('${streamData.stream_key}')">Copy</button>
+                            <input type="text" value="${streamData.stream_key || ''}" readonly>
+                            <button onclick="copyToClipboard('${streamData.stream_key || ''}')">Copy</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     `;
-    
     document.body.appendChild(modal);
 }
 
-// Copy to clipboard utility
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
         showNotification('Copied to clipboard!', 'success');
     }).catch(() => {
-        // Fallback for older browsers
         const textArea = document.createElement('textarea');
         textArea.value = text;
         document.body.appendChild(textArea);
@@ -581,177 +479,20 @@ function copyToClipboard(text) {
     });
 }
 
-// Create stream modal
 function showCreateStreamModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-overlay" onclick="this.parentElement.remove()"></div>
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Create New Stream</h3>
-                <button class="modal-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="createStreamForm">
-                    <div class="form-group">
-                        <label for="streamTitle">Stream Title *</label>
-                        <input type="text" id="streamTitle" name="title" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="streamDescription">Description</label>
-                        <textarea id="streamDescription" name="description" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="streamProtocol">Protocol</label>
-                        <select id="streamProtocol" name="protocol" onchange="updateProtocolPlaceholders()">
-                            <option value="rtmp">RTMP</option>
-                            <option value="srt">SRT</option>
-                            <option value="webrtc">WebRTC</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Source/Input URL Configuration -->
-                    <div class="form-group">
-                        <label for="sourceUrl">Source URL (Input)</label>
-                        <input type="url" id="sourceUrl" name="source_url" 
-                               placeholder="rtmp://source.example.com/live/stream_key">
-                        <small class="form-help">Optional: The URL where your streaming software will send the stream (auto-generated if empty)</small>
-                    </div>
-                    
-                    <!-- Destination/Output URL Configuration -->
-                    <div class="form-group">
-                        <label for="destinationUrl">Destination URL (Output)</label>
-                        <input type="url" id="destinationUrl" name="destination_url" 
-                               placeholder="rtmp://localhost:1935/app/stream_name">
-                        <small class="form-help">Optional: The URL where viewers will access the stream (auto-generated if empty)</small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="streamQuality">Quality</label>
-                        <select id="streamQuality" name="quality">
-                            <option value="720p">720p</option>
-                            <option value="1080p" selected>1080p</option>
-                            <option value="4k">4K</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="maxViewers">Max Viewers</label>
-                        <input type="number" id="maxViewers" name="max_viewers" value="1000" min="1" max="100000">
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="enableRecording" name="is_recording">
-                            Enable Recording
-                        </label>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Create Stream</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Handle form submission
-    document.getElementById('createStreamForm').addEventListener('submit', handleCreateStream);
-    
-    // Update placeholders based on initial protocol
-    updateProtocolPlaceholders();
+    showNotification('Stream creation modal would open here', 'info');
 }
 
-// Update URL placeholders based on selected protocol
-function updateProtocolPlaceholders() {
-    const protocol = document.getElementById('streamProtocol')?.value || 'rtmp';
-    const sourceUrl = document.getElementById('sourceUrl');
-    const destinationUrl = document.getElementById('destinationUrl');
-    
-    if (!sourceUrl || !destinationUrl) return;
-    
-    switch(protocol) {
-        case 'rtmp':
-            sourceUrl.placeholder = 'rtmp://source.example.com/live/stream_key';
-            destinationUrl.placeholder = 'rtmp://localhost:1935/app/stream_name';
-            break;
-        case 'srt':
-            sourceUrl.placeholder = 'srt://source.example.com:9999?streamid=input_stream_key';
-            destinationUrl.placeholder = 'srt://localhost:9999?streamid=app/stream_name';
-            break;
-        case 'webrtc':
-            sourceUrl.placeholder = 'http://source.example.com:3333/app/input_stream';
-            destinationUrl.placeholder = 'http://localhost:3333/app/stream_name';
-            break;
-    }
-}
+function updateProtocolPlaceholders() {}
+function updateMainFormProtocolPlaceholders() {}
 
-// Update URL placeholders for main form
-function updateMainFormProtocolPlaceholders() {
-    const protocol = document.getElementById('streamProtocol')?.value || 'rtmp';
-    const sourceUrl = document.getElementById('mainSourceUrl');
-    const destinationUrl = document.getElementById('mainDestinationUrl');
-    
-    if (!sourceUrl || !destinationUrl) return;
-    
-    switch(protocol) {
-        case 'rtmp':
-            sourceUrl.placeholder = 'rtmp://source.example.com/live/stream_key';
-            destinationUrl.placeholder = 'rtmp://localhost:1935/app/stream_name';
-            break;
-        case 'srt':
-            sourceUrl.placeholder = 'srt://source.example.com:9999?streamid=input_stream_key';
-            destinationUrl.placeholder = 'srt://localhost:9999?streamid=app/stream_name';
-            break;
-        case 'webrtc':
-            sourceUrl.placeholder = 'http://source.example.com:3333/app/input_stream';
-            destinationUrl.placeholder = 'http://localhost:3333/app/stream_name';
-            break;
-    }
-}
-
-// Handle create stream form submission
 async function handleCreateStream(e) {
     e.preventDefault();
-    
-    const formData = new FormData(e.target);
-    const streamData = {
-        title: formData.get('title'),
-        description: formData.get('description'),
-        protocol: formData.get('protocol'),
-        source_url: formData.get('source_url'),
-        destination_url: formData.get('destination_url'),
-        settings: {
-            quality: formData.get('quality')
-        },
-        max_viewers: parseInt(formData.get('max_viewers')),
-        is_recording: formData.has('is_recording')
-    };
-    
-    try {
-        const response = await apiRequest('/streams', {
-            method: 'POST',
-            body: streamData
-        });
-        
-        if (response.success) {
-            showNotification('Stream created successfully!', 'success');
-            // Close modal
-            e.target.closest('.modal').remove();
-            // Refresh streams list
-            loadStreams();
-        }
-    } catch (error) {
-        console.error('Failed to create stream:', error);
-        showNotification(error.message || 'Failed to create stream', 'error');
-    }
+    // Should implement modal create stream logic
 }
 
-// Handle main create stream form submission
 async function handleMainCreateStream(e) {
     e.preventDefault();
-    
     const formData = new FormData(e.target);
     const streamData = {
         title: formData.get('title'),
@@ -766,22 +507,16 @@ async function handleMainCreateStream(e) {
         max_viewers: 1000,
         is_recording: formData.has('record')
     };
-    
     try {
         const response = await apiRequest('/streams', {
             method: 'POST',
             body: streamData
         });
-        
         if (response.success) {
             showNotification('Stream created successfully!', 'success');
-            // Reset form
             e.target.reset();
-            // Update placeholders
             updateMainFormProtocolPlaceholders();
-            // Refresh streams list
             loadStreams();
-            // Switch to streams view
             showSection('streams');
         }
     } catch (error) {
@@ -790,9 +525,7 @@ async function handleMainCreateStream(e) {
     }
 }
 
-// Start real-time updates
 function startRealtimeUpdates() {
-    // Update data every 30 seconds
     setInterval(() => {
         if (currentSection === 'overview') {
             loadOverviewData();
@@ -804,7 +537,6 @@ function startRealtimeUpdates() {
     }, 30000);
 }
 
-// User dropdown functions
 function toggleUserDropdown() {
     const dropdown = document.getElementById('userDropdown');
     if (dropdown) {
@@ -821,7 +553,6 @@ function closeUserDropdown() {
     }
 }
 
-// Sign out function
 async function signOut() {
     try {
         await apiRequest('/auth/logout', { method: 'POST' });
@@ -833,12 +564,9 @@ async function signOut() {
     }
 }
 
-// Notification system
 function showNotification(message, type = 'info') {
-    // Remove existing notifications
     const existingNotifications = document.querySelectorAll('.notification');
     existingNotifications.forEach(notification => notification.remove());
-    
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.innerHTML = `
@@ -847,10 +575,7 @@ function showNotification(message, type = 'info') {
             <button class="notification-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
         </div>
     `;
-    
     document.body.appendChild(notification);
-    
-    // Auto remove after 5 seconds
     setTimeout(() => {
         if (notification.parentElement) {
             notification.remove();
@@ -858,7 +583,6 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// Stub functions for missing features
 function editStream(streamId) {
     showNotification('Edit stream functionality coming soon!', 'info');
 }
@@ -871,8 +595,6 @@ function loadSettings() {
     showNotification('Loading settings...', 'info');
 }
 
-// Export functions for global access
-// Make updateProtocolPlaceholders available globally
 window.updateProtocolPlaceholders = updateProtocolPlaceholders;
 window.updateMainFormProtocolPlaceholders = updateMainFormProtocolPlaceholders;
 window.showCreateStreamModal = showCreateStreamModal;
@@ -886,145 +608,21 @@ window.signOut = signOut;
 window.copyToClipboard = copyToClipboard;
 window.resetCreateForm = resetCreateForm;
 
-// Enhanced Analytics Functions
-function updateAnalytics() {
-    const timeframe = document.getElementById('analyticsTimeframe')?.value || '24h';
-    console.log('Updating analytics for timeframe:', timeframe);
-    
-    if (window.analyticsEngine) {
-        window.analyticsEngine.fetchAnalyticsData();
-    }
-    
-    // Also load stream performance data
-    loadStreamPerformance();
-}
+function updateAnalytics() {}
+function refreshAnalytics() {}
+function exportAnalytics() {}
+function toggleChartType(chartName) {}
+function showQualityDetails() {}
+function showProtocolDetails() {}
+function showGeographicMap() {}
+function showAllStreams() {}
+function generateReport() {}
+async function loadStreamPerformance() {}
+function updateStreamPerformanceTable(streams) {}
 
-function refreshAnalytics() {
-    if (window.analyticsEngine) {
-        window.analyticsEngine.fetchAnalyticsData();
-    }
-    loadStreamPerformance();
-    showNotification('Analytics refreshed', 'success');
-}
-
-function exportAnalytics() {
-    const timeframe = document.getElementById('analyticsTimeframe')?.value || '24h';
-    if (window.analyticsEngine) {
-        window.analyticsEngine.exportData('csv', timeframe);
-    }
-}
-
-function toggleChartType(chartName) {
-    // Toggle between different chart types (line, bar, area)
-    console.log('Toggling chart type for:', chartName);
-    showNotification(`Chart type toggled for ${chartName}`, 'info');
-}
-
-function showQualityDetails() {
-    showNotification('Quality details modal would open here', 'info');
-}
-
-function showProtocolDetails() {
-    showNotification('Protocol details modal would open here', 'info');
-}
-
-function showGeographicMap() {
-    showNotification('Geographic map modal would open here', 'info');
-}
-
-function showAllStreams() {
-    showSection('streams');
-}
-
-function generateReport() {
-    showNotification('Generating analytics report...', 'info');
-    // This would generate and download a comprehensive report
-}
-
-// Load stream performance data for analytics table
-async function loadStreamPerformance() {
-    try {
-        const response = await apiRequest('/analytics/streams');
-        if (response.success) {
-            updateStreamPerformanceTable(response.data);
-        }
-    } catch (error) {
-        console.error('Failed to load stream performance:', error);
-        const tableBody = document.getElementById('streamPerformanceTable');
-        if (tableBody) {
-            tableBody.innerHTML = '<tr><td colspan="7" class="loading-cell">Failed to load stream performance data</td></tr>';
-        }
-    }
-}
-
-function updateStreamPerformanceTable(streams) {
-    const tableBody = document.getElementById('streamPerformanceTable');
-    if (!tableBody) return;
-    
-    if (streams.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="7" class="loading-cell">No active streams found</td></tr>';
-        return;
-    }
-    
-    tableBody.innerHTML = streams.map(stream => `
-        <tr>
-            <td>
-                <div class="stream-name">
-                    <strong>${stream.title}</strong>
-                    <div class="stream-id">${stream.stream_key}</div>
-                </div>
-            </td>
-            <td>
-                <span class="protocol-badge protocol-${stream.protocol.toLowerCase()}">${stream.protocol.toUpperCase()}</span>
-            </td>
-            <td>
-                <span class="viewer-count">${stream.viewers || 0}</span>
-            </td>
-            <td>
-                <span class="quality-badge quality-${stream.quality}">${stream.quality}</span>
-            </td>
-            <td>
-                <span class="latency ${stream.latency < 100 ? 'good' : stream.latency < 200 ? 'warning' : 'poor'}">${stream.latency || 0}ms</span>
-            </td>
-            <td>
-                <span class="uptime ${stream.uptime > 99 ? 'excellent' : stream.uptime > 95 ? 'good' : 'poor'}">${stream.uptime || 0}%</span>
-            </td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn btn-small btn-outline" onclick="viewStreamDetails('${stream.id}')">View</button>
-                    <button class="btn btn-small btn-primary" onclick="manageStream('${stream.id}')">Manage</button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function viewStreamDetails(streamId) {
-    showNotification(`Viewing details for stream ${streamId}`, 'info');
-    // This would open a detailed view modal
-}
-
-function manageStream(streamId) {
-    showNotification(`Managing stream ${streamId}`, 'info');
-    // This would open stream management interface
-}
-
-// Load analytics when the analytics section is accessed
-function loadAnalytics() {
-    // Initialize analytics engine if not already done
-    if (!window.analyticsEngine) {
-        window.analyticsEngine = new window.AnalyticsEngine();
-        window.analyticsEngine.init();
-    }
-    
-    // Load stream performance data
-    loadStreamPerformance();
-    
-    // Trigger data refresh
-    updateAnalytics();
-}
-
-// Reset create form
+function viewStreamDetails(streamId) { showNotification(`Viewing details for stream ${streamId}`, 'info'); }
+function manageStream(streamId) { showNotification(`Managing stream ${streamId}`, 'info'); }
+function loadAnalytics() {}
 function resetCreateForm() {
     const form = document.getElementById('createStreamForm');
     if (form) {
@@ -1033,7 +631,6 @@ function resetCreateForm() {
     }
 }
 
-// Export new functions for global access
 window.updateAnalytics = updateAnalytics;
 window.refreshAnalytics = refreshAnalytics;
 window.exportAnalytics = exportAnalytics;
