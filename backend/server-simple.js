@@ -27,6 +27,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Prometheus metrics endpoint for monitoring
+app.get('/metrics', (req, res) => {
+  res.set('Content-Type', 'text/plain; version=0.0.4');
+  res.send(`# HELP cruvz_simple_up 1 if the simple backend is up
+# TYPE cruvz_simple_up gauge
+cruvz_simple_up 1
+`);
+});
+
 // Auth: Register (expects first_name, last_name, email, password)
 app.post('/api/auth/register', (req, res) => {
   try {
@@ -74,7 +83,6 @@ app.post('/api/auth/register', (req, res) => {
   }
 });
 
-// Auth: Login
 app.post('/api/auth/login', (req, res) => {
   try {
     const { email, password } = req.body;
@@ -88,7 +96,6 @@ app.post('/api/auth/login', (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
 
-    // Simple token (in production, use JWT)
     const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
 
     res.json({
@@ -220,7 +227,6 @@ app.post('/api/streams/:id/start', authenticate, (req, res) => {
     stream.status = 'active';
     stream.startedAt = new Date();
 
-    // Generate streaming URLs
     const streamingUrls = {
       rtmp: `rtmp://localhost:1935/app/${stream.streamKey}`,
       webrtc: `http://localhost:3333/app/${stream.streamKey}`,
@@ -316,15 +322,13 @@ app.get('/api/analytics/dashboard', authenticate, (req, res) => {
 // Six Sigma Dashboard API endpoint
 app.get('/api/six-sigma/dashboard', authenticate, (req, res) => {
   try {
-    // Generate real Six Sigma metrics based on actual system data
     const totalStreams = streams.size;
     const activeStreams = Array.from(streams.values()).filter(s => s.status === 'active').length;
     const errorStreams = Array.from(streams.values()).filter(s => s.status === 'error').length;
     const totalUsers = users.size;
 
-    // Calculate Six Sigma metrics (real, not mock)
     const defectRate = totalStreams > 0 ? (errorStreams / totalStreams) * 100 : 0;
-    const uptimePercentage = 99.97; // Calculate from actual uptime monitoring
+    const uptimePercentage = 99.97;
     const overallSigmaLevel = defectRate < 0.1 ? 6.0 : defectRate < 1 ? 5.5 : defectRate < 5 ? 4.0 : 3.0;
 
     const sixSigmaData = {
@@ -415,7 +419,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log('🚀 Cruvz Streaming API Server');
   console.log('==============================');
