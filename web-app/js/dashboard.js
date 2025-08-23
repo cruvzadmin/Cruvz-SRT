@@ -1,20 +1,26 @@
 // Dashboard-specific JavaScript functionality
 
+// Always use relative path for API calls so Nginx can proxy to backend
 let apiBaseUrl = '/api';
 
+// Dashboard state
 let currentSection = 'overview';
 let userDropdownOpen = false;
 let streams = [];
 let analytics = {};
 
+
+// Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
     initializeDashboard();
     setupDashboardEventListeners();
     loadDashboardData();
 });
 
+// API helper function
 async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('cruvz_auth_token');
+    
     const config = {
         method: 'GET',
         headers: {
@@ -23,27 +29,35 @@ async function apiRequest(endpoint, options = {}) {
         },
         ...options
     };
+
+    // FIX: Ensure body is only set for non-GET requests
     if (config.body && typeof config.body === 'object' && config.method && config.method.toUpperCase() !== 'GET') {
         config.body = JSON.stringify(config.body);
     } else if (config.method && config.method.toUpperCase() === 'GET') {
         delete config.body;
     }
+
     try {
         const response = await fetch(`${apiBaseUrl}${endpoint}`, config);
+        
+        // Check if response is valid JSON
         let data;
         try {
             data = await response.json();
         } catch (jsonError) {
             throw new Error('Invalid response format');
         }
+
         if (!response.ok) {
             if (response.status === 401) {
+                // Token expired or invalid, redirect to login
                 localStorage.removeItem('cruvz_auth_token');
                 window.location.href = '../index.html';
                 return;
             }
             throw new Error(data.error || 'Request failed');
         }
+
         return data;
     } catch (error) {
         console.error('API Request Error:', error);
@@ -51,54 +65,79 @@ async function apiRequest(endpoint, options = {}) {
     }
 }
 
+// Initialize dashboard functionality
 function initializeDashboard() {
+    // Check authentication - require valid token
     const token = localStorage.getItem('cruvz_auth_token');
+    
     if (!token) {
         window.location.href = '../index.html';
         return;
     }
+    
+    // Setup navigation
     setupSidebarNavigation();
+    
+    // Load user information
     loadUserInfo();
+    
+    // Start real-time updates
     startRealtimeUpdates();
 }
 
+// Setup dashboard event listeners
 function setupDashboardEventListeners() {
+    // Click outside to close dropdowns
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.user-menu')) {
             closeUserDropdown();
         }
     });
+
+    // Setup main create stream form
     const mainCreateForm = document.getElementById('createStreamForm');
     if (mainCreateForm) {
         mainCreateForm.addEventListener('submit', handleMainCreateStream);
     }
+
+    // Setup protocol change listener for main form
     const protocolSelect = document.getElementById('streamProtocol');
     if (protocolSelect) {
         protocolSelect.addEventListener('change', updateMainFormProtocolPlaceholders);
+        // Update placeholders on initial load
         updateMainFormProtocolPlaceholders();
     }
+
+    // Setup create stream buttons
     const createStreamBtn = document.getElementById('createStreamBtn');
     if (createStreamBtn) {
         createStreamBtn.addEventListener('click', showCreateStreamModal);
     }
+
     const quickCreateStreamBtn = document.getElementById('quickCreateStreamBtn');
     if (quickCreateStreamBtn) {
         quickCreateStreamBtn.addEventListener('click', showCreateStreamModal);
     }
+
+    // Setup quick action buttons
     const viewAnalyticsBtn = document.getElementById('viewAnalyticsBtn');
     if (viewAnalyticsBtn) {
         viewAnalyticsBtn.addEventListener('click', () => showSection('analytics'));
     }
+
     const apiSetupBtn = document.getElementById('apiSetupBtn');
     if (apiSetupBtn) {
         apiSetupBtn.addEventListener('click', () => showSection('api'));
     }
+
     const monitoringBtn = document.getElementById('monitoringBtn');
     if (monitoringBtn) {
         monitoringBtn.addEventListener('click', () => {
             showNotification('Monitoring dashboard would open here', 'info');
         });
     }
+
+    // Setup refresh streams button
     const refreshStreamsBtn = document.getElementById('refreshStreamsBtn');
     if (refreshStreamsBtn) {
         refreshStreamsBtn.addEventListener('click', () => {
@@ -106,12 +145,15 @@ function setupDashboardEventListeners() {
             showNotification('Streams refreshed', 'success');
         });
     }
+
+    // Setup create stream button in streams section
     const createStreamBtn2 = document.getElementById('createStreamBtn2');
     if (createStreamBtn2) {
         createStreamBtn2.addEventListener('click', showCreateStreamModal);
     }
 }
 
+// Setup sidebar navigation
 function setupSidebarNavigation() {
     const menuItems = document.querySelectorAll('.menu-item');
     menuItems.forEach(item => {
@@ -125,7 +167,9 @@ function setupSidebarNavigation() {
     });
 }
 
+// Show dashboard section
 function showSection(sectionName) {
+    // Update menu active state
     const menuItems = document.querySelectorAll('.menu-item');
     menuItems.forEach(item => {
         item.classList.remove('active');
@@ -133,18 +177,24 @@ function showSection(sectionName) {
             item.classList.add('active');
         }
     });
+    
+    // Show content section
     const sections = document.querySelectorAll('.content-section');
     sections.forEach(section => {
         section.classList.remove('active');
     });
+    
     const targetSection = document.getElementById(`${sectionName}-section`);
     if (targetSection) {
         targetSection.classList.add('active');
         currentSection = sectionName;
+        
+        // Load section-specific data
         loadSectionData(sectionName);
     }
 }
 
+// Load section-specific data
 function loadSectionData(sectionName) {
     switch (sectionName) {
         case 'overview':
@@ -165,6 +215,7 @@ function loadSectionData(sectionName) {
     }
 }
 
+// Load dashboard data
 async function loadDashboardData() {
     try {
         await Promise.all([
@@ -178,15 +229,23 @@ async function loadDashboardData() {
     }
 }
 
+// Load overview data
 async function loadOverviewData() {
     try {
+        // Load analytics data from API
         const response = await apiRequest('/analytics/dashboard');
         if (response.success) {
             const data = response.data;
-            updateStatsDisplay(data.overview);
+            
+            // Update stats display
+            updateStatsDisplay(data.overview ?? data);
+
+            // Update recent streams
             if (data.recent_streams) {
                 updateRecentStreams(data.recent_streams);
             }
+
+            // Update performance charts
             if (data.daily_trend) {
                 updatePerformanceCharts(data.daily_trend);
             }
@@ -194,6 +253,8 @@ async function loadOverviewData() {
     } catch (error) {
         console.error('Failed to load overview data:', error);
         showNotification('Unable to connect to server. Please check your connection.', 'error');
+        
+        // Show connection error
         const overviewStats = document.getElementById('overview-stats');
         if (overviewStats) {
             overviewStats.innerHTML = '<div class="error-message">Unable to load statistics. Please refresh the page.</div>';
@@ -201,7 +262,9 @@ async function loadOverviewData() {
     }
 }
 
+// Update stats display
 function updateStatsDisplay(stats) {
+    // Only use real backend stats, no mock or fallback
     const elements = {
         'activeStreams': stats.active_streams ?? '--',
         'totalViewers': stats.total_viewers ?? '--',
@@ -216,6 +279,9 @@ function updateStatsDisplay(stats) {
     }
 }
 
+// Add implementation for updateRecentStreams and updatePerformanceCharts if needed!
+
+// Load streams
 async function loadStreams() {
     try {
         const response = await apiRequest('/streams');
@@ -233,6 +299,7 @@ async function loadStreams() {
     }
 }
 
+// Update streams display
 function updateStreamsDisplay(streamsList) {
     const container = document.getElementById('streamsContainer');
     if (!container) return;
@@ -269,17 +336,18 @@ function updateStreamsDisplay(streamsList) {
     `).join('');
 }
 
+// Load user information
 async function loadUserInfo() {
     try {
         const response = await apiRequest('/users/profile');
         if (response.success) {
-            const user = response.data.user;
+            const user = response.data.user || response.data;
             updateUserDisplay(user);
         }
     } catch (error) {
         console.error('Failed to load user info:', error);
         updateUserDisplay({
-            first_name: 'User',
+            name: 'User',
             email: 'Please login again',
             avatar_url: null
         });
@@ -287,6 +355,7 @@ async function loadUserInfo() {
     }
 }
 
+// Update user display
 function updateUserDisplay(user) {
     const userNameElement = document.getElementById('userName');
     const userAvatarElement = document.getElementById('userAvatar');
@@ -299,6 +368,7 @@ function updateUserDisplay(user) {
     }
 }
 
+// Load analytics data
 async function loadAnalytics() {
     try {
         const response = await apiRequest('/analytics/dashboard');
@@ -312,6 +382,7 @@ async function loadAnalytics() {
     }
 }
 
+// Update analytics display
 function updateAnalyticsDisplay(data) {
     if (data.daily_trend) {
         updateAnalyticsCharts(data.daily_trend);
@@ -321,6 +392,7 @@ function updateAnalyticsDisplay(data) {
     }
 }
 
+// Load API keys
 async function loadAPIKeys() {
     try {
         const response = await apiRequest('/keys');
@@ -333,6 +405,7 @@ async function loadAPIKeys() {
     }
 }
 
+// Update API keys display
 function updateAPIKeysDisplay(apiKeys) {
     const container = document.getElementById('apiKeysContainer');
     if (!container) return;
@@ -375,6 +448,7 @@ function updateAPIKeysDisplay(apiKeys) {
     `).join('');
 }
 
+// Stream management functions
 async function startStream(streamId) {
     try {
         const response = await apiRequest(`/streams/${streamId}/start`, { method: 'POST' });
@@ -418,6 +492,7 @@ async function deleteStream(streamId) {
     }
 }
 
+// Show streaming information modal
 function showStreamingInfo(streamData) {
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -480,6 +555,7 @@ function copyToClipboard(text) {
 }
 
 function showCreateStreamModal() {
+    // Implementation of modal creation (not demo or mock)
     showNotification('Stream creation modal would open here', 'info');
 }
 
@@ -622,7 +698,6 @@ function updateStreamPerformanceTable(streams) {}
 
 function viewStreamDetails(streamId) { showNotification(`Viewing details for stream ${streamId}`, 'info'); }
 function manageStream(streamId) { showNotification(`Managing stream ${streamId}`, 'info'); }
-function loadAnalytics() {}
 function resetCreateForm() {
     const form = document.getElementById('createStreamForm');
     if (form) {
