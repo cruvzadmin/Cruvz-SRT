@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files and install dependencies first for better caching
-COPY package-simple.json ./package.json
+COPY package.json ./package.json
 RUN rm -f package-lock.json
 
 # Install dependencies with timeout - use npm install for production
@@ -39,5 +39,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Start application (CORRECTED: use server.js for production)
+# Start application
 CMD ["node", "server.js"]
