@@ -339,32 +339,32 @@ app.get('/api/six-sigma/dashboard', authenticate, (req, res) => {
         quality_score: Math.max(0, 100 - defectRate)
       },
       quality_gates: {
-        authentication: { status: "pass", value: 99.9, threshold: 99.5 },
-        streaming: { status: activeStreams > 0 ? "pass" : "warning", value: 98.5, threshold: 95.0 },
-        monitoring: { status: "pass", value: 99.7, threshold: 99.0 },
-        performance: { status: "pass", value: 97.2, threshold: 95.0 }
+        authentication: { status: 'pass', value: 99.9, threshold: 99.5 },
+        streaming: { status: activeStreams > 0 ? 'pass' : 'warning', value: 98.5, threshold: 95.0 },
+        monitoring: { status: 'pass', value: 99.7, threshold: 99.0 },
+        performance: { status: 'pass', value: 97.2, threshold: 95.0 }
       },
       categories: {
         infrastructure: {
-          name: "Infrastructure",
+          name: 'Infrastructure',
           sigma_level: 5.8,
           defect_count: 2,
           opportunity_count: 1000,
-          metrics: ["uptime", "latency", "throughput"]
+          metrics: ['uptime', 'latency', 'throughput']
         },
         application: {
-          name: "Application",
+          name: 'Application',
           sigma_level: 5.5,
           defect_count: 5,
           opportunity_count: 1000,
-          metrics: ["errors", "response_time", "availability"]
+          metrics: ['errors', 'response_time', 'availability']
         },
         user_experience: {
-          name: "User Experience",
+          name: 'User Experience',
           sigma_level: 5.2,
           defect_count: 8,
           opportunity_count: 1000,
-          metrics: ["satisfaction", "completion_rate", "bounce_rate"]
+          metrics: ['satisfaction', 'completion_rate', 'bounce_rate']
         }
       },
       system_health: {

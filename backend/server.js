@@ -3,11 +3,11 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const cors = require('cors');
+const cacheManager = require('./utils/cache');
 // Note: helmet and rateLimit available but not currently used in this simplified server
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'production-jwt-secret-key-change-this';
 
 // Middleware
 app.use(cors());
@@ -20,8 +20,22 @@ const logger = {
   warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args)
 };
 
-// Database configuration for production/development only
+// Validate JWT_SECRET is properly configured for production
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET === 'production-jwt-secret-key-change-this') {
+  logger.error('❌ JWT_SECRET must be set in environment variables for production');
+  if (process.env.NODE_ENV === 'production') {
+    logger.error('💥 SECURITY ERROR: Default JWT_SECRET cannot be used in production');
+    process.exit(1);
+  }
+  logger.warn('⚠️  Using default JWT_SECRET - only for development');
+}
+
+const EFFECTIVE_JWT_SECRET = JWT_SECRET || 'production-jwt-secret-key-change-this';
+
+// Database and cache configuration for production
 let dbConnection = null;
+let cacheConnected = false;
 
 async function initializeDatabase() {
   // Use PostgreSQL for production/development only (no test/mock)
@@ -73,8 +87,32 @@ async function initializeDatabase() {
     dbConnection = { pgClient };
     return true;
   } catch (error) {
-    logger.error('❌ Database connection failed:', error.message);
-    return false;
+    logger.error('❌ PostgreSQL connection failed:', error.message);
+    throw error;
+  }
+}
+
+async function initializeCache() {
+  try {
+    await cacheManager.init();
+    
+    // Wait for Redis connection to be established
+    if (cacheManager.redis) {
+      // Use lazyConnect: true, so we need to explicitly connect
+      await cacheManager.connect();
+    }
+    
+    cacheConnected = cacheManager.isConnected;
+    
+    if (!cacheConnected) {
+      throw new Error('Redis connection could not be established');
+    }
+    
+    logger.info('✅ Redis cache initialized successfully');
+    return true;
+  } catch (error) {
+    logger.error('❌ Redis cache initialization failed:', error.message);
+    throw error;
   }
 }
 
@@ -92,6 +130,36 @@ async function query(text, params = []) {
   }
 }
 
+// Middleware to check service availability for API endpoints
+function checkServiceAvailability(req, res, next) {
+  // Skip health check endpoint from this middleware
+  if (req.path === '/health' || req.path === '/metrics') {
+    return next();
+  }
+
+  // Check database connection
+  if (!dbConnection || !dbConnection.pgClient) {
+    return res.status(503).json({
+      success: false,
+      error: 'Database unavailable',
+      message: 'Database connection is not available. Please try again later.',
+      status: 503
+    });
+  }
+
+  // Check Redis cache connection
+  if (!cacheConnected || !cacheManager.isConnected) {
+    return res.status(503).json({
+      success: false,
+      error: 'Cache unavailable',
+      message: 'Cache service is not available. Please try again later.',
+      status: 503
+    });
+  }
+
+  next();
+}
+
 // Health check
 app.get('/health', async (req, res) => {
   const healthData = {
@@ -102,20 +170,44 @@ app.get('/health', async (req, res) => {
     environment: process.env.NODE_ENV || 'development'
   };
 
+  let overallStatus = 'healthy';
+
   // Check database connectivity
   try {
-    if (dbConnection) {
+    if (dbConnection && dbConnection.pgClient) {
       await query('SELECT 1');
       healthData.database = { connected: true, type: 'postgresql' };
     } else {
-      healthData.database = { connected: false, type: 'unknown' };
+      healthData.database = { connected: false, type: 'postgresql', error: 'No connection' };
+      overallStatus = 'degraded';
     }
   } catch (error) {
-    healthData.database = { connected: false, error: error.message };
-    healthData.status = 'degraded';
+    healthData.database = { connected: false, type: 'postgresql', error: error.message };
+    overallStatus = 'degraded';
   }
 
-  res.json(healthData);
+  // Check Redis cache connectivity
+  try {
+    if (cacheManager && cacheManager.isConnected) {
+      const pingResult = await cacheManager.ping();
+      healthData.cache = { connected: pingResult, type: 'redis' };
+      if (!pingResult) {
+        overallStatus = 'degraded';
+      }
+    } else {
+      healthData.cache = { connected: false, type: 'redis', error: 'No connection' };
+      overallStatus = 'degraded';
+    }
+  } catch (error) {
+    healthData.cache = { connected: false, type: 'redis', error: error.message };
+    overallStatus = 'degraded';
+  }
+
+  healthData.status = overallStatus;
+
+  // Return 503 if any critical service is down
+  const statusCode = overallStatus === 'degraded' ? 503 : 200;
+  res.status(statusCode).json(healthData);
 });
 
 // Prometheus metrics endpoint for production monitoring
@@ -140,12 +232,12 @@ async function authenticate(req, res, next) {
     }
 
     const token = authHeader.substring(7);
-    if (!JWT_SECRET) {
+    if (!EFFECTIVE_JWT_SECRET) {
       return res.status(500).json({ success: false, error: 'JWT_SECRET is not set on server' });
     }
     let decoded;
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
+      decoded = jwt.verify(token, EFFECTIVE_JWT_SECRET);
     } catch (error) {
       if (error.name === 'TokenExpiredError') {
         return res.status(401).json({ success: false, error: 'Token expired, please login again' });
@@ -164,6 +256,9 @@ async function authenticate(req, res, next) {
     return res.status(401).json({ success: false, error: 'Invalid token' });
   }
 }
+
+// Apply service availability check to all API endpoints
+app.use('/api', checkServiceAvailability);
 
 // Register endpoint
 app.post('/api/auth/register', async (req, res) => {
@@ -206,7 +301,7 @@ app.post('/api/auth/register', async (req, res) => {
     const user = result.rows[0];
 
     // Generate token
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign({ id: user.id, email: user.email }, EFFECTIVE_JWT_SECRET, { expiresIn: '24h' });
 
     // Remove password hash from response (not used in response)
     const { password_hash: _unused4, ...userWithoutPassword } = user;
@@ -247,7 +342,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Generate token
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign({ id: user.id, email: user.email }, EFFECTIVE_JWT_SECRET, { expiresIn: '24h' });
 
     // Remove password hash from response (not used in response)
     const { password_hash: _unused5, ...userWithoutPassword } = user;
@@ -528,32 +623,32 @@ app.get('/api/six-sigma/dashboard', authenticate, async (req, res) => {
         quality_score: Math.max(0, 100 - defectRate)
       },
       quality_gates: {
-        authentication: { status: "pass", value: 99.9, threshold: 99.5 },
-        streaming: { status: activeStreams > 0 ? "pass" : "warning", value: 98.5, threshold: 95.0 },
-        monitoring: { status: "pass", value: 99.7, threshold: 99.0 },
-        performance: { status: "pass", value: 97.2, threshold: 95.0 }
+        authentication: { status: 'pass', value: 99.9, threshold: 99.5 },
+        streaming: { status: activeStreams > 0 ? 'pass' : 'warning', value: 98.5, threshold: 95.0 },
+        monitoring: { status: 'pass', value: 99.7, threshold: 99.0 },
+        performance: { status: 'pass', value: 97.2, threshold: 95.0 }
       },
       categories: {
         infrastructure: {
-          name: "Infrastructure",
+          name: 'Infrastructure',
           sigma_level: 5.8,
           defect_count: 2,
           opportunity_count: 1000,
-          metrics: ["uptime", "latency", "throughput"]
+          metrics: ['uptime', 'latency', 'throughput']
         },
         application: {
-          name: "Application",
+          name: 'Application',
           sigma_level: 5.5,
           defect_count: 5,
           opportunity_count: 1000,
-          metrics: ["errors", "response_time", "availability"]
+          metrics: ['errors', 'response_time', 'availability']
         },
         user_experience: {
-          name: "User Experience",
+          name: 'User Experience',
           sigma_level: 5.2,
           defect_count: 8,
           opportunity_count: 1000,
-          metrics: ["satisfaction", "completion_rate", "bounce_rate"]
+          metrics: ['satisfaction', 'completion_rate', 'bounce_rate']
         }
       },
       system_health: {
@@ -594,18 +689,28 @@ app.get('/api/six-sigma/dashboard', authenticate, async (req, res) => {
 
 // Start server (only if not in test environment)
 async function startServer() {
-  const connected = await initializeDatabase();
-  if (!connected) {
-    logger.error('❌ Failed to connect to database. Exiting...');
+  try {
+    // Initialize both PostgreSQL and Redis - both are REQUIRED for production
+    logger.info('🔄 Initializing database connection...');
+    await initializeDatabase();
+    
+    logger.info('🔄 Initializing cache connection...');
+    await initializeCache();
+    
+    logger.info('✅ All services connected successfully');
+
+    app.listen(PORT, '0.0.0.0', () => {
+      logger.info(`🚀 Cruvz Streaming API running on port ${PORT}`);
+      logger.info('🗄️  Connected to PostgreSQL database');
+      logger.info('🔗 Connected to Redis cache');
+      logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
+      logger.info(`🔗 Metrics endpoint: http://localhost:${PORT}/metrics`);
+    });
+  } catch (error) {
+    logger.error('❌ Failed to start server - missing required services:', error.message);
+    logger.error('💥 Server startup failed. Both PostgreSQL and Redis are required for production.');
     process.exit(1);
   }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    logger.info(`🚀 Cruvz Streaming API running on port ${PORT}`);
-    logger.info('🗄️  Connected to database');
-    logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
-    logger.info(`🔗 Metrics endpoint: http://localhost:${PORT}/metrics`);
-  });
 }
 
 // Export app for testing

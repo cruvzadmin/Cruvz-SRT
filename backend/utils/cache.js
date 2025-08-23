@@ -5,18 +5,17 @@ class CacheManager {
   constructor() {
     this.redis = null;
     this.isConnected = false;
-    this.init();
+    // Don't initialize in constructor - will be done explicitly in server startup
   }
 
-  init() {
+  async init() {
     try {
-      // Check if Redis should be used
-      const useRedis = process.env.USE_REDIS === 'true' || process.env.REDIS_HOST;
-      
-      if (!useRedis) {
-        logger.info('Redis cache disabled - running without cache');
-        this.isConnected = false;
-        return;
+      // Redis is REQUIRED for production - no fallback
+      const redisHost = process.env.REDIS_HOST;
+      if (!redisHost) {
+        const error = 'REDIS_HOST environment variable is required for production';
+        logger.error(error);
+        throw new Error(error);
       }
 
       const redisConfig = {
@@ -44,18 +43,45 @@ class CacheManager {
       });
 
       this.redis.on('error', (err) => {
-        logger.warn('Redis cache connection error - continuing without cache:', err.message);
+        logger.error('Redis cache connection error - this is FATAL in production:', err.message);
         this.isConnected = false;
+        // In production, Redis failures should be treated as critical
+        if (process.env.NODE_ENV === 'production') {
+          logger.error('Redis connection lost in production environment');
+        }
       });
 
       this.redis.on('close', () => {
-        logger.warn('Redis cache connection closed - continuing without cache');
+        logger.error('Redis cache connection closed - this is FATAL in production');
         this.isConnected = false;
       });
 
     } catch (error) {
-      logger.warn('Failed to initialize Redis cache - continuing without cache:', error.message);
+      logger.error('Failed to initialize Redis cache - this is FATAL in production:', error.message);
       this.isConnected = false;
+      // In production, Redis must be available
+      if (process.env.NODE_ENV === 'production') {
+        throw error;
+      }
+    }
+  }
+
+  // Connect to Redis with proper error handling
+  async connect() {
+    try {
+      if (!this.redis) {
+        throw new Error('Redis not initialized');
+      }
+      
+      // For ioredis with lazyConnect: true, we need to trigger a command to connect
+      await this.redis.ping();
+      logger.info('✅ Redis cache connected successfully');
+      this.isConnected = true;
+      return true;
+    } catch (error) {
+      logger.error('❌ Redis connection failed:', error.message);
+      this.isConnected = false;
+      throw error;
     }
   }
 
