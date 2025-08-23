@@ -4,8 +4,8 @@
 let currentUser = null;
 let authMode = 'signin'; // 'signin' or 'signup'
 
-// API Configuration - Point to our backend server
-let API_BASE_URL = 'http://localhost:5000/api';
+// API Configuration - Use relative path for production/Nginx compatibility
+let API_BASE_URL = '/api';
 if (window.BACKEND_API_URL) {
     // If set by nginx/docker env, use that URL (strip trailing /)
     API_BASE_URL = window.BACKEND_API_URL.replace(/\/+$/, '') + '/api';
@@ -179,6 +179,7 @@ async function apiRequest(endpoint, options = {}) {
     }
 
     try {
+        // CRITICAL: always use relative path for production behind Nginx
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
         const data = await response.json();
 
@@ -434,13 +435,11 @@ async function handleAuthSubmit(e) {
             if (!first_name) {
                 throw new Error('Full Name is required');
             }
-            // CRITICAL CORRECTION: Use /api/auth/register
             response = await apiRequest('/auth/register', {
                 method: 'POST',
                 body: { first_name, last_name, email, password }
             });
         } else {
-            // CRITICAL CORRECTION: Use /api/auth/login
             response = await apiRequest('/auth/login', {
                 method: 'POST',
                 body: { email, password }
