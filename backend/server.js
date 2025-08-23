@@ -203,6 +203,12 @@ app.get('/health', async (req, res) => {
     overallStatus = 'degraded';
   }
 
+  // Add services property for frontend compatibility
+  healthData.services = {
+    database: healthData.database.connected ? 'connected' : 'disconnected',
+    cache: healthData.cache.connected ? 'connected' : 'disconnected'
+  };
+
   healthData.status = overallStatus;
 
   // Return 503 if any critical service is down
