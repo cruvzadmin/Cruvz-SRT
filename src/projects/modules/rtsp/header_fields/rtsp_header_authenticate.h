@@ -24,10 +24,11 @@ public:
 	RtspHeaderWWWAuthenticateField()
 		: RtspHeaderField(RtspHeaderFieldType::WWWAuthenticate)
 	{
-
+		_scheme = Scheme::Unknown;
 	}
 
 	RtspHeaderWWWAuthenticateField(Scheme scheme, ov::String realm)
+		: RtspHeaderField(RtspHeaderFieldType::WWWAuthenticate)
 	{
 		_scheme = scheme;
 		_realm = realm;
@@ -39,6 +40,7 @@ public:
 	}
 
 	RtspHeaderWWWAuthenticateField(Scheme scheme, ov::String realm, ov::String nonce)
+		: RtspHeaderField(RtspHeaderFieldType::WWWAuthenticate)
 	{
 		_scheme = scheme;
 		_realm = realm;
@@ -120,33 +122,27 @@ public:
 		auto index = challenge.IndexOf(' ');
 		if(index == -1)
 		{
-			// there is no auth-param
 			_scheme = GetScheme(challenge.Trim());
 			return true;
 		}
 
-		// Get auth-scheme
 		ov::String scheme_string = challenge.Substring(0, index).Trim();
 		_scheme = GetScheme(scheme_string);
 
-		// Get auth-param
 		ov::String auth_param = challenge.Substring(index + 1).Trim();
 
-		// Parsing auth-param
 		auto auth_param_list = auth_param.Split(",");
 		for(auto &param : auth_param_list)
 		{
 			auto param_list = param.Split("=");
 			if(param_list.size() != 2)
 			{
-				// auth-param is invalid
 				return false;
 			}
 
 			ov::String key = param_list[0].Trim();
 			ov::String value = param_list[1].Trim();
 
-			// Remove double quotes or quote from value
 			if((value.HasPrefix("\"") && value.HasSuffix("\"")) || (value.HasPrefix("'") && value.HasSuffix("'")))
 			{
 				value = value.Substring(1, value.GetLength() - 2);
