@@ -73,7 +73,8 @@ class CacheManager {
         throw new Error('Redis not initialized');
       }
       
-      await this.redis.connect();
+      // For ioredis with lazyConnect: true, we need to trigger a command to connect
+      await this.redis.ping();
       logger.info('✅ Redis cache connected successfully');
       this.isConnected = true;
       return true;
