@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /opt/ovenmediaengine/bin
 
 # Copy custom configuration files
-COPY misc/conf_examples/Origin.xml /opt/ovenmediaengine/bin/origin_conf/Server.xml
-COPY misc/conf_examples/Logger.xml /opt/ovenmediaengine/bin/origin_conf/Logger.xml
+COPY configs/Server.xml /opt/ovenmediaengine/bin/origin_conf/Server.xml
+COPY configs/Logger.xml /opt/ovenmediaengine/bin/origin_conf/Logger.xml
 
 # Set up directories for production
 RUN mkdir -p /opt/ovenmediaengine/logs \
