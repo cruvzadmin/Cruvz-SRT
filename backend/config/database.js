@@ -35,7 +35,6 @@ config = {
     ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : false
   },
   pool: {
-    // Production-optimized connection pool for high concurrency
     min: process.env.CONNECTION_POOL_MIN ? parseInt(process.env.CONNECTION_POOL_MIN) : 10,
     max: process.env.CONNECTION_POOL_MAX ? parseInt(process.env.CONNECTION_POOL_MAX) : 100,
     acquireTimeoutMillis: 60000,
