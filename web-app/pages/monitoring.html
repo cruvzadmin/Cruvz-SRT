@@ -389,168 +389,93 @@
                 const health = await healthResponse.json();
 
                 // Fetch metrics data
-                const metricsResponse = await fetch('/metrics');
-                const metrics = await metricsResponse.json();
+                // NOTE: You should implement your /metrics endpoint to return real metrics as JSON!
+                // For demonstration, we leave metrics as empty object.
+                const metrics = {};
 
-                // Update basic metrics
                 document.getElementById('environment').textContent = health.environment || 'Unknown';
                 document.getElementById('environment').className = `badge ${health.production ? 'bg-success' : 'bg-warning text-dark'}`;
-                
-                document.getElementById('systemUptime').textContent = formatUptime(health.uptime);
+                document.getElementById('systemUptime').textContent = health.uptime ? formatUptime(health.uptime) : '--';
                 document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
 
-                // Update streaming metrics (mock data for demo)
+                // Update streaming metrics
                 updateStreamingMetrics(metrics);
 
                 // Update service status
                 updateServiceStatus(health);
 
-                // Update charts
-                updateCharts(metrics);
+                // Update charts - if metrics present, update, else skip
+                if (metrics && Object.keys(metrics).length) {
+                    updateCharts(metrics);
+                }
 
-                // Update events
                 updateRecentEvents();
 
                 document.getElementById('refreshIcon').classList.remove('fa-spin');
                 document.getElementById('refreshStatus').textContent = 'Updated';
-                
             } catch (error) {
                 console.error('Failed to update metrics:', error);
                 document.getElementById('refreshIcon').classList.remove('fa-spin');
                 document.getElementById('refreshStatus').textContent = 'Error';
-                
-                // Use mock data for demo
-                updateWithMockData();
+                // Clear metrics
+                document.getElementById('activeStreams').textContent = '--';
+                document.getElementById('totalUsers').textContent = '--';
+                document.getElementById('currentViewers').textContent = '--';
+                document.getElementById('systemUptime').textContent = '--';
             }
         }
 
         function updateStreamingMetrics(metrics) {
-            const streaming = metrics.streaming || {};
-            document.getElementById('activeStreams').textContent = streaming.active_streams || Math.floor(Math.random() * 50) + 10;
-            document.getElementById('totalUsers').textContent = streaming.total_users || Math.floor(Math.random() * 1000) + 500;
-            document.getElementById('currentViewers').textContent = streaming.current_viewers || Math.floor(Math.random() * 5000) + 1000;
+            // If you implement streaming metrics in your /metrics endpoint,
+            // update these fields accordingly, else leave as '--'
+            document.getElementById('activeStreams').textContent = metrics.active_streams ?? '--';
+            document.getElementById('totalUsers').textContent = metrics.total_users ?? '--';
+            document.getElementById('currentViewers').textContent = metrics.current_viewers ?? '--';
         }
 
         function updateServiceStatus(health) {
             const services = health.services || {};
-            
             // Database
             const dbStatus = services.database === 'connected';
             document.getElementById('dbIndicator').className = `status-indicator ${dbStatus ? 'status-healthy' : 'status-error'}`;
-            document.getElementById('dbConnections').textContent = health.database_stats?.active_connections || Math.floor(Math.random() * 50) + 10;
-            document.getElementById('dbCacheHit').textContent = health.database_stats?.cache_hit_ratio || (95 + Math.random() * 4).toFixed(1);
+            document.getElementById('dbConnections').textContent = health.database_stats?.active_connections ?? '--';
+            document.getElementById('dbCacheHit').textContent = health.database_stats?.cache_hit_ratio ?? '--';
 
             // Redis
             const redisStatus = services.cache === 'connected';
             document.getElementById('redisIndicator').className = `status-indicator ${redisStatus ? 'status-healthy' : 'status-error'}`;
-            document.getElementById('redisMemory').textContent = (Math.random() * 200 + 50).toFixed(1) + 'MB';
-            document.getElementById('redisClients').textContent = Math.floor(Math.random() * 100) + 20;
+            document.getElementById('redisMemory').textContent = '--';
+            document.getElementById('redisClients').textContent = '--';
 
             // Backend
             document.getElementById('backendIndicator').className = 'status-indicator status-healthy';
-            document.getElementById('backendLatency').textContent = Math.floor(Math.random() * 50) + 10;
-            document.getElementById('backendRpm').textContent = Math.floor(Math.random() * 1000) + 500;
+            document.getElementById('backendLatency').textContent = '--';
+            document.getElementById('backendRpm').textContent = '--';
 
             // Origin
             document.getElementById('originIndicator').className = 'status-indicator status-healthy';
         }
 
         function updateCharts(metrics) {
-            const timestamp = new Date().toLocaleTimeString();
-            
-            // Limit data points
-            if (data.timestamps.length > 20) {
-                data.timestamps.shift();
-                data.viewers.shift();
-                data.streams.shift();
-            }
-
-            // Add new data
-            data.timestamps.push(timestamp);
-            data.viewers.push(Math.floor(Math.random() * 5000) + 1000);
-            data.streams.push(Math.floor(Math.random() * 50) + 10);
-
-            // Update charts
-            charts.viewers.data.labels = data.timestamps;
-            charts.viewers.data.datasets[0].data = data.viewers;
-            charts.viewers.update('none');
-
-            charts.streams.data.labels = data.timestamps;
-            charts.streams.data.datasets[0].data = data.streams;
-            charts.streams.update('none');
-
-            // Update performance chart
-            const responseTime = Math.floor(Math.random() * 100) + 50;
-            charts.performance.data.labels.push(timestamp);
-            charts.performance.data.datasets[0].data.push(responseTime);
-            if (charts.performance.data.labels.length > 20) {
-                charts.performance.data.labels.shift();
-                charts.performance.data.datasets[0].data.shift();
-            }
-            charts.performance.update('none');
-
-            // Update resource charts
-            const cpuUsage = Math.floor(Math.random() * 60) + 20;
-            charts.cpu.data.datasets[0].data = [cpuUsage, 100 - cpuUsage];
-            charts.cpu.update('none');
-
-            const memoryUsage = Math.floor(Math.random() * 70) + 30;
-            charts.memory.data.datasets[0].data = [memoryUsage, 100 - memoryUsage];
-            charts.memory.update('none');
-
-            // Update DB chart
-            charts.db.data.datasets[0].data = [
-                Math.floor(Math.random() * 50) + 10, // connections
-                95 + Math.random() * 4, // cache hit
-                Math.floor(Math.random() * 50) + 10  // query time
-            ];
-            charts.db.update('none');
+            // Implement chart updating logic if you return real metrics in /metrics
         }
 
         function updateRecentEvents() {
-            const events = [
-                { time: new Date().toLocaleTimeString(), event: 'Stream Started', details: 'User "demo_user" started stream', status: 'success' },
-                { time: new Date(Date.now() - 60000).toLocaleTimeString(), event: 'High Load', details: '1000+ concurrent viewers reached', status: 'warning' },
-                { time: new Date(Date.now() - 120000).toLocaleTimeString(), event: 'Database Optimized', details: 'Connection pool expanded to 50 connections', status: 'info' },
-                { time: new Date(Date.now() - 180000).toLocaleTimeString(), event: 'Redis Cache', details: 'Cache hit ratio: 97.5%', status: 'success' }
-            ];
-
+            // You may implement real events here
             const tbody = document.getElementById('eventsTableBody');
-            tbody.innerHTML = events.map(event => `
-                <tr>
-                    <td>${event.time}</td>
-                    <td>${event.event}</td>
-                    <td>${event.details}</td>
-                    <td><span class="badge bg-${event.status === 'success' ? 'success' : event.status === 'warning' ? 'warning' : 'info'}">${event.status}</span></td>
-                </tr>
-            `).join('');
-        }
-
-        function updateWithMockData() {
-            // Provide mock data when API is not available
-            document.getElementById('activeStreams').textContent = Math.floor(Math.random() * 50) + 10;
-            document.getElementById('totalUsers').textContent = Math.floor(Math.random() * 1000) + 500;
-            document.getElementById('currentViewers').textContent = Math.floor(Math.random() * 5000) + 1000;
-            document.getElementById('systemUptime').textContent = formatUptime(Math.random() * 86400);
-            
-            // Set all services as healthy
-            document.querySelectorAll('.status-indicator').forEach(indicator => {
-                indicator.className = 'status-indicator status-healthy';
-            });
+            tbody.innerHTML = '';
         }
 
         function formatUptime(seconds) {
+            if (!seconds) return '--';
             const hours = Math.floor(seconds / 3600);
             const minutes = Math.floor((seconds % 3600) / 60);
             return `${hours}h ${minutes}m`;
         }
 
-        // Initialize and start monitoring
         document.addEventListener('DOMContentLoaded', function() {
             initializeCharts();
             updateMetrics();
-            
-            // Update every 5 seconds
             setInterval(updateMetrics, 5000);
         });
     </script>
