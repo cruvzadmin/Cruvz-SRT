@@ -1,4 +1,3 @@
-# (Removed obsolete 'version' key to eliminate Compose warning)
 # ===============================================================================
 # CRUVZ STREAMING - PRODUCTION DOCKER COMPOSE FOR 1000+ USERS
 # Optimized PostgreSQL setup with Redis caching and horizontal scaling
@@ -48,8 +47,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U cruvz -d cruvzdb"]
       interval: 30s
       timeout: 10s
-      retries: 5                 # CORRECTION: increase retries
-      start_period: 90s          # CORRECTION: longer init window
+      retries: 5
+      start_period: 90s
     deploy:
       resources:
         limits:
@@ -81,7 +80,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s          # CORRECTION: small grace period
+      start_period: 15s
     deploy:
       resources:
         limits:
@@ -136,10 +135,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 25s            # CORRECTION: slightly faster cadence
-      timeout: 8s              # CORRECTION: modest timeout
-      retries: 4               # CORRECTION: more robustness
-      start_period: 50s        # CORRECTION: align with DB readiness
+      interval: 25s
+      timeout: 8s
+      retries: 4
+      start_period: 50s
     deploy:
       resources:
         limits:
@@ -163,13 +162,13 @@ services:
     container_name: cruvz-origin
     restart: unless-stopped
     ports:
-      - "8080:8080"      # Origin server
-      - "1935:1935"      # RTMP
-      - "9999:9999/udp"  # SRT (CORRECTION: explicitly marked UDP)
-      - "3333:3333"      # WebRTC
-      - "8088:8088"      # LLHLS HTTP
-      - "8089:8089"      # LLHLS HTTPS
-      - "10000-10100:10000-10100/udp"  # WebRTC UDP range
+      - "8080:8080"
+      - "1935:1935"
+      - "9999:9999/udp"
+      - "3333:3333"
+      - "8088:8088"
+      - "8089:8089"
+      - "10000-10100:10000-10100/udp"
     volumes:
       - ./configs:/opt/ovenmediaengine/bin/origin_conf:ro
       - ./data/recordings:/opt/ovenmediaengine/recordings
@@ -184,7 +183,6 @@ services:
       - OME_API_PORT=8080
       - OME_ACCESS_TOKEN=cruvz-production-api-token-2025
       - MAX_CONCURRENT_STREAMS=1000
-      # CORRECTION: add candidate port range to match exposed UDP ports
       - OME_WEBRTC_CANDIDATE_PORT=10000-10100
     networks:
       - cruvz-network
@@ -194,16 +192,16 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8080/v1/stats/current"]
       interval: 30s
       timeout: 10s
-      retries: 5              # CORRECTION: increased retries
-      start_period: 75s       # CORRECTION: longer for engine warm-up
+      retries: 5
+      start_period: 75s
     deploy:
       resources:
         limits:
           memory: 4G
-          cpus: '2.0'      # CORRECTION: reduced from 3.0 to fit 2 vCPU host
+          cpus: '2.0'
         reservations:
           memory: 2G
-          cpus: '1.0'      # CORRECTION: reduced from 2.0
+          cpus: '1.0'
     security_opt:
       - no-new-privileges:true
 
@@ -306,13 +304,10 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SECURITY_ALLOW_EMBEDDING=true
       - GF_AUTH_ANONYMOUS_ENABLED=false
-      # Remove plugin installation to avoid network issues
-      # - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
       - GF_RENDERING_SERVER_URL=http://renderer:8081/render
       - GF_RENDERING_CALLBACK_URL=http://grafana:3000/
       - GF_LOG_LEVEL=warn
       - GF_PATHS_LOGS=/var/log/grafana
-      # Disable analytics and telemetry for offline deployment
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
       - GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
