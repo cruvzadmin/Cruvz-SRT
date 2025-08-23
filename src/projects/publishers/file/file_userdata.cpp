@@ -13,6 +13,7 @@ namespace pub
 
 	FileUserdataSets::~FileUserdataSets()
 	{
+		std::lock_guard<std::shared_mutex> lock(_mutex);
 		_sets.clear();
 	}
 
@@ -74,8 +75,10 @@ namespace pub
 	{
 		std::lock_guard<std::shared_mutex> lock(_mutex);
 
-		auto iter = _sets.begin();
+		if (index >= _sets.size())
+			return nullptr;
 
+		auto iter = _sets.begin();
 		std::advance(iter, index);
 
 		if (iter == _sets.end())
@@ -95,6 +98,6 @@ namespace pub
 	{
 		std::lock_guard<std::shared_mutex> lock(_mutex);
 
-		return _sets.size();
+		return static_cast<uint32_t>(_sets.size());
 	}
 }  // namespace pub
