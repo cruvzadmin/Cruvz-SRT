@@ -5,7 +5,11 @@ let currentUser = null;
 let authMode = 'signin'; // 'signin' or 'signup'
 
 // API Configuration - Point to our backend server
-const API_BASE_URL = 'http://localhost:5000/api';
+let API_BASE_URL = 'http://localhost:5000/api';
+if (window.BACKEND_API_URL) {
+    // If set by nginx/docker env, use that URL (strip trailing /)
+    API_BASE_URL = window.BACKEND_API_URL.replace(/\/+$/, '') + '/api';
+}
 window.API_BASE_URL = API_BASE_URL;
 
 // Production-level notification system
@@ -66,6 +70,10 @@ function initializeApp() {
     // Initialize smooth scrolling
     setupSmoothScrolling();
     
+    // Initialize production monitoring
+    initializeProductionMonitoring();
+}
+
 // Initialize production monitoring
 function initializeProductionMonitoring() {
     // Performance monitoring
@@ -151,7 +159,6 @@ function initializeProductionMonitoring() {
             showNotification('Connection lost. Some features may not work.', 'warning');
         });
     }
-}
 }
 
 // API helper functions
@@ -382,7 +389,7 @@ function updateUIForAuthenticatedUser() {
         const userMenu = document.createElement('div');
         userMenu.className = 'user-menu-inline';
         userMenu.innerHTML = `
-            <span class="user-name">Welcome, ${currentUser.name}</span>
+            <span class="user-name">Welcome, ${currentUser.first_name || currentUser.name}</span>
             <a href="pages/dashboard.html" class="btn btn-primary">Dashboard</a>
             <button onclick="signOut()" class="btn btn-outline">Sign Out</button>
         `;
@@ -399,7 +406,7 @@ async function handleAuthSubmit(e) {
     const formData = new FormData(e.target);
     const email = formData.get('email');
     const password = formData.get('password');
-    const name = formData.get('fullName');
+    const fullName = formData.get('fullName');
     const confirmPassword = formData.get('confirmPassword');
     
     // Show loading state
@@ -416,10 +423,20 @@ async function handleAuthSubmit(e) {
             if (password !== confirmPassword) {
                 throw new Error('Passwords do not match');
             }
-            
+            // Split full name into first_name and last_name
+            let first_name = '', last_name = '';
+            if (fullName && fullName.trim().length > 0) {
+                const parts = fullName.trim().split(' ');
+                first_name = parts[0];
+                last_name = parts.slice(1).join(' ') || '';
+            }
+            // Ensure first_name is not empty
+            if (!first_name) {
+                throw new Error('Full Name is required');
+            }
             response = await apiRequest('/auth/register', {
                 method: 'POST',
-                body: { email, password, name }
+                body: { first_name, last_name, email, password }
             });
         } else {
             response = await apiRequest('/auth/login', {
