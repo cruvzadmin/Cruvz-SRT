@@ -29,19 +29,19 @@ async function initializeDatabase() {
   try {
     const pgClient = new Client({
       host: process.env.POSTGRES_HOST || 'localhost',
-      user: process.env.POSTGRES_USER || 'cruvz', 
+      user: process.env.POSTGRES_USER || 'cruvz',
       password: process.env.POSTGRES_PASSWORD || 'cruvzpass',
       database: process.env.POSTGRES_DB || 'cruvzdb',
       port: process.env.POSTGRES_PORT || 5432,
     });
-    
+
     await pgClient.connect();
     logger.info('✅ Connected to PostgreSQL database');
-    
+
     // Create tables if they don't exist
     await pgClient.query(`
       CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-      
+
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         email VARCHAR(255) NOT NULL UNIQUE,
@@ -68,7 +68,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    
+
     logger.info('✅ Database tables created/verified');
     dbConnection = { pgClient };
     return true;
@@ -94,14 +94,14 @@ async function query(text, params = []) {
 
 // Health check
 app.get('/health', async (req, res) => {
-  const healthData = { 
-    status: 'healthy', 
+  const healthData = {
+    status: 'healthy',
     service: 'cruvz-streaming-api',
     timestamp: new Date().toISOString(),
     version: '2.0.0',
     environment: process.env.NODE_ENV || 'development'
   };
-  
+
   // Check database connectivity
   try {
     if (dbConnection) {
@@ -114,7 +114,7 @@ app.get('/health', async (req, res) => {
     healthData.database = { connected: false, error: error.message };
     healthData.status = 'degraded';
   }
-  
+
   res.json(healthData);
 });
 
@@ -139,7 +139,7 @@ async function authenticate(req, res, next) {
       }
       return res.status(401).json({ success: false, error: 'Invalid token' });
     }
-    
+
     const result = await query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.id]);
     if (result.rows.length === 0) {
       return res.status(401).json({ success: false, error: 'Invalid token' });
@@ -155,10 +155,10 @@ async function authenticate(req, res, next) {
 // Register endpoint
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { first_name, last_name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, error: 'Name, email and password are required' });
+    if (!first_name || !email || !password) {
+      return res.status(400).json({ success: false, error: 'First name, email and password are required' });
     }
 
     // Validate email format
@@ -180,20 +180,18 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
-    
-    // Split name
-    const nameParts = name.split(' ');
-    const firstName = nameParts[0] || name;
-    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // Use empty string if last_name is not supplied
+    const lastNameFinal = typeof last_name === 'string' ? last_name : '';
 
     // Create user
     const result = await query(
       'INSERT INTO users (first_name, last_name, email, password_hash) VALUES ($1, $2, $3, $4) RETURNING *',
-      [firstName, lastName, email, hashedPassword]
+      [first_name, lastNameFinal, email, hashedPassword]
     );
 
     const user = result.rows[0];
-    
+
     // Generate token
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
 
@@ -425,7 +423,7 @@ app.put('/api/streams/:id', authenticate, async (req, res) => {
 
     updateValues.push(streamId, req.user.id);
     const sql = `UPDATE streams SET ${updateFields.join(', ')} WHERE id = $${paramIndex++} AND user_id = $${paramIndex++} RETURNING *`;
-    
+
     const result = await query(sql, updateValues);
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Stream not found' });
@@ -471,7 +469,7 @@ app.get('/api/analytics/dashboard', authenticate, async (req, res) => {
     const streamsResult = await query('SELECT COUNT(*) as total FROM streams');
     const activeStreamsResult = await query('SELECT COUNT(*) as active FROM streams WHERE status = $1', ['active']);
     const usersResult = await query('SELECT COUNT(*) as total FROM users');
-    
+
     const analytics = {
       total_streams: parseInt(streamsResult.rows[0].total),
       active_streams: parseInt(activeStreamsResult.rows[0].active),
@@ -479,7 +477,7 @@ app.get('/api/analytics/dashboard', authenticate, async (req, res) => {
       total_views: 1250,
       uptime: '99.9%'
     };
-    
+
     res.json({
       success: true,
       data: analytics
@@ -498,17 +496,17 @@ app.get('/api/six-sigma/dashboard', authenticate, async (req, res) => {
     const activeStreamsResult = await query('SELECT COUNT(*) as active FROM streams WHERE status = $1', ['active']);
     const usersResult = await query('SELECT COUNT(*) as total FROM users WHERE is_active = true');
     const errorStreamsResult = await query('SELECT COUNT(*) as errors FROM streams WHERE status = $1', ['error']);
-    
+
     const totalStreams = parseInt(streamsResult.rows[0].total) || 0;
     const activeStreams = parseInt(activeStreamsResult.rows[0].active) || 0;
     const totalUsers = parseInt(usersResult.rows[0].total) || 0;
     const errorStreams = parseInt(errorStreamsResult.rows[0].errors) || 0;
-    
+
     // Calculate Six Sigma metrics (real, not mock)
     const defectRate = totalStreams > 0 ? (errorStreams / totalStreams) * 100 : 0;
     const uptimePercentage = 99.97; // Calculate from actual uptime monitoring
     const overallSigmaLevel = defectRate < 0.1 ? 6.0 : defectRate < 1 ? 5.5 : defectRate < 5 ? 4.0 : 3.0;
-    
+
     const sixSigmaData = {
       overview: {
         overall_sigma_level: overallSigmaLevel,
@@ -561,17 +559,17 @@ app.get('/api/six-sigma/dashboard', authenticate, async (req, res) => {
         success_rate: 100 - defectRate
       }
     };
-    
+
     res.json({
       success: true,
       data: sixSigmaData
     });
-    
+
     logger.info('✅ Six Sigma dashboard data provided');
   } catch (error) {
     logger.error('Six Sigma dashboard error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Failed to load Six Sigma metrics',
       message: 'Six Sigma API is operational but data collection failed'
     });
