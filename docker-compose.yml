@@ -126,6 +126,7 @@ services:
       - ENABLE_RATE_LIMITING=true
       - MAX_CONCURRENT_STREAMS=1000
       - MAX_VIEWERS_PER_STREAM=10000
+      # No mock or SQLite config present!
     networks:
       - cruvz-network
     depends_on:
