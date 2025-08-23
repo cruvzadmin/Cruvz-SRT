@@ -26,7 +26,6 @@ const loginSchema = Joi.object({
 
 // Generate JWT token
 const generateToken = (user) => {
-  // FIX: Handle missing JWT_SECRET gracefully
   if (!process.env.JWT_SECRET) {
     logger.error('JWT_SECRET is not set in environment variables.');
     throw new Error('Internal server error');
