@@ -17,7 +17,7 @@ function showNotification(message, type = 'info', duration = 5000) {
     // Remove existing notifications
     const existingNotifications = document.querySelectorAll('.notification');
     existingNotifications.forEach(notif => notif.remove());
-    
+
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.innerHTML = `
@@ -27,9 +27,9 @@ function showNotification(message, type = 'info', duration = 5000) {
             <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
         </div>
     `;
-    
+
     document.body.appendChild(notification);
-    
+
     // Auto remove after duration
     setTimeout(() => {
         if (notification.parentNode) {
@@ -63,13 +63,13 @@ function initializeApp() {
         // Validate token and get user info
         validateAuthToken(token);
     }
-    
+
     // Initialize mobile navigation
     setupMobileNav();
-    
+
     // Initialize smooth scrolling
     setupSmoothScrolling();
-    
+
     // Initialize production monitoring
     initializeProductionMonitoring();
 }
@@ -82,7 +82,7 @@ function initializeProductionMonitoring() {
         window.addEventListener('load', () => {
             const perfData = performance.getEntriesByType('navigation')[0];
             const loadTime = perfData.loadEventEnd - perfData.fetchStart;
-            
+
             // Send performance metrics to backend
             apiRequest('/analytics/performance', {
                 method: 'POST',
@@ -95,24 +95,24 @@ function initializeProductionMonitoring() {
                 }
             }).catch(() => {}); // Silent fail for monitoring
         });
-        
+
         // Monitor API response times
         const originalFetch = window.fetch;
         window.fetch = function(...args) {
             const start = performance.now();
             return originalFetch.apply(this, args).then(response => {
                 const duration = performance.now() - start;
-                
+
                 // Log slow requests (>2 seconds)
                 if (duration > 2000) {
                     console.warn(`Slow API request: ${args[0]} took ${duration}ms`);
                 }
-                
+
                 return response;
             });
         };
     }
-    
+
     // Error monitoring
     window.addEventListener('error', (event) => {
         const errorData = {
@@ -126,14 +126,14 @@ function initializeProductionMonitoring() {
             user_agent: navigator.userAgent,
             timestamp: new Date().toISOString()
         };
-        
+
         // Send error to backend for logging
         apiRequest('/analytics/errors', {
             method: 'POST',
             body: errorData
         }).catch(() => {}); // Silent fail
     });
-    
+
     // Promise rejection monitoring
     window.addEventListener('unhandledrejection', (event) => {
         const errorData = {
@@ -142,19 +142,19 @@ function initializeProductionMonitoring() {
             page: window.location.pathname,
             timestamp: new Date().toISOString()
         };
-        
+
         apiRequest('/analytics/errors', {
             method: 'POST',
             body: errorData
         }).catch(() => {});
     });
-    
+
     // Real-time connectivity monitoring
     if ('navigator' in window && 'onLine' in navigator) {
         window.addEventListener('online', () => {
             showNotification('Connection restored', 'success');
         });
-        
+
         window.addEventListener('offline', () => {
             showNotification('Connection lost. Some features may not work.', 'warning');
         });
@@ -164,7 +164,7 @@ function initializeProductionMonitoring() {
 // API helper functions
 async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('cruvz_auth_token');
-    
+
     const config = {
         method: 'GET',
         headers: {
@@ -201,7 +201,7 @@ function setupEventListeners() {
     if (authForm) {
         authForm.addEventListener('submit', handleAuthSubmit);
     }
-    
+
     // Keyboard events for modals
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
@@ -209,7 +209,7 @@ function setupEventListeners() {
             hideDemoModal();
         }
     });
-    
+
     // Navigation menu toggle for mobile
     const navToggle = document.querySelector('.nav-toggle');
     if (navToggle) {
@@ -221,13 +221,13 @@ function setupEventListeners() {
 function setupMobileNav() {
     const navToggle = document.querySelector('.nav-toggle');
     const navMenu = document.querySelector('.nav-menu');
-    
+
     if (navToggle && navMenu) {
         navToggle.addEventListener('click', function() {
             navMenu.classList.toggle('active');
             navToggle.classList.toggle('active');
         });
-        
+
         // Close mobile menu when clicking on a link
         document.querySelectorAll('.nav-link').forEach(link => {
             link.addEventListener('click', function() {
@@ -283,11 +283,11 @@ async function loadRealTimeStats() {
 function updateRealStats(stats) {
     const latencyElement = document.getElementById('liveLatency');
     const viewersElement = document.getElementById('liveViewers');
-    
+
     if (latencyElement && stats.average_latency) {
         latencyElement.textContent = `${Math.round(stats.average_latency)}ms`;
     }
-    
+
     if (viewersElement && stats.total_viewers !== undefined) {
         viewersElement.textContent = stats.total_viewers.toLocaleString();
     }
@@ -297,11 +297,11 @@ function updateRealStats(stats) {
 function updateStaticProductionStats() {
     const latencyElement = document.getElementById('liveLatency');
     const viewersElement = document.getElementById('liveViewers');
-    
+
     if (latencyElement) {
         latencyElement.textContent = '<100ms'; // Production target
     }
-    
+
     if (viewersElement) {
         viewersElement.textContent = '0'; // Real count, starts at 0
     }
@@ -316,24 +316,31 @@ function showAuthModal(mode = 'signin') {
     const switchText = document.getElementById('authSwitchText');
     const switchBtn = document.getElementById('authSwitchBtn');
     const confirmPasswordGroup = document.getElementById('confirmPasswordGroup');
-    const nameGroup = document.getElementById('nameGroup');
-    
+    // CORRECTED: Use separate first/last name fields for signup
+    const firstNameGroup = document.getElementById('firstNameGroup');
+    const lastNameGroup = document.getElementById('lastNameGroup');
+    const nameGroup = document.getElementById('nameGroup'); // legacy, always hide
+
     if (mode === 'signin') {
         title.textContent = 'Sign In';
         submitBtn.textContent = 'Sign In';
         switchText.textContent = "Don't have an account?";
         switchBtn.textContent = 'Sign Up';
         confirmPasswordGroup.style.display = 'none';
-        nameGroup.style.display = 'none';
+        if (firstNameGroup) firstNameGroup.style.display = 'none';
+        if (lastNameGroup) lastNameGroup.style.display = 'none';
+        if (nameGroup) nameGroup.style.display = 'none'; // legacy, always hide
     } else {
         title.textContent = 'Sign Up';
         submitBtn.textContent = 'Create Account';
         switchText.textContent = 'Already have an account?';
         switchBtn.textContent = 'Sign In';
         confirmPasswordGroup.style.display = 'block';
-        nameGroup.style.display = 'block';
+        if (firstNameGroup) firstNameGroup.style.display = 'block';
+        if (lastNameGroup) lastNameGroup.style.display = 'block';
+        if (nameGroup) nameGroup.style.display = 'none'; // legacy, always hide
     }
-    
+
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
@@ -342,7 +349,7 @@ function hideAuthModal() {
     const modal = document.getElementById('authModal');
     modal.classList.add('hidden');
     document.body.style.overflow = 'auto';
-    
+
     // Reset form
     const form = document.getElementById('authForm');
     if (form) {
@@ -383,7 +390,7 @@ function checkAuthStatus() {
 function updateUIForAuthenticatedUser() {
     const signInBtn = document.querySelector('.btn.btn-primary');
     const signUpBtn = document.querySelector('.btn.btn-secondary');
-    
+
     if (signInBtn && signUpBtn && currentUser) {
         // Replace buttons with user menu
         const navMenu = document.querySelector('.nav-menu');
@@ -394,7 +401,7 @@ function updateUIForAuthenticatedUser() {
             <a href="pages/dashboard.html" class="btn btn-primary">Dashboard</a>
             <button onclick="signOut()" class="btn btn-outline">Sign Out</button>
         `;
-        
+
         signInBtn.parentNode.replaceChild(userMenu, signInBtn);
         signUpBtn.remove();
     }
@@ -403,41 +410,39 @@ function updateUIForAuthenticatedUser() {
 // Handle authentication form submission
 async function handleAuthSubmit(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(e.target);
     const email = formData.get('email');
     const password = formData.get('password');
-    const fullName = formData.get('fullName');
     const confirmPassword = formData.get('confirmPassword');
-    
+    // CORRECTED: Use firstName and lastName fields for signup
+    const first_name = formData.get('firstName');
+    const last_name = formData.get('lastName');
+
     // Show loading state
     const submitBtn = document.getElementById('authSubmitBtn');
     const originalText = submitBtn.textContent;
     submitBtn.textContent = 'Processing...';
     submitBtn.disabled = true;
-    
+
     try {
         let response;
-        
+
         if (authMode === 'signup') {
             // Validate passwords match
             if (password !== confirmPassword) {
                 throw new Error('Passwords do not match');
             }
-            // Split full name into first_name and last_name
-            let first_name = '', last_name = '';
-            if (fullName && fullName.trim().length > 0) {
-                const parts = fullName.trim().split(' ');
-                first_name = parts[0];
-                last_name = parts.slice(1).join(' ') || '';
+            // Validate both names
+            if (!first_name || first_name.trim().length < 2) {
+                throw new Error('First Name is required (min 2 characters)');
             }
-            // Ensure first_name is not empty
-            if (!first_name) {
-                throw new Error('Full Name is required');
+            if (!last_name || last_name.trim().length < 2) {
+                throw new Error('Last Name is required (min 2 characters)');
             }
             response = await apiRequest('/auth/register', {
                 method: 'POST',
-                body: { first_name, last_name, email, password }
+                body: { first_name: first_name.trim(), last_name: last_name.trim(), email, password }
             });
         } else {
             response = await apiRequest('/auth/login', {
@@ -445,19 +450,19 @@ async function handleAuthSubmit(e) {
                 body: { email, password }
             });
         }
-        
+
         if (response.success) {
             // Store token and user data
             localStorage.setItem('cruvz_auth_token', response.data.token);
             currentUser = response.data.user;
-            
+
             // Hide modal and update UI
             hideAuthModal();
             updateUIForAuthenticatedUser();
-            
+
             // Show success message
             showNotification('Authentication successful!', 'success');
-            
+
             // Redirect to dashboard if appropriate
             setTimeout(() => {
                 window.location.href = 'pages/dashboard.html';
@@ -495,10 +500,10 @@ function showNotification(message, type = 'info') {
         <span class="notification-message">${message}</span>
         <button class="notification-close" onclick="this.parentElement.remove()">&times;</button>
     `;
-    
+
     // Add to page
     document.body.appendChild(notification);
-    
+
     // Auto remove after 5 seconds
     setTimeout(() => {
         if (notification.parentElement) {
@@ -512,7 +517,7 @@ function showDemo() {
     const modal = document.getElementById('demoModal');
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
-    
+
     // Start real-time production monitoring
     startRealTimeMonitoring();
 }
@@ -521,7 +526,7 @@ function hideDemoModal() {
     const modal = document.getElementById('demoModal');
     modal.classList.add('hidden');
     document.body.style.overflow = 'auto';
-    
+
     // Stop real-time monitoring
     stopRealTimeMonitoring();
 }
@@ -559,7 +564,7 @@ function stopDemo() {
 function toggleMobileNav() {
     const navMenu = document.querySelector('.nav-menu');
     const navToggle = document.querySelector('.nav-toggle');
-    
+
     if (navMenu && navToggle) {
         navMenu.classList.toggle('active');
         navToggle.classList.toggle('active');
