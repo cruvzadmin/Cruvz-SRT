@@ -137,9 +137,14 @@
                         <label for="confirmPassword">Confirm Password</label>
                         <input type="password" id="confirmPassword" name="confirmPassword">
                     </div>
-                    <div class="form-group" id="nameGroup" style="display: none;">
-                        <label for="fullName">Full Name</label>
-                        <input type="text" id="fullName" name="fullName">
+                    <!-- CORRECTED: Separate first and last name fields for signup -->
+                    <div class="form-group" id="firstNameGroup" style="display: none;">
+                        <label for="firstName">First Name</label>
+                        <input type="text" id="firstName" name="firstName" autocomplete="given-name">
+                    </div>
+                    <div class="form-group" id="lastNameGroup" style="display: none;">
+                        <label for="lastName">Last Name</label>
+                        <input type="text" id="lastName" name="lastName" autocomplete="family-name">
                     </div>
                     <button type="submit" class="btn btn-primary btn-full" id="authSubmitBtn">Sign In</button>
                 </form>
