@@ -114,7 +114,6 @@ async function testAPI() {
   }
 }
 
-// Run test if backend is available
 async function waitForBackend() {
   console.log('⏳ Waiting for backend to be ready...');
   let attempts = 0;
