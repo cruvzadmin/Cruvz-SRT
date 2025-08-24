@@ -2,9 +2,8 @@ const knex = require('knex');
 const path = require('path');
 const fs = require('fs');
 
-// Production-grade database configuration with fallback support
+// Production-grade database configuration (PostgreSQL ONLY, NO fallback/support for SQLite)
 const isProduction = process.env.NODE_ENV === 'production';
-const usePostgres = process.env.USE_POSTGRES === 'true';
 
 // Ensure directories exist (for logs/data)
 const dataDir = path.join(__dirname, '../../data');
@@ -18,9 +17,9 @@ const logsDir = path.join(dataDir, 'logs');
 });
 
 // ===============================
-// DATABASE CONFIGURATION 
+// DATABASE CONFIGURATION (PostgreSQL only)
 // ===============================
-const config = usePostgres ? {
+const config = {
   client: 'pg',
   connection: {
     host: process.env.POSTGRES_HOST || 'localhost',
@@ -53,28 +52,13 @@ const config = usePostgres ? {
   acquireConnectionTimeout: 3000,
   asyncStackTraces: false, // Disable for production performance
   debug: false
-} : {
-  client: 'sqlite3',
-  connection: {
-    filename: path.join(dbDir, 'cruvz_development.db')
-  },
-  migrations: {
-    directory: path.join(__dirname, '../scripts/migrations')
-  },
-  seeds: {
-    directory: path.join(__dirname, '../scripts/seeds')
-  },
-  useNullAsDefault: true,
-  pool: {
-    min: 1,
-    max: 5,
-    afterCreate: (conn, cb) => {
-      conn.run('PRAGMA foreign_keys = ON', cb);
-      conn.run('PRAGMA journal_mode = WAL', cb);
-      conn.run('PRAGMA synchronous = NORMAL', cb);
-    }
-  }
 };
+
+/*
+ * ========== REMOVED FOR PRODUCTION ==========
+ * All SQLite and fallback configuration is removed.
+ * This server will ONLY use PostgreSQL for any environment.
+ */
 
 const db = knex(config);
 
