@@ -2,7 +2,9 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
-const db = require('../config/database');
+const knex = require('knex');
+const knexConfig = require('../knexfile');
+const db = knex(knexConfig[process.env.NODE_ENV || 'development']);
 const { auth } = require('../middleware/auth');
 const logger = require('../utils/logger');
 

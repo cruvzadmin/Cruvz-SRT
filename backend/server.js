@@ -5,8 +5,10 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 
-// Import utilities and database - PostgreSQL ONLY for production
-const db = require('./config/database');
+// Import utilities and database - with SQLite/PostgreSQL flexibility
+const knex = require('knex');
+const knexConfig = require('./knexfile');
+const db = knex(knexConfig[process.env.NODE_ENV || 'development']);
 const cache = require('./utils/cache');
 
 // Robust logger fallback if logger utility fails
@@ -50,13 +52,15 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   logger.error('💥 CONFIGURATION ERROR: JWT_SECRET must be set and be at least 32 characters long');
   process.exit(1);
 }
-if (!process.env.POSTGRES_HOST) {
-  logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set');
+if (!process.env.POSTGRES_HOST && process.env.USE_POSTGRES === 'true') {
+  logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set when USE_POSTGRES=true');
   process.exit(1);
 }
-if (!process.env.REDIS_HOST) {
-  logger.error('💥 CONFIGURATION ERROR: REDIS_HOST must be set');
+if (!process.env.REDIS_HOST && process.env.DISABLE_REDIS !== 'true' && process.env.NODE_ENV === 'production') {
+  logger.error('💥 CONFIGURATION ERROR: REDIS_HOST must be set for production');
   process.exit(1);
+} else if (!process.env.REDIS_HOST) {
+  logger.warn('⚠️  REDIS_HOST not set, Redis will be disabled for development');
 }
 
 // Production security middleware

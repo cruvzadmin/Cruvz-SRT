@@ -1,7 +1,9 @@
 const express = require('express');
 const Joi = require('joi');
 const { v4: uuidv4 } = require('uuid');
-const db = require('../config/database');
+const knex = require('knex');
+const knexConfig = require('../knexfile');
+const db = knex(knexConfig[process.env.NODE_ENV || 'development']);
 const cache = require('../utils/cache');
 const { auth } = require('../middleware/auth');
 const logger = require('../utils/logger');

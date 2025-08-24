@@ -10,12 +10,25 @@ class CacheManager {
 
   async init() {
     try {
+      // Check if Redis is disabled for development/sandbox
+      if (process.env.DISABLE_REDIS === 'true') {
+        logger.warn('⚠️  Redis is disabled via DISABLE_REDIS environment variable');
+        this.isConnected = false;
+        return false;
+      }
+      
       // Redis is REQUIRED for production - no fallback
       const redisHost = process.env.REDIS_HOST;
       if (!redisHost) {
-        const error = 'REDIS_HOST environment variable is required for production';
-        logger.error(error);
-        throw new Error(error);
+        if (process.env.NODE_ENV === 'production') {
+          const error = 'REDIS_HOST environment variable is required for production';
+          logger.error(error);
+          throw new Error(error);
+        } else {
+          logger.warn('⚠️  REDIS_HOST not set, disabling Redis for development');
+          this.isConnected = false;
+          return false;
+        }
       }
 
       const redisConfig = {

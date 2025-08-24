@@ -1,5 +1,5 @@
 // Production-ready Knex configuration with SQLite/PostgreSQL flexibility
-require('dotenv').config();
+require('dotenv').config({ path: '../.env' });
 const path = require('path');
 
 // Auto-detect database type based on environment

@@ -1,5 +1,7 @@
 const express = require('express');
-const db = require('../config/database');
+const knex = require('knex');
+const knexConfig = require('../knexfile');
+const db = knex(knexConfig[process.env.NODE_ENV || 'development']);
 const { auth, authorize } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
