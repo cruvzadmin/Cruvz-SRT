@@ -23,7 +23,7 @@ const config = {
     connection: {
       host: process.env.POSTGRES_HOST || 'localhost',
       user: process.env.POSTGRES_USER || 'cruvz',
-      password: process.env.POSTGRES_PASSWORD || 'cruvzpass',
+      password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
       database: process.env.POSTGRES_DB || 'cruvzdb',
       port: process.env.POSTGRES_PORT || 5432,
     },

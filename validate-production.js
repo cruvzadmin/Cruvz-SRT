@@ -213,7 +213,7 @@ async function testAuthentication() {
     const response = await makeRequest(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'demo@cruvz.com', password: 'demo123' })
+      body: JSON.stringify({ email: 'demo@cruvzstreaming.com', password: 'demo123!' })
     });
     
     if (response.status === 200 && response.data.success && response.data.data.token) {
@@ -382,7 +382,7 @@ async function testIntegration() {
     const response = await makeRequest(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'demo@cruvz.com', password: 'demo123' })
+      body: JSON.stringify({ email: 'demo@cruvzstreaming.com', password: 'demo123!' })
     });
     
     if (response.status === 200 && response.data.success) {

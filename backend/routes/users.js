@@ -9,9 +9,9 @@ const router = express.Router();
 
 // Validation schemas
 const updateProfileSchema = Joi.object({
-  name: Joi.string().min(2).max(100).optional(),
-  avatar_url: Joi.string().uri().optional(),
-  preferences: Joi.object().optional()
+  first_name: Joi.string().min(2).max(100).optional(),
+  last_name: Joi.string().min(2).max(100).optional(),
+  avatar_url: Joi.string().uri().optional()
 });
 
 const changePasswordSchema = Joi.object({
@@ -25,7 +25,7 @@ const changePasswordSchema = Joi.object({
 router.get('/profile', auth, async (req, res) => {
   try {
     const user = await db('users')
-      .select('id', 'name', 'email', 'role', 'avatar_url', 'preferences', 'last_login', 'created_at')
+      .select('id', 'first_name', 'last_name', 'email', 'role', 'avatar_url', 'last_login_at', 'created_at')
       .where({ id: req.user.id })
       .first();
 
@@ -79,9 +79,6 @@ router.put('/profile', auth, async (req, res) => {
     }
 
     const updateData = { ...value };
-    if (updateData.preferences) {
-      updateData.preferences = JSON.stringify(updateData.preferences);
-    }
     updateData.updated_at = new Date();
 
     await db('users')
@@ -89,7 +86,7 @@ router.put('/profile', auth, async (req, res) => {
       .update(updateData);
 
     const updatedUser = await db('users')
-      .select('id', 'name', 'email', 'role', 'avatar_url', 'preferences', 'last_login', 'created_at', 'updated_at')
+      .select('id', 'first_name', 'last_name', 'email', 'role', 'avatar_url', 'last_login_at', 'created_at', 'updated_at')
       .where({ id: req.user.id })
       .first();
 

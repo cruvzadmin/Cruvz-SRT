@@ -2,11 +2,12 @@ const knex = require('knex');
 const path = require('path');
 const fs = require('fs');
 
-// Production-grade database configuration (PostgreSQL ONLY, NO SQLite or mock)
+// Production-grade database configuration with fallback support
 const isProduction = process.env.NODE_ENV === 'production';
+const usePostgres = process.env.USE_POSTGRES === 'true';
 
 // Ensure directories exist (for logs/data)
-const dataDir = path.join(__dirname, '../data');
+const dataDir = path.join(__dirname, '../../data');
 const dbDir = path.join(dataDir, 'database');
 const logsDir = path.join(dataDir, 'logs');
 
@@ -17,9 +18,9 @@ const logsDir = path.join(dataDir, 'logs');
 });
 
 // ===============================
-// PRODUCTION/DEVELOPMENT: POSTGRES
+// DATABASE CONFIGURATION 
 // ===============================
-const config = {
+const config = usePostgres ? {
   client: 'pg',
   connection: {
     host: process.env.POSTGRES_HOST || 'localhost',
@@ -28,10 +29,10 @@ const config = {
     database: process.env.POSTGRES_DB || 'cruvzdb',
     port: process.env.POSTGRES_PORT || 5432,
     ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 5000,
-    statement_timeout: 5000,
-    query_timeout: 5000,
-    idle_in_transaction_session_timeout: 10000
+    connectionTimeoutMillis: 3000,
+    statement_timeout: 3000,
+    query_timeout: 3000,
+    idle_in_transaction_session_timeout: 5000
   },
   pool: {
     min: 0,
@@ -49,16 +50,31 @@ const config = {
   seeds: {
     directory: path.join(__dirname, '../scripts/seeds')
   },
-  acquireConnectionTimeout: 5000,
+  acquireConnectionTimeout: 3000,
   asyncStackTraces: false, // Disable for production performance
   debug: false
+} : {
+  client: 'sqlite3',
+  connection: {
+    filename: path.join(dbDir, 'cruvz_development.db')
+  },
+  migrations: {
+    directory: path.join(__dirname, '../scripts/migrations')
+  },
+  seeds: {
+    directory: path.join(__dirname, '../scripts/seeds')
+  },
+  useNullAsDefault: true,
+  pool: {
+    min: 1,
+    max: 5,
+    afterCreate: (conn, cb) => {
+      conn.run('PRAGMA foreign_keys = ON', cb);
+      conn.run('PRAGMA journal_mode = WAL', cb);
+      conn.run('PRAGMA synchronous = NORMAL', cb);
+    }
+  }
 };
-
-/*
- * ========== REMOVED FOR PRODUCTION ==========
- * All SQLite configuration (production/development) is now removed.
- * This server will ONLY use PostgreSQL for any environment.
- */
 
 const db = knex(config);
 
