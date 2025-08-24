@@ -8,7 +8,18 @@ const morgan = require('morgan');
 // Import utilities and database - Production-ready configuration only
 const db = require('./config/database');
 const cache = require('./utils/cache');
-const logger = require('./utils/logger');
+
+// Robust logger fallback if logger utility fails
+let logger;
+try {
+  logger = require('./utils/logger');
+} catch (e) {
+  logger = {
+    info: console.log,
+    warn: console.warn,
+    error: console.error
+  };
+}
 
 // Import route modules
 const authRoutes = require('./routes/auth');
@@ -19,6 +30,19 @@ const sixSigmaRoutes = require('./routes/sixSigma');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Dummy dbConfig for dev table creation (prevents ReferenceError if missing)
+const dbConfig = (function() {
+  try {
+    return require('./config/dbConfig');
+  } catch (e) {
+    return {};
+  }
+})();
+
+// Log server boot for debug
+logger.info(`🟢 Starting server.js (env: ${process.env.NODE_ENV})`);
 
 // Validate configuration - Production-ready requirements for all environments
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
@@ -53,8 +77,14 @@ app.use(helmet({
 }));
 
 // CORS configuration for production
+let corsOrigin = process.env.CORS_ORIGIN;
+if (corsOrigin && corsOrigin.includes(',')) {
+  corsOrigin = corsOrigin.split(',').map(o => o.trim());
+} else if (!corsOrigin) {
+  corsOrigin = ['http://localhost:3000', 'http://localhost:8080'];
+}
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || ['http://localhost:3000', 'http://localhost:8080'],
+  origin: corsOrigin,
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
