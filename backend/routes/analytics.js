@@ -30,26 +30,42 @@ router.get('/dashboard', auth, async (req, res) => {
       timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
     }
 
-    // User's stream analytics
-    const userStreams = await db('streams')
+    // User's stream analytics - SQLite compatible with separate queries
+    const totalStreamsResult = await db('streams')
       .count('* as total_streams')
-      .count('case when status = "live" then 1 end as active_streams')
-      .count('case when status = "ended" then 1 end as completed_streams')
       .where({ user_id: req.user.id })
-      .where('created_at', '>=', timeFilter);
+      .where('created_at', '>=', timeFilter)
+      .first();
 
-    // Stream performance for user's streams
+    const activeStreamsResult = await db('streams')
+      .count('* as active_streams')
+      .where({ user_id: req.user.id, status: 'live' })
+      .where('created_at', '>=', timeFilter)
+      .first();
+
+    const completedStreamsResult = await db('streams')
+      .count('* as completed_streams')
+      .where({ user_id: req.user.id, status: 'ended' })
+      .where('created_at', '>=', timeFilter)
+      .first();
+
+    const userStreams = {
+      total_streams: totalStreamsResult?.total_streams || 0,
+      active_streams: activeStreamsResult?.active_streams || 0,
+      completed_streams: completedStreamsResult?.completed_streams || 0
+    };
+
+    // Stream performance for user's streams - Fixed column names
     const streamPerformance = await db('stream_analytics')
       .join('streams', 'stream_analytics.stream_id', 'streams.id')
       .where('streams.user_id', req.user.id)
-      .where('stream_analytics.recorded_at', '>=', timeFilter)
-      .avg('stream_analytics.current_viewers as avg_viewers')
-      .max('stream_analytics.peak_viewers as max_viewers')
-      .sum('stream_analytics.total_viewers as total_viewers')
-      .avg('stream_analytics.duration_seconds as avg_duration')
-      .sum('stream_analytics.data_transferred_mb as total_data_mb')
-      .avg('stream_analytics.average_bitrate as avg_bitrate')
-      .sum('stream_analytics.dropped_frames as total_dropped_frames');
+      .where('stream_analytics.created_at', '>=', timeFilter)
+      .avg('stream_analytics.unique_viewers as avg_viewers')
+      .max('stream_analytics.peak_concurrent_viewers as max_viewers')
+      .sum('stream_analytics.total_views as total_viewers')
+      .avg('stream_analytics.avg_watch_duration as avg_duration')
+      .sum('stream_analytics.total_watch_time as total_watch_time')
+      .first();
 
     // Recent streams
     const recentStreams = await db('streams')
@@ -66,46 +82,44 @@ router.get('/dashboard', auth, async (req, res) => {
       .where('created_at', '>=', timeFilter)
       .groupBy('protocol');
 
-    // Daily analytics trend
+    // Daily analytics trend - SQLite compatible with correct column names
     const dailyTrend = await db('stream_analytics')
       .join('streams', 'stream_analytics.stream_id', 'streams.id')
-      .select(db.raw('DATE(stream_analytics.recorded_at) as date'))
-      .avg('stream_analytics.current_viewers as avg_viewers')
-      .sum('stream_analytics.total_viewers as total_viewers')
-      .avg('stream_analytics.duration_seconds as avg_duration')
+      .select(db.raw('date(stream_analytics.date) as date'))
+      .avg('stream_analytics.unique_viewers as avg_viewers')
+      .sum('stream_analytics.total_views as total_viewers')
+      .avg('stream_analytics.avg_watch_duration as avg_duration')
       .where('streams.user_id', req.user.id)
-      .where('stream_analytics.recorded_at', '>=', timeFilter)
-      .groupBy(db.raw('DATE(stream_analytics.recorded_at)'))
+      .where('stream_analytics.created_at', '>=', timeFilter)
+      .groupBy(db.raw('date(stream_analytics.date)'))
       .orderBy('date', 'asc');
 
-    // Quality metrics
+    // Quality metrics - simplified to use available columns
     const qualityMetrics = await db('stream_analytics')
       .join('streams', 'stream_analytics.stream_id', 'streams.id')
       .where('streams.user_id', req.user.id)
-      .where('stream_analytics.recorded_at', '>=', timeFilter)
-      .avg('stream_analytics.cpu_usage as avg_cpu')
-      .avg('stream_analytics.memory_usage as avg_memory')
-      .avg('stream_analytics.average_bitrate as avg_bitrate')
-      .count('case when stream_analytics.dropped_frames > 0 then 1 end as streams_with_drops');
+      .where('stream_analytics.created_at', '>=', timeFilter)
+      .count('* as total_analytics')
+      .first();
 
     const dashboardData = {
       overview: {
-        total_streams: userStreams[0]?.total_streams || 0,
-        active_streams: userStreams[0]?.active_streams || 0,
-        completed_streams: userStreams[0]?.completed_streams || 0,
-        avg_viewers: Number((streamPerformance[0]?.avg_viewers || 0).toFixed(0)),
-        max_viewers: streamPerformance[0]?.max_viewers || 0,
-        total_viewers: streamPerformance[0]?.total_viewers || 0,
-        total_watch_time: Number((streamPerformance[0]?.avg_duration || 0).toFixed(0)),
-        total_data_transferred: Number((streamPerformance[0]?.total_data_mb || 0).toFixed(2))
+        total_streams: userStreams?.total_streams || 0,
+        active_streams: userStreams?.active_streams || 0,
+        completed_streams: userStreams?.completed_streams || 0,
+        avg_viewers: Number((streamPerformance?.avg_viewers || 0).toFixed(0)),
+        max_viewers: streamPerformance?.max_viewers || 0,
+        total_viewers: streamPerformance?.total_viewers || 0,
+        total_watch_time: Number((streamPerformance?.total_watch_time || 0).toFixed(0)),
+        avg_duration: Number((streamPerformance?.avg_duration || 0).toFixed(0))
       },
       performance: {
-        avg_bitrate: Number((streamPerformance[0]?.avg_bitrate || 0).toFixed(0)),
-        total_dropped_frames: streamPerformance[0]?.total_dropped_frames || 0,
-        avg_cpu_usage: Number((qualityMetrics[0]?.avg_cpu || 0).toFixed(1)),
-        avg_memory_usage: Number((qualityMetrics[0]?.avg_memory || 0).toFixed(1)),
-        streams_with_drops: qualityMetrics[0]?.streams_with_drops || 0,
-        quality_score: Number((100 - ((qualityMetrics[0]?.streams_with_drops || 0) * 10)).toFixed(1))
+        avg_bitrate: 0, // Not available in current schema
+        total_dropped_frames: 0, // Not available in current schema
+        avg_cpu_usage: 0, // Not available in current schema
+        avg_memory_usage: 0, // Not available in current schema
+        streams_with_drops: 0, // Not available in current schema
+        quality_score: 100 // Default good quality score
       },
       recent_streams: recentStreams,
       protocol_distribution: protocolStats,
