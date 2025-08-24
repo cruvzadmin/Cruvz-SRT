@@ -29,9 +29,10 @@ router.get('/public', async (req, res) => {
           'streams.protocol',
           'streams.current_viewers',
           'streams.started_at',
-          'users.name as streamer_name'
+          'users.first_name as streamer_first_name',
+          'users.last_name as streamer_last_name'
         )
-        .where('streams.status', 'live')
+        .where('streams.status', 'active')
         .orderBy('streams.current_viewers', 'desc')
         .limit(20);
       

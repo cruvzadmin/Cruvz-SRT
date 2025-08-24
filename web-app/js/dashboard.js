@@ -261,7 +261,7 @@ async function loadOverviewData() {
                 updateRecentStreams(data.recent_streams);
             }
 
-            // Update performance charts
+            // Update performance charts  
             if (data.daily_trend) {
                 updatePerformanceCharts(data.daily_trend);
             }
@@ -308,7 +308,7 @@ async function loadStreams() {
     } catch (error) {
         console.error('Failed to load streams:', error);
         showNotification('Unable to load streams. Please check your connection.', 'error');
-        const streamsContainer = document.getElementById('streamsContainer');
+        const streamsContainer = document.getElementById('streamsGrid');
         if (streamsContainer) {
             streamsContainer.innerHTML = '<div class="error-message">Unable to load streams. Please refresh the page.</div>';
         }
@@ -317,7 +317,7 @@ async function loadStreams() {
 
 // Update streams display
 function updateStreamsDisplay(streamsList) {
-    const container = document.getElementById('streamsContainer');
+    const container = document.getElementById('streamsGrid');
     if (!container) return;
     if (streamsList.length === 0) {
         container.innerHTML = '<div class="no-streams">No streams found. <a href="#" onclick="showCreateStreamModal()">Create your first stream</a></div>';
@@ -334,22 +334,52 @@ function updateStreamsDisplay(streamsList) {
                 <div class="stream-details">
                     <span>Protocol: ${stream.protocol ? stream.protocol.toUpperCase() : '--'}</span>
                     <span>Created: ${stream.created_at ? new Date(stream.created_at).toLocaleDateString() : '--'}</span>
-                    ${stream.status === 'live' ? `<span>Started: ${stream.started_at ? new Date(stream.started_at).toLocaleString() : '--'}</span>` : ''}
+                    ${stream.status === 'active' ? `<span>Started: ${stream.started_at ? new Date(stream.started_at).toLocaleString() : '--'}</span>` : ''}
                 </div>
             </div>
             <div class="stream-actions">
-                ${stream.status === 'live' ? 
+                ${stream.status === 'active' ? 
                     `<button class="btn btn-danger" onclick="stopStream('${stream.id}')">Stop Stream</button>` :
                     `<button class="btn btn-success" onclick="startStream('${stream.id}')">Start Stream</button>`
                 }
                 <button class="btn btn-secondary" onclick="editStream('${stream.id}')">Edit</button>
                 <button class="btn btn-outline" onclick="viewAnalytics('${stream.id}')">Analytics</button>
-                ${stream.status !== 'live' ? 
+                ${stream.status !== 'active' ? 
                     `<button class="btn btn-danger-outline" onclick="deleteStream('${stream.id}')">Delete</button>` : ''
                 }
             </div>
         </div>
     `).join('');
+}
+
+// Update recent streams on dashboard
+function updateRecentStreams(streams) {
+    const container = document.getElementById('recentStreams');
+    if (!container) return;
+    
+    if (streams.length === 0) {
+        container.innerHTML = '<div class="no-streams">No recent streams. <a href="#" onclick="showSection(\'create\')">Create your first stream</a></div>';
+        return;
+    }
+    
+    container.innerHTML = streams.slice(0, 5).map(stream => `
+        <div class="stream-item" onclick="showSection('streams')">
+            <div class="stream-icon">
+                <span class="protocol-badge">${stream.protocol ? stream.protocol.toUpperCase() : 'RTMP'}</span>
+            </div>
+            <div class="stream-content">
+                <h4>${stream.title}</h4>
+                <p>Status: <span class="status-${stream.status}">${stream.status}</span></p>
+                <small>Created: ${stream.created_at ? new Date(stream.created_at).toLocaleDateString() : '--'}</small>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Update performance charts (placeholder implementation)
+function updatePerformanceCharts(data) {
+    console.log('Performance charts would be updated with:', data);
+    // In a real implementation, this would use Chart.js or similar library
 }
 
 // Load user information
@@ -571,8 +601,9 @@ function copyToClipboard(text) {
 }
 
 function showCreateStreamModal() {
-    // Implementation of modal creation (not demo or mock)
-    showNotification('Stream creation modal would open here', 'info');
+    // Switch to the create section in the dashboard
+    showSection('create');
+    showNotification('Use the form below to create a new stream', 'info');
 }
 
 function updateProtocolPlaceholders() {}
