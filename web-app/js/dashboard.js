@@ -53,7 +53,7 @@ async function apiRequest(endpoint, options = {}) {
         try {
             data = await response.json();
         } catch (jsonError) {
-            throw new Error('Invalid response format');
+            throw new Error(`Invalid response format from ${endpoint}: ${response.status} ${response.statusText}`);
         }
 
         if (!response.ok) {
@@ -63,12 +63,20 @@ async function apiRequest(endpoint, options = {}) {
                 window.location.href = '../index.html';
                 return;
             }
-            throw new Error(data.error || 'Request failed');
+            throw new Error(data.error || `Request failed: ${response.status} ${response.statusText}`);
         }
 
         return data;
     } catch (error) {
         console.error('API Request Error:', error);
+        
+        // Show user-friendly error notification if available
+        if (typeof showNotification === 'function') {
+            showNotification(`API Error: ${error.message}`, 'error');
+        } else {
+            console.warn('showNotification function not available');
+        }
+        
         throw error;
     }
 }

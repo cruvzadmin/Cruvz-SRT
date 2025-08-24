@@ -38,15 +38,15 @@
                 <p class="hero-subtitle">Enterprise-grade streaming platform with PostgreSQL, Redis caching, and horizontal scaling. Deploy streaming services instantly with sub-second latency.</p>
                 <div class="hero-stats">
                     <div class="stat">
-                        <span class="stat-number">1000+</span>
-                        <span class="stat-label">Concurrent Users</span>
+                        <span class="stat-number" id="liveViewers">--</span>
+                        <span class="stat-label">Live Viewers</span>
                     </div>
                     <div class="stat">
-                        <span class="stat-number">PostgreSQL</span>
-                        <span class="stat-label">Production DB</span>
+                        <span class="stat-number" id="activeStreams">--</span>
+                        <span class="stat-label">Active Streams</span>
                     </div>
                     <div class="stat">
-                        <span class="stat-number">&lt;100ms</span>
+                        <span class="stat-number" id="systemLatency">--</span>
                         <span class="stat-label">Latency</span>
                     </div>
                 </div>
@@ -57,6 +57,8 @@
                     <button class="btn btn-outline btn-large" onclick="showAuthModal('signin')">
                         Sign In
                     </button>
+                    <a href="demo-dashboard.html" class="btn btn-secondary btn-large">📊 Live Dashboard</a>
+                    <a href="pages/monitoring.html" class="btn btn-outline btn-large">📈 System Monitor</a>
                 </div>
             </div>
             <div class="hero-visual">
@@ -209,5 +211,26 @@
     </footer>
 
     <script src="js/main.js"></script>
+    <script>
+        // Load real-time stats for the homepage
+        async function loadHeroStats() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/analytics/realtime`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('liveViewers').textContent = data.data.total_viewers;
+                    document.getElementById('activeStreams').textContent = data.data.active_streams;
+                    document.getElementById('systemLatency').textContent = data.data.average_latency + 'ms';
+                }
+            } catch (error) {
+                console.log('Could not load real-time stats:', error.message);
+                // Keep default values on error
+            }
+        }
+        
+        // Load stats when page loads
+        window.addEventListener('load', loadHeroStats);
+    </script>
 </body>
 </html>
