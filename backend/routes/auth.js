@@ -2,9 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
-const isProduction = process.env.NODE_ENV === 'production';
-const dbConfig = isProduction ? require('../config/database') : require('../config/database-dev');
-const db = isProduction ? dbConfig : dbConfig.db;
+const db = require('../config/database');
 const { auth } = require('../middleware/auth');
 const logger = require('../utils/logger');
 

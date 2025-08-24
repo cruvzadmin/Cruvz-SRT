@@ -1,13 +1,13 @@
-// Simple database setup script
+// Simple database setup script for production deployment
 const { Client } = require('pg');
 
 async function setupDatabase() {
   const client = new Client({
-    host: 'localhost',
-    user: 'cruvz',
-    password: 'CHANGE_THIS_STRONG_PASSWORD_FOR_PRODUCTION',
-    database: 'cruvzdb',
-    port: 5432,
+    host: process.env.POSTGRES_HOST || 'localhost',
+    user: process.env.POSTGRES_USER || 'cruvz',
+    password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
+    database: process.env.POSTGRES_DB || 'cruvzdb',
+    port: process.env.POSTGRES_PORT || 5432,
   });
 
   try {
@@ -87,6 +87,22 @@ async function setupDatabase() {
     `);
     console.log('✅ Created stream_analytics table');
 
+    // Create six_sigma_metrics table for production metrics
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS six_sigma_metrics (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        metric_name VARCHAR(100) NOT NULL,
+        metric_type VARCHAR(50) NOT NULL,
+        value DECIMAL(15, 6) NOT NULL,
+        target DECIMAL(15, 6) NOT NULL,
+        sigma_level DECIMAL(10, 6),
+        date DATE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Created six_sigma_metrics table');
+
     // Create indexes for performance
     await client.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)');
@@ -94,9 +110,11 @@ async function setupDatabase() {
     await client.query('CREATE INDEX IF NOT EXISTS idx_streams_stream_key ON streams(stream_key)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_streams_status ON streams(status)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_stream_analytics_stream_id ON stream_analytics(stream_id)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_six_sigma_metrics_name ON six_sigma_metrics(metric_name)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_six_sigma_metrics_date ON six_sigma_metrics(date)');
     console.log('✅ Created database indexes');
 
-    console.log('🎉 Database setup complete!');
+    console.log('🎉 Production database setup complete!');
 
   } catch (error) {
     console.error('❌ Database setup failed:', error);

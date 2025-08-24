@@ -5,11 +5,9 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 
-// Import utilities and database
-const isProduction = process.env.NODE_ENV === 'production';
-const dbConfig = isProduction ? require('./config/database') : require('./config/database-dev');
-const db = isProduction ? dbConfig : dbConfig.db;
-const cache = isProduction ? require('./utils/cache') : require('./utils/cache-dev');
+// Import utilities and database - Production-ready configuration only
+const db = require('./config/database');
+const cache = require('./utils/cache');
 const logger = require('./utils/logger');
 
 // Import route modules
@@ -22,20 +20,18 @@ const sixSigmaRoutes = require('./routes/sixSigma');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Validate production configuration
-if (process.env.NODE_ENV === 'production') {
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-    logger.error('💥 PRODUCTION ERROR: JWT_SECRET must be set and be at least 32 characters long');
-    process.exit(1);
-  }
-  if (!process.env.POSTGRES_HOST) {
-    logger.error('💥 PRODUCTION ERROR: POSTGRES_HOST must be set');
-    process.exit(1);
-  }
-  if (!process.env.REDIS_HOST) {
-    logger.error('💥 PRODUCTION ERROR: REDIS_HOST must be set');
-    process.exit(1);
-  }
+// Validate configuration - Production-ready requirements for all environments
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  logger.error('💥 CONFIGURATION ERROR: JWT_SECRET must be set and be at least 32 characters long');
+  process.exit(1);
+}
+if (!process.env.POSTGRES_HOST) {
+  logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set');
+  process.exit(1);
+}
+if (!process.env.REDIS_HOST) {
+  logger.error('💥 CONFIGURATION ERROR: REDIS_HOST must be set');
+  process.exit(1);
 }
 
 // Production security middleware
