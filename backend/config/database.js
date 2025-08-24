@@ -21,8 +21,8 @@ const logsDir = path.join(dataDir, 'logs');
 // ===============================
 const config = {
   client: 'pg',
-  connection: process.env.DATABASE_URL || {
-    host: process.env.POSTGRES_HOST || (isProduction ? 'postgres' : 'localhost'),
+  connection: {
+    host: process.env.POSTGRES_HOST || 'localhost',
     user: process.env.POSTGRES_USER || 'cruvz',
     password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
     database: process.env.POSTGRES_DB || 'cruvzdb',
@@ -30,12 +30,12 @@ const config = {
     ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : false
   },
   pool: {
-    min: 2,
-    max: 10,
-    acquireTimeoutMillis: 30000,
-    createTimeoutMillis: 15000,
+    min: 1,
+    max: 5,
+    acquireTimeoutMillis: 10000,
+    createTimeoutMillis: 5000,
     destroyTimeoutMillis: 5000,
-    idleTimeoutMillis: 300000
+    idleTimeoutMillis: 30000
   },
   migrations: {
     directory: path.join(__dirname, '../scripts/migrations')
@@ -43,7 +43,7 @@ const config = {
   seeds: {
     directory: path.join(__dirname, '../scripts/seeds')
   },
-  acquireConnectionTimeout: 60000,
+  acquireConnectionTimeout: 10000,
   asyncStackTraces: false // Disable for production performance
 };
 
