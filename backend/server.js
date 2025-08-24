@@ -44,12 +44,19 @@ async function initializeDatabase() {
     const pgClient = new Client({
       host: process.env.POSTGRES_HOST || 'localhost',
       user: process.env.POSTGRES_USER || 'cruvz',
-      password: process.env.POSTGRES_PASSWORD || 'cruvzpass',
+      password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
       database: process.env.POSTGRES_DB || 'cruvzdb',
       port: process.env.POSTGRES_PORT || 5432,
+      connectionTimeoutMillis: 5000, // 5 second timeout
     });
 
-    await pgClient.connect();
+    // Add timeout to connection
+    const connectPromise = pgClient.connect();
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Connection timeout')), 5000);
+    });
+    
+    await Promise.race([connectPromise, timeoutPromise]);
     logger.info('✅ Connected to PostgreSQL database');
 
     // Create tables if they don't exist
@@ -695,28 +702,43 @@ app.get('/api/six-sigma/dashboard', authenticate, async (req, res) => {
 
 // Start server (only if not in test environment)
 async function startServer() {
+  let dbInitialized = false;
+  let cacheInitialized = false;
+  
   try {
-    // Initialize both PostgreSQL and Redis - both are REQUIRED for production
+    // Try to initialize database - don't fail if it doesn't work
     logger.info('🔄 Initializing database connection...');
     await initializeDatabase();
-    
+    dbInitialized = true;
+  } catch (error) {
+    logger.warn('⚠️  Database initialization failed:', error.message);
+    logger.warn('⚠️  Server will start without database connection');
+  }
+  
+  try {
     logger.info('🔄 Initializing cache connection...');
     await initializeCache();
-    
-    logger.info('✅ All services connected successfully');
-
-    app.listen(PORT, '0.0.0.0', () => {
-      logger.info(`🚀 Cruvz Streaming API running on port ${PORT}`);
-      logger.info('🗄️  Connected to PostgreSQL database');
-      logger.info('🔗 Connected to Redis cache');
-      logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
-      logger.info(`🔗 Metrics endpoint: http://localhost:${PORT}/metrics`);
-    });
+    cacheInitialized = true;
   } catch (error) {
-    logger.error('❌ Failed to start server - missing required services:', error.message);
-    logger.error('💥 Server startup failed. Both PostgreSQL and Redis are required for production.');
-    process.exit(1);
+    logger.warn('⚠️  Cache initialization failed:', error.message);
+    logger.warn('⚠️  Server will start without cache connection');
   }
+  
+  app.listen(PORT, '0.0.0.0', () => {
+    logger.info(`🚀 Cruvz Streaming API running on port ${PORT}`);
+    if (dbInitialized) {
+      logger.info('🗄️  Connected to PostgreSQL database');
+    } else {
+      logger.warn('⚠️  Running without database connection');
+    }
+    if (cacheInitialized) {
+      logger.info('🔗 Connected to Redis cache');
+    } else {
+      logger.warn('⚠️  Running without cache connection');
+    }
+    logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
+    logger.info(`🔗 Metrics endpoint: http://localhost:${PORT}/metrics`);
+  });
 }
 
 // Export app for testing
