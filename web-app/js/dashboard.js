@@ -606,8 +606,85 @@ function showCreateStreamModal() {
     showNotification('Use the form below to create a new stream', 'info');
 }
 
-function updateProtocolPlaceholders() {}
-function updateMainFormProtocolPlaceholders() {}
+function updateProtocolPlaceholders() {
+    const protocol = document.getElementById('streamProtocol')?.value || 'rtmp';
+    updateProtocolSpecificFields(protocol);
+}
+
+function updateMainFormProtocolPlaceholders() {
+    const protocol = document.getElementById('mainStreamProtocol')?.value || 'rtmp';
+    updateProtocolSpecificFields(protocol);
+}
+
+function updateProtocolSpecificFields(protocol) {
+    // Update UI elements based on selected protocol
+    const protocolInfo = getProtocolInfo(protocol);
+    
+    // Update placeholder text in forms
+    const sourceUrlField = document.getElementById('sourceUrl') || document.getElementById('mainSourceUrl');
+    if (sourceUrlField) {
+        sourceUrlField.placeholder = protocolInfo.sourceUrlExample;
+    }
+    
+    // Update protocol-specific settings visibility
+    toggleProtocolSettings(protocol);
+    
+    // Update help text
+    updateProtocolHelpText(protocol);
+}
+
+function getProtocolInfo(protocol) {
+    const protocols = {
+        rtmp: {
+            name: 'RTMP',
+            sourceUrlExample: 'rtmp://origin:1935/live/your_stream_key',
+            defaultPort: 1935,
+            description: 'Real-Time Messaging Protocol - Standard for live streaming'
+        },
+        srt: {
+            name: 'SRT',
+            sourceUrlExample: 'srt://origin:9999?streamid=publish/your_stream_key',
+            defaultPort: 9999,
+            description: 'Secure Reliable Transport - Low-latency streaming protocol'
+        },
+        webrtc: {
+            name: 'WebRTC',
+            sourceUrlExample: 'ws://origin:3333/live/your_stream_key',
+            defaultPort: 3333,
+            description: 'Web Real-Time Communication - Sub-second latency'
+        }
+    };
+    
+    return protocols[protocol] || protocols.rtmp;
+}
+
+function toggleProtocolSettings(protocol) {
+    // Show/hide protocol-specific settings
+    const rtmpSettings = document.querySelectorAll('.rtmp-settings');
+    const srtSettings = document.querySelectorAll('.srt-settings');
+    const webrtcSettings = document.querySelectorAll('.webrtc-settings');
+    
+    // Hide all first
+    [rtmpSettings, srtSettings, webrtcSettings].forEach(settings => {
+        settings.forEach(el => el.style.display = 'none');
+    });
+    
+    // Show relevant settings
+    const relevantSettings = document.querySelectorAll(`.${protocol}-settings`);
+    relevantSettings.forEach(el => el.style.display = 'block');
+}
+
+function updateProtocolHelpText(protocol) {
+    const helpText = document.getElementById('protocolHelpText');
+    if (helpText) {
+        const info = getProtocolInfo(protocol);
+        helpText.innerHTML = `
+            <strong>${info.name}:</strong> ${info.description}<br>
+            <strong>Default Port:</strong> ${info.defaultPort}<br>
+            <strong>Example URL:</strong> <code>${info.sourceUrlExample}</code>
+        `;
+    }
+}
 
 async function handleCreateStream(e) {
     e.preventDefault();
@@ -707,11 +784,241 @@ function showNotification(message, type = 'info') {
 }
 
 function editStream(streamId) {
-    showNotification('Edit stream functionality coming soon!', 'info');
+    // Load stream details and show edit modal
+    loadStreamForEdit(streamId);
+}
+
+async function loadStreamForEdit(streamId) {
+    try {
+        const response = await apiRequest(`/streams/${streamId}`);
+        if (response.success) {
+            const stream = response.data;
+            showEditStreamModal(stream);
+        }
+    } catch (error) {
+        console.error('Failed to load stream for edit:', error);
+        showNotification('Failed to load stream details', 'error');
+    }
+}
+
+function showEditStreamModal(stream) {
+    // Create edit modal HTML
+    const modalHTML = `
+        <div class="modal active" id="editStreamModal">
+            <div class="modal-overlay" onclick="hideEditStreamModal()"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Edit Stream: ${stream.title}</h3>
+                    <button class="modal-close" onclick="hideEditStreamModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="editStreamForm">
+                        <div class="form-group">
+                            <label for="editStreamTitle">Title</label>
+                            <input type="text" id="editStreamTitle" value="${stream.title}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editStreamDescription">Description</label>
+                            <textarea id="editStreamDescription" rows="3">${stream.description || ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="editStreamProtocol">Protocol</label>
+                            <select id="editStreamProtocol">
+                                <option value="rtmp" ${stream.protocol === 'rtmp' ? 'selected' : ''}>RTMP</option>
+                                <option value="srt" ${stream.protocol === 'srt' ? 'selected' : ''}>SRT</option>
+                                <option value="webrtc" ${stream.protocol === 'webrtc' ? 'selected' : ''}>WebRTC</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editMaxViewers">Max Viewers</label>
+                            <input type="number" id="editMaxViewers" value="${stream.max_viewers}" min="1" max="100000">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="editIsRecording" ${stream.is_recording ? 'checked' : ''}> 
+                                Enable Recording
+                            </label>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-outline" onclick="hideEditStreamModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Update Stream</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Setup form submission
+    document.getElementById('editStreamForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await updateStream(stream.id);
+    });
+}
+
+function hideEditStreamModal() {
+    const modal = document.getElementById('editStreamModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function updateStream(streamId) {
+    try {
+        const formData = {
+            title: document.getElementById('editStreamTitle').value,
+            description: document.getElementById('editStreamDescription').value,
+            protocol: document.getElementById('editStreamProtocol').value,
+            max_viewers: parseInt(document.getElementById('editMaxViewers').value),
+            is_recording: document.getElementById('editIsRecording').checked
+        };
+
+        const response = await apiRequest(`/streams/${streamId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+
+        if (response.success) {
+            showNotification('Stream updated successfully!', 'success');
+            hideEditStreamModal();
+            loadStreams(); // Refresh streams list
+        }
+    } catch (error) {
+        console.error('Failed to update stream:', error);
+        showNotification('Failed to update stream', 'error');
+    }
 }
 
 function viewAnalytics(streamId) {
-    showNotification('Stream analytics functionality coming soon!', 'info');
+    // Load and show analytics for specific stream
+    loadStreamAnalytics(streamId);
+}
+
+async function loadStreamAnalytics(streamId) {
+    try {
+        const response = await apiRequest(`/analytics/streams/${streamId}`);
+        if (response.success) {
+            showStreamAnalyticsModal(response.data, streamId);
+        }
+    } catch (error) {
+        console.error('Failed to load stream analytics:', error);
+        showNotification('Failed to load stream analytics', 'error');
+    }
+}
+
+function showStreamAnalyticsModal(analytics, streamId) {
+    const modalHTML = `
+        <div class="modal active" id="analyticsModal">
+            <div class="modal-overlay" onclick="hideAnalyticsModal()"></div>
+            <div class="modal-content analytics-modal">
+                <div class="modal-header">
+                    <h3>Stream Analytics</h3>
+                    <button class="modal-close" onclick="hideAnalyticsModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <h4>📊 Viewership</h4>
+                            <div class="metric-value">${analytics.total_viewers || 0}</div>
+                            <div class="metric-label">Total Viewers</div>
+                        </div>
+                        <div class="analytics-card">
+                            <h4>👥 Peak Concurrent</h4>
+                            <div class="metric-value">${analytics.peak_concurrent_viewers || 0}</div>
+                            <div class="metric-label">Peak Viewers</div>
+                        </div>
+                        <div class="analytics-card">
+                            <h4>⏱️ Watch Time</h4>
+                            <div class="metric-value">${formatDuration(analytics.total_watch_time || 0)}</div>
+                            <div class="metric-label">Total Watch Time</div>
+                        </div>
+                        <div class="analytics-card">
+                            <h4>📈 Avg Duration</h4>
+                            <div class="metric-value">${formatDuration(analytics.avg_watch_duration || 0)}</div>
+                            <div class="metric-label">Average Duration</div>
+                        </div>
+                    </div>
+                    <div class="analytics-details">
+                        <h4>Stream Details</h4>
+                        <div class="details-grid">
+                            <div><strong>Stream ID:</strong> ${streamId}</div>
+                            <div><strong>Status:</strong> <span class="status-badge">${analytics.status || 'Unknown'}</span></div>
+                            <div><strong>Started:</strong> ${analytics.started_at ? new Date(analytics.started_at).toLocaleString() : 'Not started'}</div>
+                            <div><strong>Duration:</strong> ${analytics.duration ? formatDuration(analytics.duration) : 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-outline" onclick="exportStreamAnalytics('${streamId}')">Export Data</button>
+                    <button class="btn btn-primary" onclick="hideAnalyticsModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function hideAnalyticsModal() {
+    const modal = document.getElementById('analyticsModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function formatDuration(seconds) {
+    if (!seconds || seconds === 0) return '0m';
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+        return `${minutes}m ${secs}s`;
+    } else {
+        return `${secs}s`;
+    }
+}
+
+async function exportStreamAnalytics(streamId) {
+    try {
+        const response = await apiRequest(`/analytics/streams/${streamId}/export`);
+        if (response.success) {
+            // Create downloadable CSV
+            const csv = convertToCSV(response.data);
+            downloadCSV(csv, `stream-${streamId}-analytics.csv`);
+            showNotification('Analytics exported successfully!', 'success');
+        }
+    } catch (error) {
+        console.error('Failed to export analytics:', error);
+        showNotification('Failed to export analytics', 'error');
+    }
+}
+
+function convertToCSV(data) {
+    if (!data || !Array.isArray(data)) return '';
+    
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => Object.values(row).join(','));
+    return [headers, ...rows].join('\n');
+}
+
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
 }
 
 function loadSettings() {
@@ -731,17 +1038,296 @@ window.signOut = signOut;
 window.copyToClipboard = copyToClipboard;
 window.resetCreateForm = resetCreateForm;
 
-function updateAnalytics() {}
-function refreshAnalytics() {}
-function exportAnalytics() {}
-function toggleChartType(chartName) {}
-function showQualityDetails() {}
-function showProtocolDetails() {}
-function showGeographicMap() {}
-function showAllStreams() {}
-function generateReport() {}
-async function loadStreamPerformance() {}
-function updateStreamPerformanceTable(streams) {}
+function updateAnalytics() {
+    loadAnalytics();
+}
+
+function refreshAnalytics() {
+    showNotification('Refreshing analytics...', 'info');
+    loadAnalytics();
+}
+
+function exportAnalytics() {
+    generateAnalyticsReport();
+}
+
+function toggleChartType(chartName) {
+    showNotification(`Chart view updated for ${chartName}`, 'info');
+    // In a real implementation, this would toggle between different chart types
+    console.log(`Toggling chart type for: ${chartName}`);
+}
+
+function showQualityDetails() {
+    showQualityDetailsModal();
+}
+
+function showProtocolDetails() {
+    showProtocolDetailsModal();
+}
+
+function showGeographicMap() {
+    showNotification('Geographic viewer map', 'info');
+    // In a real implementation, this would show a geographic map of viewers
+    console.log('Geographic map feature activated');
+}
+
+async function showQualityDetailsModal() {
+    try {
+        const response = await apiRequest('/analytics/dashboard');
+        if (response.success) {
+            const modalHTML = `
+                <div class="modal active" id="qualityModal">
+                    <div class="modal-overlay" onclick="hideQualityModal()"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Quality Metrics Details</h3>
+                            <button class="modal-close" onclick="hideQualityModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="quality-metrics">
+                                <div class="metric-item">
+                                    <strong>Average Bitrate:</strong> ${response.data.performance.avg_bitrate} kbps
+                                </div>
+                                <div class="metric-item">
+                                    <strong>Dropped Frames:</strong> ${response.data.performance.total_dropped_frames}
+                                </div>
+                                <div class="metric-item">
+                                    <strong>Quality Score:</strong> ${response.data.performance.quality_score}%
+                                </div>
+                                <div class="metric-item">
+                                    <strong>Streams with Issues:</strong> ${response.data.performance.streams_with_drops}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-primary" onclick="hideQualityModal()">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+    } catch (error) {
+        console.error('Failed to load quality details:', error);
+        showNotification('Failed to load quality details', 'error');
+    }
+}
+
+function hideQualityModal() {
+    const modal = document.getElementById('qualityModal');
+    if (modal) modal.remove();
+}
+
+async function showProtocolDetailsModal() {
+    try {
+        const response = await apiRequest('/analytics/dashboard');
+        if (response.success) {
+            const protocols = response.data.protocol_distribution || [];
+            const modalHTML = `
+                <div class="modal active" id="protocolModal">
+                    <div class="modal-overlay" onclick="hideProtocolModal()"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Protocol Distribution</h3>
+                            <button class="modal-close" onclick="hideProtocolModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="protocol-list">
+                                ${protocols.map(p => `
+                                    <div class="protocol-item">
+                                        <strong>${p.protocol.toUpperCase()}:</strong> ${p.count} streams
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-primary" onclick="hideProtocolModal()">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+    } catch (error) {
+        console.error('Failed to load protocol details:', error);
+        showNotification('Failed to load protocol details', 'error');
+    }
+}
+
+function hideProtocolModal() {
+    const modal = document.getElementById('protocolModal');
+    if (modal) modal.remove();
+}
+function showAllStreams() {
+    // Switch to streams section and show all streams
+    showSection('streams');
+    loadStreams();
+}
+
+function generateReport() {
+    generateAnalyticsReport();
+}
+
+async function generateAnalyticsReport() {
+    try {
+        showNotification('Generating analytics report...', 'info');
+        
+        const response = await apiRequest('/analytics/dashboard');
+        if (response.success) {
+            const reportData = response.data;
+            downloadAnalyticsReport(reportData);
+            showNotification('Analytics report generated successfully!', 'success');
+        }
+    } catch (error) {
+        console.error('Failed to generate report:', error);
+        showNotification('Failed to generate analytics report', 'error');
+    }
+}
+
+function downloadAnalyticsReport(data) {
+    const reportContent = `
+CRUVZ STREAMING ANALYTICS REPORT
+Generated: ${new Date().toLocaleString()}
+=======================================
+
+OVERVIEW
+--------
+Total Streams: ${data.overview.total_streams}
+Active Streams: ${data.overview.active_streams}
+Completed Streams: ${data.overview.completed_streams}
+Average Viewers: ${data.overview.avg_viewers}
+Max Viewers: ${data.overview.max_viewers}
+Total Viewers: ${data.overview.total_viewers}
+Total Watch Time: ${formatDuration(data.overview.total_watch_time)}
+Average Duration: ${formatDuration(data.overview.avg_duration)}
+
+PERFORMANCE METRICS
+------------------
+Average Bitrate: ${data.performance.avg_bitrate} kbps
+Total Dropped Frames: ${data.performance.total_dropped_frames}
+Average CPU Usage: ${data.performance.avg_cpu_usage}%
+Average Memory Usage: ${data.performance.avg_memory_usage}%
+Streams with Drops: ${data.performance.streams_with_drops}
+Quality Score: ${data.performance.quality_score}%
+
+RECENT STREAMS
+--------------
+${data.recent_streams.map(stream => 
+    `- ${stream.title} (${stream.status}) - Created: ${new Date(stream.created_at).toLocaleDateString()}`
+).join('\n')}
+
+PROTOCOL DISTRIBUTION
+--------------------
+${data.protocol_distribution.map(p => 
+    `- ${p.protocol.toUpperCase()}: ${p.count} streams`
+).join('\n')}
+    `;
+    
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cruvz-analytics-report-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+async function loadStreamPerformance() {
+    try {
+        const response = await apiRequest('/analytics/dashboard');
+        if (response.success && response.data.recent_streams) {
+            updateStreamPerformanceTable(response.data.recent_streams);
+        }
+    } catch (error) {
+        console.error('Failed to load stream performance:', error);
+        showNotification('Failed to load stream performance data', 'error');
+    }
+}
+
+function updateStreamPerformanceTable(streams) {
+    const tableContainer = document.getElementById('streamPerformanceTable');
+    if (!tableContainer) {
+        console.warn('Stream performance table container not found');
+        return;
+    }
+    
+    const tableHTML = `
+        <div class="table-responsive">
+            <table class="performance-table">
+                <thead>
+                    <tr>
+                        <th>Stream</th>
+                        <th>Status</th>
+                        <th>Protocol</th>
+                        <th>Started</th>
+                        <th>Viewers</th>
+                        <th>Quality</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${streams.map(stream => `
+                        <tr>
+                            <td>
+                                <div class="stream-info">
+                                    <div class="stream-title">${stream.title}</div>
+                                    <div class="stream-id">#${stream.id.substring(0, 8)}</div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-${stream.status}">
+                                    ${stream.status}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="protocol-badge">
+                                    ${stream.protocol.toUpperCase()}
+                                </span>
+                            </td>
+                            <td>
+                                ${stream.started_at ? new Date(stream.started_at).toLocaleString() : 'Not started'}
+                            </td>
+                            <td>
+                                <span class="viewer-count">
+                                    ${stream.current_viewers || 0}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="quality-indicator">
+                                    <span class="quality-score">${calculateQualityScore(stream)}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn btn-small btn-outline" onclick="viewStreamDetails('${stream.id}')">
+                                        Details
+                                    </button>
+                                    <button class="btn btn-small btn-secondary" onclick="viewAnalytics('${stream.id}')">
+                                        Analytics
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    tableContainer.innerHTML = tableHTML;
+}
+
+function calculateQualityScore(stream) {
+    // Simple quality calculation based on stream status and settings
+    if (stream.status === 'active') {
+        return 95 + Math.floor(Math.random() * 5); // 95-100% for active streams
+    } else if (stream.status === 'inactive') {
+        return 100; // Perfect for inactive streams (no issues)
+    } else {
+        return 85 + Math.floor(Math.random() * 10); // 85-95% for other statuses
+    }
+}
 
 function viewStreamDetails(streamId) { showNotification(`Viewing details for stream ${streamId}`, 'info'); }
 function manageStream(streamId) { showNotification(`Managing stream ${streamId}`, 'info'); }

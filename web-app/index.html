@@ -215,7 +215,15 @@
         // Load real-time stats for the homepage
         async function loadHeroStats() {
             try {
-                const response = await fetch(`${API_BASE_URL}/analytics/realtime`);
+                // Determine API base URL
+                let apiBaseUrl = '/api';
+                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    apiBaseUrl = 'http://localhost:5000/api';
+                } else if (window.BACKEND_API_URL) {
+                    apiBaseUrl = window.BACKEND_API_URL.replace(/\/+$/, '') + '/api';
+                }
+                
+                const response = await fetch(`${apiBaseUrl}/analytics/realtime`);
                 const data = await response.json();
                 
                 if (data.success) {
