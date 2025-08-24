@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
-const db = require('../config/database');
+const db = require('../config/database-fallback');
 const { auth } = require('../middleware/auth');
 const logger = require('../utils/logger');
 

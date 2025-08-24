@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 
 // Import utilities and database - Production-ready configuration only
-const db = require('./config/database');
+const db = require('./config/database-fallback');
 const cache = require('./utils/cache');
 
 // Robust logger fallback if logger utility fails
@@ -139,16 +139,17 @@ let cacheConnected = false;
 // Initialize database connection
 async function initializeDatabase() {
   try {
-    const dbType = isProduction ? 'PostgreSQL' : 'SQLite (dev)';
+    const usePostgres = process.env.USE_POSTGRES === 'true';
+    const dbType = usePostgres ? 'PostgreSQL' : 'SQLite';
     logger.info(`🔄 Initializing ${dbType} database connection...`);
-    
-    // Test database connection
-    await db.raw('SELECT 1');
-    
-    // Initialize dev tables if in development mode
-    if (!isProduction && dbConfig.initDevTables) {
-      await dbConfig.initDevTables();
+    if (usePostgres) {
+      logger.info(`Database config: ${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB} as ${process.env.POSTGRES_USER}`);
     }
+    
+    // Test database connection with timeout
+    const testQuery = db.raw('SELECT 1 as test').timeout(3000);
+    const result = await testQuery;
+    logger.info(`✅ Database test query successful`);
     
     // Run migrations in production if needed
     if (process.env.AUTO_MIGRATE === 'true') {
@@ -162,6 +163,7 @@ async function initializeDatabase() {
     return true;
   } catch (error) {
     logger.error(`❌ Database connection failed:`, error.message);
+    logger.error(`Database error details:`, error);
     dbConnected = false;
     
     if (process.env.NODE_ENV === 'production') {
@@ -177,7 +179,7 @@ async function initializeDatabase() {
 // Initialize cache connection
 async function initializeCache() {
   try {
-    const cacheType = isProduction ? 'Redis' : 'In-memory (dev)';
+    const cacheType = 'Redis';
     logger.info(`🔄 Initializing ${cacheType} cache connection...`);
     
     await cache.init();
@@ -187,11 +189,6 @@ async function initializeCache() {
     
     cacheConnected = cache.isConnected;
     logger.info(`✅ ${cacheType} cache connected successfully`);
-    
-    // Start cleanup for dev cache
-    if (!isProduction && cache.startCleanup) {
-      cache.startCleanup();
-    }
     
     return true;
   } catch (error) {
