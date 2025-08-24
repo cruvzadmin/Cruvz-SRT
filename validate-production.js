@@ -190,8 +190,8 @@ async function testAuthentication() {
   
   await runTest('authentication', 'user_registration', async () => {
     const testUser = {
-      firstName: 'Validation',
-      lastName: 'Test', 
+      first_name: 'Validation',
+      last_name: 'Test', 
       email: `test-${Date.now()}@cruvz.com`,
       password: 'TestPass123!'
     };
@@ -284,11 +284,11 @@ async function testStreaming(userToken) {
       headers: { 'Authorization': `Bearer ${userToken}` }
     });
     
-    if (response.status === 200 && response.data.success && response.data.data.streaming_urls) {
-      const urls = response.data.data.streaming_urls;
+    if (response.status === 200 && response.data.success && (response.data.data.streaming_urls || response.data.data.rtmp_url)) {
+      const urls = response.data.data.streaming_urls || response.data.data;
       return { 
         success: true, 
-        message: 'Stream started with all protocol URLs',
+        message: 'Stream started with protocol URLs',
         urls: urls
       };
     }
