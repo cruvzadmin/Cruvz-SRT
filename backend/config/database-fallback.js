@@ -6,7 +6,8 @@ const fs = require('fs');
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Ensure directories exist (for logs/data)
-const dataDir = path.join(__dirname, '../../data');
+// Changed from '../../data' to '../data' to avoid EACCES error in Docker
+const dataDir = path.join(__dirname, '../data');
 const dbDir = path.join(dataDir, 'database');
 const logsDir = path.join(dataDir, 'logs');
 
