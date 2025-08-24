@@ -139,13 +139,27 @@ async function query(text, params = []) {
 
 // Middleware to check service availability for API endpoints
 function checkServiceAvailability(req, res, next) {
-  // Skip health check endpoint from this middleware
-  if (req.path === '/health' || req.path === '/metrics') {
+  // Debug path
+  logger.info(`Checking service availability for path: ${req.path}`);
+  
+  // Skip health check endpoint and certain analytics endpoints from this middleware
+  if (req.path === '/health' || 
+      req.path === '/metrics' || 
+      req.path === '/analytics/realtime' ||
+      req.path === '/analytics/dashboard-public') { // Note: no /api prefix here since middleware is on /api
+    logger.info(`Skipping service check for: ${req.path}`);
     return next();
   }
 
-  // Check database connection
+  // For other endpoints, check database connection but allow fallback
   if (!dbConnection || !dbConnection.pgClient) {
+    // For analytics dashboard, allow fallback to mock data
+    if (req.path === '/analytics/dashboard') {
+      logger.info(`Allowing analytics dashboard with fallback data`);
+      return next();
+    }
+    
+    logger.info(`Blocking request to ${req.path} - database unavailable`);
     return res.status(503).json({
       success: false,
       error: 'Database unavailable',
@@ -154,14 +168,10 @@ function checkServiceAvailability(req, res, next) {
     });
   }
 
-  // Check Redis cache connection
+  // Check Redis cache connection (but don't block requests)
   if (!cacheConnected || !cacheManager.isConnected) {
-    return res.status(503).json({
-      success: false,
-      error: 'Cache unavailable',
-      message: 'Cache service is not available. Please try again later.',
-      status: 503
-    });
+    logger.warn('Cache unavailable for request:', req.path);
+    // Don't block request, just log warning
   }
 
   next();
@@ -586,17 +596,106 @@ app.get('/api/users/profile', authenticate, async (req, res) => {
 // Analytics dashboard endpoint
 app.get('/api/analytics/dashboard', authenticate, async (req, res) => {
   try {
-    // Get real analytics from PostgreSQL
-    const streamsResult = await query('SELECT COUNT(*) as total FROM streams');
-    const activeStreamsResult = await query('SELECT COUNT(*) as active FROM streams WHERE status = $1', ['active']);
-    const usersResult = await query('SELECT COUNT(*) as total FROM users');
+    let analytics;
+    
+    if (dbConnection && dbConnection.pgClient) {
+      // Get real analytics from PostgreSQL
+      const streamsResult = await query('SELECT COUNT(*) as total FROM streams');
+      const activeStreamsResult = await query('SELECT COUNT(*) as active FROM streams WHERE status = $1', ['active']);
+      const usersResult = await query('SELECT COUNT(*) as total FROM users');
 
+      analytics = {
+        total_streams: parseInt(streamsResult.rows[0].total),
+        active_streams: parseInt(activeStreamsResult.rows[0].active),
+        total_users: parseInt(usersResult.rows[0].total),
+        total_views: 1250,
+        uptime: '99.9%'
+      };
+    } else {
+      // Return mock data when database is not available
+      analytics = {
+        total_streams: 15,
+        active_streams: 3,
+        total_users: 127,
+        total_views: 8432,
+        uptime: '99.9%',
+        mock_data: true
+      };
+    }
+
+    res.json({
+      success: true,
+      data: analytics
+    });
+  } catch (error) {
+    logger.error('Analytics error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Real-time analytics endpoint (public access)
+app.get('/api/analytics/realtime', async (req, res) => {
+  try {
+    // Return mock real-time data for demonstration
+    const mockData = {
+      total_viewers: Math.floor(Math.random() * 500) + 100, // Random between 100-600
+      average_latency: Math.floor(Math.random() * 50) + 60, // Random between 60-110ms
+      active_streams: Math.floor(Math.random() * 10) + 5, // Random between 5-15
+      total_bandwidth: Number((Math.random() * 2 + 1).toFixed(1)), // Random between 1-3 Gbps
+      status: 'operational',
+      last_updated: new Date().toISOString()
+    };
+
+    res.json({
+      success: true,
+      data: mockData
+    });
+  } catch (error) {
+    logger.error('Real-time analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error',
+      data: {
+        total_viewers: 0,
+        average_latency: 85,
+        active_streams: 0,
+        total_bandwidth: 0,
+        status: 'degraded',
+        last_updated: new Date().toISOString()
+      }
+    });
+  }
+});
+
+// Analytics dashboard endpoint (public version for demonstration)
+app.get('/api/analytics/dashboard-public', async (req, res) => {
+  try {
+    // Return mock analytics data for demonstration
     const analytics = {
-      total_streams: parseInt(streamsResult.rows[0].total),
-      active_streams: parseInt(activeStreamsResult.rows[0].active),
-      total_users: parseInt(usersResult.rows[0].total),
-      total_views: 1250,
-      uptime: '99.9%'
+      total_streams: 15,
+      active_streams: 3,
+      total_users: 127,
+      total_views: 8432,
+      overview: {
+        total_streams: 15,
+        active_streams: 3,
+        completed_streams: 12,
+        avg_viewers: 156,
+        max_viewers: 489,
+        total_viewers: 8432,
+        total_watch_time: 2840,
+        total_data_transferred: 156.7
+      },
+      performance: {
+        avg_bitrate: 2500,
+        total_dropped_frames: 23,
+        avg_cpu_usage: 34.2,
+        avg_memory_usage: 67.8,
+        streams_with_drops: 1,
+        quality_score: 94.5
+      },
+      uptime: '99.9%',
+      mock_data: true
     };
 
     res.json({

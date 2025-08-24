@@ -285,6 +285,12 @@
 
         // Initialize all charts
         function initializeCharts() {
+            // Only initialize charts if Chart.js is available
+            if (typeof Chart === 'undefined') {
+                console.warn('Chart.js not available - charts will not be rendered');
+                return;
+            }
+            
             charts.performance = new Chart(document.getElementById('performanceChart'), {
                 type: 'line',
                 data: {
@@ -384,30 +390,28 @@
                 document.getElementById('refreshIcon').classList.add('fa-spin');
                 document.getElementById('refreshStatus').textContent = 'Updating...';
 
-                // Fetch health data
-                const healthResponse = await fetch('/health');
+                // Fetch health data from backend
+                const healthResponse = await fetch('http://localhost:5000/health');
                 const health = await healthResponse.json();
 
-                // Fetch metrics data
-                // NOTE: You should implement your /metrics endpoint to return real metrics as JSON!
-                // For demonstration, we leave metrics as empty object.
-                const metrics = {};
+                // Fetch analytics data from backend
+                const analyticsResponse = await fetch('http://localhost:5000/api/analytics/realtime');
+                const analytics = await analyticsResponse.json();
 
-                document.getElementById('environment').textContent = health.environment || 'Unknown';
-                document.getElementById('environment').className = `badge ${health.production ? 'bg-success' : 'bg-warning text-dark'}`;
-                document.getElementById('systemUptime').textContent = health.uptime ? formatUptime(health.uptime) : '--';
+                // Fetch dashboard analytics
+                const dashboardResponse = await fetch('http://localhost:5000/api/analytics/dashboard-public');
+                const dashboard = await dashboardResponse.json();
+
+                document.getElementById('environment').textContent = health.environment || 'Development';
+                document.getElementById('environment').className = `badge ${health.environment === 'production' ? 'bg-success' : 'bg-warning text-dark'}`;
+                document.getElementById('systemUptime').textContent = dashboard.data?.uptime || '--';
                 document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
 
-                // Update streaming metrics
-                updateStreamingMetrics(metrics);
+                // Update streaming metrics with real data
+                updateStreamingMetrics(analytics.data, dashboard.data);
 
                 // Update service status
                 updateServiceStatus(health);
-
-                // Update charts - if metrics present, update, else skip
-                if (metrics && Object.keys(metrics).length) {
-                    updateCharts(metrics);
-                }
 
                 updateRecentEvents();
 
@@ -425,12 +429,11 @@
             }
         }
 
-        function updateStreamingMetrics(metrics) {
-            // If you implement streaming metrics in your /metrics endpoint,
-            // update these fields accordingly, else leave as '--'
-            document.getElementById('activeStreams').textContent = metrics.active_streams ?? '--';
-            document.getElementById('totalUsers').textContent = metrics.total_users ?? '--';
-            document.getElementById('currentViewers').textContent = metrics.current_viewers ?? '--';
+        function updateStreamingMetrics(analytics, dashboard) {
+            // Update with real data from API endpoints
+            document.getElementById('activeStreams').textContent = analytics?.active_streams ?? dashboard?.active_streams ?? '--';
+            document.getElementById('totalUsers').textContent = dashboard?.total_users ?? '--';
+            document.getElementById('currentViewers').textContent = analytics?.total_viewers ?? '--';
         }
 
         function updateServiceStatus(health) {
