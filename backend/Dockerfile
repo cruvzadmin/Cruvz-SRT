@@ -27,7 +27,7 @@ COPY . .
 # Create a non-root user for security
 RUN useradd -r -u 1001 -m appuser
 
-# Create writable directories and set permissions AFTER copying code
+# Fix permissions: ensure logs, data, uploads are owned by appuser (important for logging!)
 RUN mkdir -p /app/data /app/logs /app/uploads \
  && chown -R appuser:appuser /app/data /app/logs /app/uploads \
  && chmod 755 /app/data /app/logs /app/uploads
