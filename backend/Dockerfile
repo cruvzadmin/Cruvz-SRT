@@ -1,6 +1,9 @@
 # Production Backend with PostgreSQL and Full Feature Set
 FROM node:18-slim
 
+# Set environment variable for production
+ENV NODE_ENV=production
+
 # Set working directory
 WORKDIR /app
 
@@ -13,12 +16,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files and install dependencies first for better caching
-COPY package.json ./package.json
-RUN rm -f package-lock.json
+COPY package*.json ./
 
-# Install dependencies with timeout - use npm install for production
-RUN npm config set strict-ssl false && \
-    npm install --only=production --timeout=300000
+# Install dependencies (use npm ci if lockfile exists for reproducibility)
+RUN if [ -f package-lock.json ]; then npm ci --only=production --timeout=300000; else npm install --only=production --timeout=300000; fi
 
 # Copy application source and configuration
 COPY . .
