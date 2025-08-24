@@ -1,5 +1,5 @@
 const express = require('express');
-const db = require('../config/database-fallback');
+const db = require('../config/database');
 const { auth, authorize } = require('../middleware/auth');
 const logger = require('../utils/logger');
 

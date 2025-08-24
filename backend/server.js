@@ -5,8 +5,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 
-// Import utilities and database - Production-ready configuration only
-const db = require('./config/database-fallback');
+// Import utilities and database - PostgreSQL ONLY for production
+const db = require('./config/database');
 const cache = require('./utils/cache');
 
 // Robust logger fallback if logger utility fails
@@ -24,6 +24,7 @@ try {
 // Import route modules
 const authRoutes = require('./routes/auth');
 const streamRoutes = require('./routes/streams');
+const streamingRoutes = require('./routes/streaming');
 const analyticsRoutes = require('./routes/analytics');
 const userRoutes = require('./routes/users');
 const sixSigmaRoutes = require('./routes/sixSigma');
@@ -334,6 +335,7 @@ function checkDatabaseConnection(req, res, next) {
 // API Routes - Using modular route files
 app.use('/api/auth', authRoutes);
 app.use('/api/streams', checkDatabaseConnection, streamRoutes);
+app.use('/api/streaming', checkDatabaseConnection, streamingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', checkDatabaseConnection, userRoutes);
 app.use('/api/six-sigma', checkDatabaseConnection, sixSigmaRoutes);
@@ -359,6 +361,15 @@ app.get('/api', (req, res) => {
         'DELETE /api/streams/:id': 'Delete stream (protected)',
         'POST /api/streams/:id/start': 'Start stream (protected)',
         'POST /api/streams/:id/stop': 'Stop stream (protected)'
+      },
+      streaming: {
+        'POST /api/streaming/webrtc/start': 'Start WebRTC session (protected)',
+        'POST /api/streaming/webrtc/stop': 'Stop WebRTC session (protected)',
+        'POST /api/streaming/srt/start': 'Start SRT session (protected)',
+        'POST /api/streaming/srt/stop': 'Stop SRT session (protected)',
+        'POST /api/streaming/rtmp/start': 'Start RTMP session (protected)',
+        'POST /api/streaming/rtmp/stop': 'Stop RTMP session (protected)',
+        'GET /api/streaming/status/:stream_id': 'Get streaming status (protected)'
       },
       analytics: {
         'GET /api/analytics/dashboard': 'Get dashboard analytics (protected)',
