@@ -8,11 +8,11 @@ const knex = require('knex');
 const config = {
   client: 'pg',
   connection: {
-    host: 'localhost',
-    user: 'cruvz',
-    password: 'cruvzSRT91',
-    database: 'cruvzdb',
-    port: 5432,
+    host: process.env.POSTGRES_HOST || 'localhost',
+    user: process.env.POSTGRES_USER || 'cruvz',
+    password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
+    database: process.env.POSTGRES_DB || 'cruvzdb',
+    port: process.env.POSTGRES_PORT || 5432,
   },
   pool: {
     min: 1,

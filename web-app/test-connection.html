@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test - Cruvz Streaming</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔌 Frontend-Backend Connection Test</h1>
+    <div id="test-results"></div>
+    
+    <h2>Real-time Data</h2>
+    <div id="realtime-data"></div>
+    
+    <button onclick="runTests()">Run Tests</button>
+    <button onclick="startRealTimeUpdates()">Start Real-time Updates</button>
+    
+    <script>
+        // API Configuration - Development vs Production
+        let API_BASE_URL = '/api';
+
+        // For development, connect directly to backend server
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            API_BASE_URL = 'http://localhost:5000/api';
+        } else if (window.BACKEND_API_URL) {
+            // If set by nginx/docker env, use that URL (strip trailing /)
+            API_BASE_URL = window.BACKEND_API_URL.replace(/\/+$/, '') + '/api';
+        }
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            results.appendChild(div);
+        }
+        
+        async function runTests() {
+            document.getElementById('test-results').innerHTML = '';
+            log(`Testing API connection to: ${API_BASE_URL}`, 'info');
+            
+            // Test 1: Health check
+            try {
+                const response = await fetch('http://localhost:5000/health');
+                const data = await response.json();
+                log(`✅ Health Check: ${data.status} (DB: ${data.database?.connected ? 'Connected' : 'Disconnected'})`, 'success');
+                log(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+            } catch (error) {
+                log(`❌ Health Check Failed: ${error.message}`, 'error');
+            }
+            
+            // Test 2: Real-time analytics
+            try {
+                const response = await fetch(`${API_BASE_URL}/analytics/realtime`);
+                const data = await response.json();
+                if (data.success) {
+                    log(`✅ Real-time Analytics: ${data.data.total_viewers} viewers, ${data.data.active_streams} streams (${data.data.status})`, 'success');
+                    log(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                } else {
+                    log(`❌ Real-time Analytics Failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Real-time Analytics Failed: ${error.message}`, 'error');
+            }
+            
+            // Test 3: Public streams
+            try {
+                const response = await fetch(`${API_BASE_URL}/streams/public`);
+                const data = await response.json();
+                if (data.success) {
+                    log(`✅ Public Streams: Found ${data.data.length} live streams`, 'success');
+                    log(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                } else {
+                    log(`❌ Public Streams Failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Public Streams Failed: ${error.message}`, 'error');
+            }
+            
+            // Test 4: API Documentation
+            try {
+                const response = await fetch(`${API_BASE_URL}`);
+                const data = await response.json();
+                if (data.success) {
+                    log(`✅ API Documentation: Available endpoints loaded`, 'success');
+                } else {
+                    log(`❌ API Documentation Failed`, 'error');
+                }
+            } catch (error) {
+                log(`❌ API Documentation Failed: ${error.message}`, 'error');
+            }
+        }
+        
+        let realTimeInterval;
+        function startRealTimeUpdates() {
+            if (realTimeInterval) {
+                clearInterval(realTimeInterval);
+                realTimeInterval = null;
+                document.querySelector('button[onclick="startRealTimeUpdates()"]').textContent = 'Start Real-time Updates';
+                return;
+            }
+            
+            document.querySelector('button[onclick="startRealTimeUpdates()"]').textContent = 'Stop Real-time Updates';
+            
+            async function updateRealTimeData() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/analytics/realtime`);
+                    const data = await response.json();
+                    if (data.success) {
+                        document.getElementById('realtime-data').innerHTML = `
+                            <div class="test-result success">
+                                <strong>Live Data (${new Date().toLocaleTimeString()})</strong><br>
+                                👥 Total Viewers: <strong>${data.data.total_viewers}</strong><br>
+                                📺 Active Streams: <strong>${data.data.active_streams}</strong><br>
+                                ⚡ Latency: <strong>${data.data.average_latency}ms</strong><br>
+                                📊 Bandwidth: <strong>${data.data.total_bandwidth} Gbps</strong><br>
+                                🟢 Status: <strong>${data.data.status}</strong>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    document.getElementById('realtime-data').innerHTML = `
+                        <div class="test-result error">
+                            Real-time update failed: ${error.message}
+                        </div>
+                    `;
+                }
+            }
+            
+            updateRealTimeData();
+            realTimeInterval = setInterval(updateRealTimeData, 3000);
+        }
+        
+        // Run tests on load
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>

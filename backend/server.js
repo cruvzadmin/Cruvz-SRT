@@ -5,7 +5,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 
-// Import utilities and database
+// Import utilities and database - Production-ready configuration only
 const db = require('./config/database');
 const cache = require('./utils/cache');
 const logger = require('./utils/logger');
@@ -20,20 +20,18 @@ const sixSigmaRoutes = require('./routes/sixSigma');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Validate production configuration
-if (process.env.NODE_ENV === 'production') {
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-    logger.error('💥 PRODUCTION ERROR: JWT_SECRET must be set and be at least 32 characters long');
-    process.exit(1);
-  }
-  if (!process.env.POSTGRES_HOST) {
-    logger.error('💥 PRODUCTION ERROR: POSTGRES_HOST must be set');
-    process.exit(1);
-  }
-  if (!process.env.REDIS_HOST) {
-    logger.error('💥 PRODUCTION ERROR: REDIS_HOST must be set');
-    process.exit(1);
-  }
+// Validate configuration - Production-ready requirements for all environments
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  logger.error('💥 CONFIGURATION ERROR: JWT_SECRET must be set and be at least 32 characters long');
+  process.exit(1);
+}
+if (!process.env.POSTGRES_HOST) {
+  logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set');
+  process.exit(1);
+}
+if (!process.env.REDIS_HOST) {
+  logger.error('💥 CONFIGURATION ERROR: REDIS_HOST must be set');
+  process.exit(1);
 }
 
 // Production security middleware
@@ -111,10 +109,16 @@ let cacheConnected = false;
 // Initialize database connection
 async function initializeDatabase() {
   try {
-    logger.info('🔄 Initializing PostgreSQL database connection...');
+    const dbType = isProduction ? 'PostgreSQL' : 'SQLite (dev)';
+    logger.info(`🔄 Initializing ${dbType} database connection...`);
     
     // Test database connection
     await db.raw('SELECT 1');
+    
+    // Initialize dev tables if in development mode
+    if (!isProduction && dbConfig.initDevTables) {
+      await dbConfig.initDevTables();
+    }
     
     // Run migrations in production if needed
     if (process.env.AUTO_MIGRATE === 'true') {
@@ -124,10 +128,10 @@ async function initializeDatabase() {
     }
     
     dbConnected = true;
-    logger.info('✅ PostgreSQL database connected successfully');
+    logger.info(`✅ ${dbType} database connected successfully`);
     return true;
   } catch (error) {
-    logger.error('❌ PostgreSQL connection failed:', error.message);
+    logger.error(`❌ Database connection failed:`, error.message);
     dbConnected = false;
     
     if (process.env.NODE_ENV === 'production') {
@@ -143,20 +147,29 @@ async function initializeDatabase() {
 // Initialize cache connection
 async function initializeCache() {
   try {
-    logger.info('🔄 Initializing Redis cache connection...');
+    const cacheType = isProduction ? 'Redis' : 'In-memory (dev)';
+    logger.info(`🔄 Initializing ${cacheType} cache connection...`);
     
     await cache.init();
-    await cache.connect();
+    if (cache.connect) {
+      await cache.connect();
+    }
     
     cacheConnected = cache.isConnected;
-    logger.info('✅ Redis cache connected successfully');
+    logger.info(`✅ ${cacheType} cache connected successfully`);
+    
+    // Start cleanup for dev cache
+    if (!isProduction && cache.startCleanup) {
+      cache.startCleanup();
+    }
+    
     return true;
   } catch (error) {
-    logger.error('❌ Redis cache connection failed:', error.message);
+    logger.error(`❌ Cache connection failed:`, error.message);
     cacheConnected = false;
     
     if (process.env.NODE_ENV === 'production') {
-      logger.error('💥 FATAL: Redis cache connection required in production');
+      logger.error('💥 FATAL: Cache connection required in production');
       throw error;
     }
     

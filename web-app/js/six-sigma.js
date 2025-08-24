@@ -1,7 +1,15 @@
 // Six Sigma Dashboard JavaScript
 
-// API Configuration
-const API_BASE_URL = window.location.origin + '/api';
+// API Configuration - Development vs Production
+let API_BASE_URL = '/api';
+
+// For development, connect directly to backend server
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    API_BASE_URL = 'http://localhost:5000/api';
+} else if (window.BACKEND_API_URL) {
+    // If set by nginx/docker env, use that URL (strip trailing /)
+    API_BASE_URL = window.BACKEND_API_URL.replace(/\/+$/, '') + '/api';
+}
 
 // Six Sigma data
 let sixSigmaData = null;
