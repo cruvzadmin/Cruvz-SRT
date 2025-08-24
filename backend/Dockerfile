@@ -23,7 +23,7 @@ RUN npm config set strict-ssl false && \
 # Copy application source and configuration
 COPY . .
 
-# Create a non-root user for security
+# Create a non-root user for security and set directory ownership
 RUN useradd -r -u 1001 -m appuser \
  && mkdir -p data logs uploads \
  && chown -R appuser:appuser /app \
