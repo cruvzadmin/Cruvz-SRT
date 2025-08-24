@@ -30,6 +30,7 @@ const streamingRoutes = require('./routes/streaming');
 const analyticsRoutes = require('./routes/analytics');
 const userRoutes = require('./routes/users');
 const sixSigmaRoutes = require('./routes/sixSigma');
+const apiRoutes = require('./routes/api');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -319,6 +320,7 @@ app.use('/api/streaming', checkDatabaseConnection, streamingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', checkDatabaseConnection, userRoutes);
 app.use('/api/six-sigma', checkDatabaseConnection, sixSigmaRoutes);
+app.use('/api/keys', checkDatabaseConnection, apiRoutes);
 
 // API Documentation endpoint
 app.get('/api', (req, res) => {
@@ -360,6 +362,14 @@ app.get('/api', (req, res) => {
       users: {
         'GET /api/users/profile': 'Get user profile (protected)',
         'PUT /api/users/profile': 'Update user profile (protected)'
+      },
+      keys: {
+        'GET /api/keys': 'Get user API keys (protected)',
+        'POST /api/keys': 'Create new API key (protected)',
+        'PUT /api/keys/:id': 'Update API key (protected)',
+        'DELETE /api/keys/:id': 'Delete API key (protected)',
+        'POST /api/keys/:id/regenerate': 'Regenerate API key (protected)',
+        'GET /api/keys/:id/usage': 'Get API key usage statistics (protected)'
       },
       sixSigma: {
         'GET /api/six-sigma/dashboard': 'Get Six Sigma dashboard (protected)',
