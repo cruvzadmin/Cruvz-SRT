@@ -24,11 +24,13 @@ RUN if [ -f package-lock.json ]; then npm ci --only=production --timeout=300000;
 # Copy application source and configuration
 COPY . .
 
-# Create a non-root user for security and set directory ownership
-RUN useradd -r -u 1001 -m appuser \
- && mkdir -p data logs uploads \
- && chown -R appuser:appuser /app \
- && chmod 755 data logs uploads
+# Create a non-root user for security
+RUN useradd -r -u 1001 -m appuser
+
+# Create writable directories and set permissions AFTER copying code
+RUN mkdir -p /app/data /app/logs /app/uploads \
+ && chown -R appuser:appuser /app/data /app/logs /app/uploads \
+ && chmod 755 /app/data /app/logs /app/uploads
 
 # Switch to non-root user
 USER appuser
