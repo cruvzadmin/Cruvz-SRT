@@ -1,5 +1,7 @@
 const express = require('express');
-const db = require('../config/database');
+const isProduction = process.env.NODE_ENV === 'production';
+const dbConfig = isProduction ? require('../config/database') : require('../config/database-dev');
+const db = isProduction ? dbConfig : dbConfig.db;
 const { auth, authorize } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
@@ -333,6 +335,7 @@ router.get('/realtime', async (req, res) => {
   try {
     let totalViewers = 0;
     let averageLatency = 85; // Default production target
+    let activeStreams = 0;
     let status = 'operational';
 
     // Try to get real data from database if available
@@ -340,30 +343,39 @@ router.get('/realtime', async (req, res) => {
       // Check if database is available by testing connection
       await db.raw('SELECT 1');
       
-      // Get current system statistics
-      const currentStats = await db('stream_analytics')
-        .join('streams', 'stream_analytics.stream_id', 'streams.id')
-        .where('streams.status', 'active')
-        .sum('stream_analytics.current_viewers as total_viewers')
-        .avg('stream_analytics.average_bitrate as avg_latency_proxy')
+      // Get current system statistics from real data
+      const activeStreamResult = await db('streams')
+        .where('status', 'live')
+        .count('* as count')
         .first();
 
-      // Get real-time latency from recent measurements (last 5 minutes)
+      const totalViewerResult = await db('streams')
+        .where('status', 'live')
+        .sum('current_viewers as total')
+        .first();
+
+      // Get recent latency measurements (last 5 minutes)
       const recentLatency = await db('six_sigma_metrics')
         .where('metric_type', 'latency')
-        .where('measured_at', '>=', new Date(Date.now() - 5 * 60 * 1000))
+        .where('measured_at', '>=', new Date(Date.now() - 5 * 60 * 1000).toISOString())
         .avg('value as average_latency')
         .first();
 
-      totalViewers = currentStats?.total_viewers || 0;
+      activeStreams = activeStreamResult?.count || 0;
+      totalViewers = totalViewerResult?.total || 0;
       averageLatency = recentLatency?.average_latency || 85;
+      status = 'operational';
+      
+      logger.info(`Real-time analytics: ${totalViewers} viewers, ${activeStreams} streams, ${averageLatency}ms latency`);
       
     } catch (dbError) {
-      // Database not available - use mock production-like data
-      logger.warn('Database unavailable for real-time analytics, using mock data');
-      totalViewers = Math.floor(Math.random() * 500) + 100; // Random between 100-600
-      averageLatency = Math.floor(Math.random() * 20) + 75; // Random between 75-95ms
-      status = 'operational-mock';
+      // Database not available - use minimal fallback data
+      logger.warn('Database unavailable for real-time analytics, using fallback data');
+      logger.error('Database error details:', dbError.message);
+      totalViewers = 0;
+      averageLatency = 85; 
+      activeStreams = 0;
+      status = 'limited'; // Indicate limited functionality
     }
 
     res.json({
@@ -371,8 +383,8 @@ router.get('/realtime', async (req, res) => {
       data: {
         total_viewers: totalViewers,
         average_latency: Number(averageLatency.toFixed(0)),
-        active_streams: Math.floor(Math.random() * 10) + 5, // Random between 5-15
-        total_bandwidth: Number((Math.random() * 2 + 1).toFixed(1)), // Random between 1-3 Gbps
+        active_streams: activeStreams,
+        total_bandwidth: Number((activeStreams * 0.5).toFixed(1)), // Estimate bandwidth based on streams
         status: status,
         last_updated: new Date().toISOString()
       }

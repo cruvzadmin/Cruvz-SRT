@@ -6,8 +6,10 @@ const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 
 // Import utilities and database
-const db = require('./config/database');
-const cache = require('./utils/cache');
+const isProduction = process.env.NODE_ENV === 'production';
+const dbConfig = isProduction ? require('./config/database') : require('./config/database-dev');
+const db = isProduction ? dbConfig : dbConfig.db;
+const cache = isProduction ? require('./utils/cache') : require('./utils/cache-dev');
 const logger = require('./utils/logger');
 
 // Import route modules
@@ -111,10 +113,16 @@ let cacheConnected = false;
 // Initialize database connection
 async function initializeDatabase() {
   try {
-    logger.info('🔄 Initializing PostgreSQL database connection...');
+    const dbType = isProduction ? 'PostgreSQL' : 'SQLite (dev)';
+    logger.info(`🔄 Initializing ${dbType} database connection...`);
     
     // Test database connection
     await db.raw('SELECT 1');
+    
+    // Initialize dev tables if in development mode
+    if (!isProduction && dbConfig.initDevTables) {
+      await dbConfig.initDevTables();
+    }
     
     // Run migrations in production if needed
     if (process.env.AUTO_MIGRATE === 'true') {
@@ -124,10 +132,10 @@ async function initializeDatabase() {
     }
     
     dbConnected = true;
-    logger.info('✅ PostgreSQL database connected successfully');
+    logger.info(`✅ ${dbType} database connected successfully`);
     return true;
   } catch (error) {
-    logger.error('❌ PostgreSQL connection failed:', error.message);
+    logger.error(`❌ Database connection failed:`, error.message);
     dbConnected = false;
     
     if (process.env.NODE_ENV === 'production') {
@@ -143,20 +151,29 @@ async function initializeDatabase() {
 // Initialize cache connection
 async function initializeCache() {
   try {
-    logger.info('🔄 Initializing Redis cache connection...');
+    const cacheType = isProduction ? 'Redis' : 'In-memory (dev)';
+    logger.info(`🔄 Initializing ${cacheType} cache connection...`);
     
     await cache.init();
-    await cache.connect();
+    if (cache.connect) {
+      await cache.connect();
+    }
     
     cacheConnected = cache.isConnected;
-    logger.info('✅ Redis cache connected successfully');
+    logger.info(`✅ ${cacheType} cache connected successfully`);
+    
+    // Start cleanup for dev cache
+    if (!isProduction && cache.startCleanup) {
+      cache.startCleanup();
+    }
+    
     return true;
   } catch (error) {
-    logger.error('❌ Redis cache connection failed:', error.message);
+    logger.error(`❌ Cache connection failed:`, error.message);
     cacheConnected = false;
     
     if (process.env.NODE_ENV === 'production') {
-      logger.error('💥 FATAL: Redis cache connection required in production');
+      logger.error('💥 FATAL: Cache connection required in production');
       throw error;
     }
     
