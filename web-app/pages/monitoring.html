@@ -390,16 +390,22 @@
                 document.getElementById('refreshIcon').classList.add('fa-spin');
                 document.getElementById('refreshStatus').textContent = 'Updating...';
 
+                // API Configuration - Development vs Production
+                let API_BASE = 'http://localhost:5000';
+                if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                    API_BASE = ''; // Use relative URLs in production
+                }
+
                 // Fetch health data from backend
-                const healthResponse = await fetch('http://localhost:5000/health');
+                const healthResponse = await fetch(`${API_BASE}/health`);
                 const health = await healthResponse.json();
 
                 // Fetch analytics data from backend
-                const analyticsResponse = await fetch('http://localhost:5000/api/analytics/realtime');
+                const analyticsResponse = await fetch(`${API_BASE}/api/analytics/realtime`);
                 const analytics = await analyticsResponse.json();
 
                 // Fetch dashboard analytics
-                const dashboardResponse = await fetch('http://localhost:5000/api/analytics/dashboard-public');
+                const dashboardResponse = await fetch(`${API_BASE}/api/analytics/dashboard-public`);
                 const dashboard = await dashboardResponse.json();
 
                 document.getElementById('environment').textContent = health.environment || 'Development';
@@ -420,12 +426,20 @@
             } catch (error) {
                 console.error('Failed to update metrics:', error);
                 document.getElementById('refreshIcon').classList.remove('fa-spin');
-                document.getElementById('refreshStatus').textContent = 'Error';
+                document.getElementById('refreshStatus').textContent = `Error: ${error.message}`;
+                document.getElementById('refreshStatus').style.color = '#dc3545';
+                
                 // Clear metrics
                 document.getElementById('activeStreams').textContent = '--';
                 document.getElementById('totalUsers').textContent = '--';
                 document.getElementById('currentViewers').textContent = '--';
                 document.getElementById('systemUptime').textContent = '--';
+                
+                // Reset after 5 seconds
+                setTimeout(() => {
+                    document.getElementById('refreshStatus').style.color = '';
+                    document.getElementById('refreshStatus').textContent = 'Ready';
+                }, 5000);
             }
         }
 

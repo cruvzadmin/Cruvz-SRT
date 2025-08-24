@@ -406,4 +406,62 @@ router.get('/realtime', async (req, res) => {
   }
 });
 
+// @route   GET /api/analytics/dashboard-public
+// @desc    Get public dashboard metrics (no authentication required)
+// @access  Public
+router.get('/dashboard-public', async (req, res) => {
+  try {
+    let systemData = {
+      total_streams: 0,
+      active_streams: 0,
+      total_users: 0,
+      uptime: '--'
+    };
+
+    // Try to get real data from database if available
+    try {
+      await db.raw('SELECT 1');
+      
+      // Get basic stream statistics
+      const streamStats = await db('streams')
+        .count('* as total_streams')
+        .first();
+
+      const activeStreams = await db('streams')
+        .where('status', 'live')
+        .count('* as active_streams')
+        .first();
+
+      // Get user count
+      const userStats = await db('users')
+        .count('* as total_users')
+        .first();
+
+      logger.info('Dashboard query results:', { streamStats, activeStreams, userStats });
+
+      systemData = {
+        total_streams: parseInt(streamStats?.total_streams || 0),
+        active_streams: parseInt(activeStreams?.active_streams || 0),
+        total_users: parseInt(userStats?.total_users || 0),
+        uptime: process.uptime ? Math.floor(process.uptime() / 60) + ' minutes' : '--'
+      };
+      
+    } catch (dbError) {
+      logger.warn('Database unavailable for public dashboard metrics');
+      // Keep default values
+    }
+
+    res.json({
+      success: true,
+      data: systemData
+    });
+  } catch (error) {
+    logger.error('Public dashboard error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch dashboard metrics'
+    });
+  }
+});
+
 module.exports = router;

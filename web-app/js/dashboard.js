@@ -1,7 +1,15 @@
 // Dashboard-specific JavaScript functionality
 
-// Always use relative path for API calls so Nginx can proxy to backend
+// API Configuration - Development vs Production
 let apiBaseUrl = '/api';
+
+// For development, connect directly to backend server
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    apiBaseUrl = 'http://localhost:5000/api';
+} else if (window.BACKEND_API_URL) {
+    // If set by nginx/docker env, use that URL (strip trailing /)
+    apiBaseUrl = window.BACKEND_API_URL.replace(/\/+$/, '') + '/api';
+}
 
 // Dashboard state
 let currentSection = 'overview';

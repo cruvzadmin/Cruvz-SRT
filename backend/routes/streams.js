@@ -10,6 +10,51 @@ const logger = require('../utils/logger');
 
 const router = express.Router();
 
+// @route   GET /api/streams/public
+// @desc    Get public streams list (live streams only)
+// @access  Public
+router.get('/public', async (req, res) => {
+  try {
+    let streams = [];
+
+    // Try to get real data from database if available
+    try {
+      await db.raw('SELECT 1');
+      
+      // Get live streams with basic info (no sensitive data)
+      streams = await db('streams')
+        .join('users', 'streams.user_id', 'users.id')
+        .select(
+          'streams.id',
+          'streams.title',
+          'streams.description',
+          'streams.protocol',
+          'streams.current_viewers',
+          'streams.started_at',
+          'users.name as streamer_name'
+        )
+        .where('streams.status', 'live')
+        .orderBy('streams.current_viewers', 'desc')
+        .limit(20);
+      
+    } catch (dbError) {
+      logger.warn('Database unavailable for public streams list');
+      // Return empty list
+    }
+
+    res.json({
+      success: true,
+      data: streams
+    });
+  } catch (error) {
+    logger.error('Public streams error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch streams'
+    });
+  }
+});
+
 // Validation schemas optimized for production streaming
 const createStreamSchema = Joi.object({
   title: Joi.string().min(3).max(200).required(),
