@@ -1,166 +1,171 @@
+require('dotenv').config();
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const cors = require('cors');
-const cacheManager = require('./utils/cache');
-// Note: helmet and rateLimit available but not currently used in this simplified server
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
+
+// Import utilities and database
+const db = require('./config/database');
+const cache = require('./utils/cache');
+const logger = require('./utils/logger');
+
+// Import route modules
+const authRoutes = require('./routes/auth');
+const streamRoutes = require('./routes/streams');
+const analyticsRoutes = require('./routes/analytics');
+const userRoutes = require('./routes/users');
+const sixSigmaRoutes = require('./routes/sixSigma');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Simple logger
-const logger = {
-  info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
-  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
-  warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args)
-};
-
-// Validate JWT_SECRET is properly configured for production
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET || JWT_SECRET === 'production-jwt-secret-key-change-this') {
-  logger.error('❌ JWT_SECRET must be set in environment variables for production');
-  if (process.env.NODE_ENV === 'production') {
-    logger.error('💥 SECURITY ERROR: Default JWT_SECRET cannot be used in production');
+// Validate production configuration
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    logger.error('💥 PRODUCTION ERROR: JWT_SECRET must be set and be at least 32 characters long');
     process.exit(1);
   }
-  logger.warn('⚠️  Using default JWT_SECRET - only for development');
+  if (!process.env.POSTGRES_HOST) {
+    logger.error('💥 PRODUCTION ERROR: POSTGRES_HOST must be set');
+    process.exit(1);
+  }
+  if (!process.env.REDIS_HOST) {
+    logger.error('💥 PRODUCTION ERROR: REDIS_HOST must be set');
+    process.exit(1);
+  }
 }
 
-const EFFECTIVE_JWT_SECRET = JWT_SECRET || 'production-jwt-secret-key-change-this';
+// Production security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "ws:", "wss:"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false
+}));
 
-// Database and cache configuration for production
-let dbConnection = null;
+// CORS configuration for production
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || ['http://localhost:3000', 'http://localhost:8080'],
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
+
+// Rate limiting
+const generalLimiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // Limit each IP to 1000 requests per windowMs
+  message: {
+    success: false,
+    error: 'Too many requests from this IP, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 10, // Limit each IP to 10 login attempts per windowMs
+  message: {
+    success: false,
+    error: 'Too many authentication attempts, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting
+app.use('/api/', generalLimiter);
+app.use('/api/auth/', authLimiter);
+
+// Request logging
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('combined', {
+    stream: {
+      write: (message) => logger.info(message.trim())
+    }
+  }));
+}
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Database and cache connection status
+let dbConnected = false;
 let cacheConnected = false;
 
+// Initialize database connection
 async function initializeDatabase() {
-  // Use PostgreSQL for production/development only (no test/mock)
-  const { Client } = require('pg');
   try {
-    const pgClient = new Client({
-      host: process.env.POSTGRES_HOST || 'localhost',
-      user: process.env.POSTGRES_USER || 'cruvz',
-      password: process.env.POSTGRES_PASSWORD || 'cruvzpass',
-      database: process.env.POSTGRES_DB || 'cruvzdb',
-      port: process.env.POSTGRES_PORT || 5432,
-    });
-
-    await pgClient.connect();
-    logger.info('✅ Connected to PostgreSQL database');
-
-    // Create tables if they don't exist
-    await pgClient.query(`
-      CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-      CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        email VARCHAR(255) NOT NULL UNIQUE,
-        password_hash VARCHAR(255) NOT NULL,
-        first_name VARCHAR(100),
-        last_name VARCHAR(100),
-        role VARCHAR(20) DEFAULT 'user',
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS streams (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        title VARCHAR(200) NOT NULL,
-        description TEXT,
-        stream_key VARCHAR(100) NOT NULL UNIQUE,
-        protocol VARCHAR(20) DEFAULT 'rtmp',
-        status VARCHAR(20) DEFAULT 'inactive',
-        max_viewers INTEGER DEFAULT 1000,
-        current_viewers INTEGER DEFAULT 0,
-        started_at TIMESTAMP,
-        ended_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    logger.info('✅ Database tables created/verified');
-    dbConnection = { pgClient };
+    logger.info('🔄 Initializing PostgreSQL database connection...');
+    
+    // Test database connection
+    await db.raw('SELECT 1');
+    
+    // Run migrations in production if needed
+    if (process.env.AUTO_MIGRATE === 'true') {
+      logger.info('🔄 Running database migrations...');
+      await db.migrate.latest();
+      logger.info('✅ Database migrations completed');
+    }
+    
+    dbConnected = true;
+    logger.info('✅ PostgreSQL database connected successfully');
     return true;
   } catch (error) {
     logger.error('❌ PostgreSQL connection failed:', error.message);
-    throw error;
+    dbConnected = false;
+    
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('💥 FATAL: Database connection required in production');
+      throw error;
+    }
+    
+    logger.warn('⚠️  Continuing without database connection (development mode)');
+    return false;
   }
 }
 
+// Initialize cache connection
 async function initializeCache() {
   try {
-    await cacheManager.init();
+    logger.info('🔄 Initializing Redis cache connection...');
     
-    // Wait for Redis connection to be established
-    if (cacheManager.redis) {
-      // Use lazyConnect: true, so we need to explicitly connect
-      await cacheManager.connect();
-    }
+    await cache.init();
+    await cache.connect();
     
-    cacheConnected = cacheManager.isConnected;
-    
-    if (!cacheConnected) {
-      throw new Error('Redis connection could not be established');
-    }
-    
-    logger.info('✅ Redis cache initialized successfully');
+    cacheConnected = cache.isConnected;
+    logger.info('✅ Redis cache connected successfully');
     return true;
   } catch (error) {
-    logger.error('❌ Redis cache initialization failed:', error.message);
-    throw error;
+    logger.error('❌ Redis cache connection failed:', error.message);
+    cacheConnected = false;
+    
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('💥 FATAL: Redis cache connection required in production');
+      throw error;
+    }
+    
+    logger.warn('⚠️  Continuing without cache connection (development mode)');
+    return false;
   }
 }
 
-// Helper function to execute queries
-async function query(text, params = []) {
-  if (!dbConnection) {
-    throw new Error('Database not connected');
-  }
-  try {
-    const result = await dbConnection.pgClient.query(text, params);
-    return result;
-  } catch (error) {
-    logger.error('Query error:', error);
-    throw error;
-  }
-}
-
-// Middleware to check service availability for API endpoints
-function checkServiceAvailability(req, res, next) {
-  // Skip health check endpoint from this middleware
-  if (req.path === '/health' || req.path === '/metrics') {
-    return next();
-  }
-
-  // Check database connection
-  if (!dbConnection || !dbConnection.pgClient) {
-    return res.status(503).json({
-      success: false,
-      error: 'Database unavailable',
-      message: 'Database connection is not available. Please try again later.',
-      status: 503
-    });
-  }
-
-  // Check Redis cache connection
-  if (!cacheConnected || !cacheManager.isConnected) {
-    return res.status(503).json({
-      success: false,
-      error: 'Cache unavailable',
-      message: 'Cache service is not available. Please try again later.',
-      status: 503
-    });
-  }
-
-  next();
-}
-
-// Health check
+// Health check endpoint
 app.get('/health', async (req, res) => {
   const healthData = {
     status: 'healthy',
@@ -174,8 +179,8 @@ app.get('/health', async (req, res) => {
 
   // Check database connectivity
   try {
-    if (dbConnection && dbConnection.pgClient) {
-      await query('SELECT 1');
+    if (dbConnected) {
+      await db.raw('SELECT 1');
       healthData.database = { connected: true, type: 'postgresql' };
     } else {
       healthData.database = { connected: false, type: 'postgresql', error: 'No connection' };
@@ -188,8 +193,8 @@ app.get('/health', async (req, res) => {
 
   // Check Redis cache connectivity
   try {
-    if (cacheManager && cacheManager.isConnected) {
-      const pingResult = await cacheManager.ping();
+    if (cacheConnected && cache.isConnected) {
+      const pingResult = await cache.ping();
       healthData.cache = { connected: pingResult, type: 'redis' };
       if (!pingResult) {
         overallStatus = 'degraded';
@@ -203,518 +208,241 @@ app.get('/health', async (req, res) => {
     overallStatus = 'degraded';
   }
 
-  // Add services property for frontend compatibility
-  healthData.services = {
-    database: healthData.database.connected ? 'connected' : 'disconnected',
-    cache: healthData.cache.connected ? 'connected' : 'disconnected'
-  };
-
   healthData.status = overallStatus;
 
-  // Return 503 if any critical service is down
-  const statusCode = overallStatus === 'degraded' ? 503 : 200;
+  // Return 503 if any critical service is down in production
+  const statusCode = (overallStatus === 'degraded' && process.env.NODE_ENV === 'production') ? 503 : 200;
   res.status(statusCode).json(healthData);
 });
 
-// Prometheus metrics endpoint for production monitoring
+// Prometheus metrics endpoint
 app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', 'text/plain; version=0.0.4');
-  // You can replace these with real metrics using prom-client if desired
-  res.send(`# HELP cruvz_up 1 if the API backend is up
+  try {
+    res.set('Content-Type', 'text/plain; version=0.0.4');
+    
+    // Get real metrics from database
+    let activeStreams = 0;
+    let totalUsers = 0;
+    let activeUsers = 0;
+    
+    if (dbConnected) {
+      try {
+        const streamStats = await db('streams').where('status', 'active').count('* as count').first();
+        activeStreams = streamStats ? parseInt(streamStats.count) : 0;
+        
+        const userStats = await db('users').count('* as total').first();
+        totalUsers = userStats ? parseInt(userStats.total) : 0;
+        
+        const activeUserStats = await db('users').where('is_active', true).count('* as active').first();
+        activeUsers = activeUserStats ? parseInt(activeUserStats.active) : 0;
+      } catch (error) {
+        logger.error('Metrics query error:', error);
+      }
+    }
+
+    const metrics = `# HELP cruvz_up 1 if the API backend is up
 # TYPE cruvz_up gauge
 cruvz_up 1
-# HELP cruvz_active_users Number of active users (dummy)
+
+# HELP cruvz_active_streams Number of currently active streams
+# TYPE cruvz_active_streams gauge
+cruvz_active_streams ${activeStreams}
+
+# HELP cruvz_total_users Total number of registered users
+# TYPE cruvz_total_users gauge  
+cruvz_total_users ${totalUsers}
+
+# HELP cruvz_active_users Number of active users
 # TYPE cruvz_active_users gauge
-cruvz_active_users 1
-`);
+cruvz_active_users ${activeUsers}
+
+# HELP cruvz_database_connected 1 if database is connected
+# TYPE cruvz_database_connected gauge
+cruvz_database_connected ${dbConnected ? 1 : 0}
+
+# HELP cruvz_cache_connected 1 if cache is connected
+# TYPE cruvz_cache_connected gauge
+cruvz_cache_connected ${cacheConnected ? 1 : 0}
+`;
+
+    res.send(metrics);
+  } catch (error) {
+    logger.error('Metrics endpoint error:', error);
+    res.status(500).send('# Error generating metrics\n');
+  }
 });
 
-// Auth middleware
-async function authenticate(req, res, next) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, error: 'Token required' });
-    }
-
-    const token = authHeader.substring(7);
-    if (!EFFECTIVE_JWT_SECRET) {
-      return res.status(500).json({ success: false, error: 'JWT_SECRET is not set on server' });
-    }
-    let decoded;
-    try {
-      decoded = jwt.verify(token, EFFECTIVE_JWT_SECRET);
-    } catch (error) {
-      if (error.name === 'TokenExpiredError') {
-        return res.status(401).json({ success: false, error: 'Token expired, please login again' });
-      }
-      return res.status(401).json({ success: false, error: 'Invalid token' });
-    }
-
-    const result = await query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.id]);
-    if (result.rows.length === 0) {
-      return res.status(401).json({ success: false, error: 'Invalid token' });
-    }
-
-    req.user = result.rows[0];
-    next();
-  } catch (error) {
-    return res.status(401).json({ success: false, error: 'Invalid token' });
+// Route middleware to ensure database connectivity for protected routes
+function checkDatabaseConnection(req, res, next) {
+  if (!dbConnected) {
+    return res.status(503).json({
+      success: false,
+      error: 'Service temporarily unavailable',
+      message: 'Database connection is not available. Please try again later.'
+    });
   }
+  next();
 }
 
-// Apply service availability check to all API endpoints
-app.use('/api', checkServiceAvailability);
+// API Routes - Using modular route files
+app.use('/api/auth', authRoutes);
+app.use('/api/streams', checkDatabaseConnection, streamRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/users', checkDatabaseConnection, userRoutes);
+app.use('/api/six-sigma', checkDatabaseConnection, sixSigmaRoutes);
 
-// Register endpoint
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { first_name, last_name, email, password } = req.body;
-
-    if (!first_name || !email || !password) {
-      return res.status(400).json({ success: false, error: 'First name, email and password are required' });
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ success: false, error: 'Invalid email format' });
-    }
-
-    // Validate password strength (at least 8 chars, with numbers and letters)
-    if (password.length < 8) {
-      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters long' });
-    }
-
-    // Check if user exists
-    const existingUser = await query('SELECT id FROM users WHERE email = $1', [email]);
-    if (existingUser.rows.length > 0) {
-      return res.status(400).json({ success: false, error: 'User already exists' });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Use empty string if last_name is not supplied
-    const lastNameFinal = typeof last_name === 'string' ? last_name : '';
-
-    // Create user
-    const result = await query(
-      'INSERT INTO users (first_name, last_name, email, password_hash) VALUES ($1, $2, $3, $4) RETURNING *',
-      [first_name, lastNameFinal, email, hashedPassword]
-    );
-
-    const user = result.rows[0];
-
-    // Generate token
-    const token = jwt.sign({ id: user.id, email: user.email }, EFFECTIVE_JWT_SECRET, { expiresIn: '24h' });
-
-    // Remove password hash from response (not used in response)
-    const { password_hash: _unused4, ...userWithoutPassword } = user;
-
-    res.status(201).json({
-      success: true,
-      data: { token, user: userWithoutPassword }
-    });
-
-    logger.info(`✅ User registered: ${email}`);
-  } catch (error) {
-    logger.error('Registration error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-});
-
-// Login endpoint
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email and password are required' });
-    }
-
-    // Find user
-    const result = await query('SELECT * FROM users WHERE email = $1 AND is_active = true', [email]);
-    if (result.rows.length === 0) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials' });
-    }
-
-    const user = result.rows[0];
-
-    // Verify password
-    const isValid = await bcrypt.compare(password, user.password_hash);
-    if (!isValid) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials' });
-    }
-
-    // Generate token
-    const token = jwt.sign({ id: user.id, email: user.email }, EFFECTIVE_JWT_SECRET, { expiresIn: '24h' });
-
-    // Remove password hash from response (not used in response)
-    const { password_hash: _unused5, ...userWithoutPassword } = user;
-
-    res.json({
-      success: true,
-      data: { token, user: userWithoutPassword }
-    });
-
-    logger.info(`✅ User logged in: ${email}`);
-  } catch (error) {
-    logger.error('Login error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-});
-
-// Create stream endpoint
-app.post('/api/streams', authenticate, async (req, res) => {
-  try {
-    const { title, description, source_url, destination_url, protocol } = req.body;
-
-    if (!title) {
-      return res.status(400).json({ success: false, error: 'Title is required' });
-    }
-
-    // Validate URLs if provided
-    if (source_url && source_url !== '' && !isValidUrl(source_url)) {
-      return res.status(400).json({ success: false, error: 'Invalid source URL format' });
-    }
-    if (destination_url && destination_url !== '' && !isValidUrl(destination_url)) {
-      return res.status(400).json({ success: false, error: 'Invalid destination URL format' });
-    }
-
-    // Generate unique stream key
-    const streamKey = crypto.randomBytes(16).toString('hex');
-
-    // Create stream with extended fields
-    const result = await query(
-      'INSERT INTO streams (user_id, title, description, stream_key, protocol) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [req.user.id, title, description || '', streamKey, protocol || 'rtmp']
-    );
-
-    const stream = result.rows[0];
-
-    // Generate streaming URLs based on protocol and stream key
-    const streamingUrls = {
-      rtmp: `rtmp://localhost:1935/app/${stream.stream_key}`,
-      webrtc: `http://localhost:3333/app/${stream.stream_key}`,
-      srt: `srt://localhost:9999?streamid=app/${stream.stream_key}`
-    };
-
-    // Include URLs in response
-    const response = {
-      id: stream.id,
-      stream,
-      streaming_urls: streamingUrls,
-      protocol: stream.protocol
-    };
-
-    res.status(201).json({
-      success: true,
-      data: response
-    });
-
-    logger.info(`✅ Stream created: ${title} by ${req.user.email}`);
-  } catch (error) {
-    logger.error('Stream creation error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-});
-
-// Helper function to validate URLs
-function isValidUrl(string) {
-  try {
-    new URL(string);
-    return true;
-  } catch (_) {
-    // Basic pattern for streaming URLs that might not be standard HTTP
-    return /^(rtmp|srt|http|https):\/\/.+/.test(string);
-  }
-}
-
-// Get user streams
-app.get('/api/streams', authenticate, async (req, res) => {
-  try {
-    const result = await query(
-      'SELECT * FROM streams WHERE user_id = $1 ORDER BY created_at DESC',
-      [req.user.id]
-    );
-
-    res.json({
-      success: true,
-      data: { streams: result.rows }
-    });
-  } catch (error) {
-    logger.error('Get streams error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-});
-
-// Start stream
-app.post('/api/streams/:id/start', authenticate, async (req, res) => {
-  try {
-    const streamId = req.params.id;
-
-    // Check if stream exists and belongs to user
-    const streamResult = await query(
-      'SELECT * FROM streams WHERE id = $1 AND user_id = $2',
-      [streamId, req.user.id]
-    );
-
-    if (streamResult.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Stream not found' });
-    }
-
-    // Update stream status
-    const result = await query(
-      'UPDATE streams SET status = $1, started_at = $2 WHERE id = $3 RETURNING *',
-      ['active', new Date(), streamId]
-    );
-
-    const updatedStream = result.rows[0];
-
-    res.json({
-      success: true,
-      data: {
-        stream: updatedStream,
-        stream_key: updatedStream.stream_key,
-        source_url: updatedStream.source_url || `rtmp://localhost:1935/app/${updatedStream.stream_key}`,
-        destination_url: updatedStream.destination_url || `rtmp://localhost:1935/app/${updatedStream.stream_key}`,
-        rtmp_url: `rtmp://localhost:1935/app/${updatedStream.stream_key}`,
-        webrtc_url: `http://localhost:3333/app/${updatedStream.stream_key}`,
-        srt_url: `srt://localhost:9999?streamid=app/${updatedStream.stream_key}`
+// API Documentation endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Cruvz Streaming API v2.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    endpoints: {
+      auth: {
+        'POST /api/auth/register': 'Register new user',
+        'POST /api/auth/login': 'Login user',
+        'GET /api/auth/me': 'Get current user (protected)',
+        'POST /api/auth/logout': 'Logout user (protected)'
+      },
+      streams: {
+        'GET /api/streams': 'Get user streams (protected)',
+        'POST /api/streams': 'Create new stream (protected)',
+        'GET /api/streams/:id': 'Get stream details (protected)',
+        'PUT /api/streams/:id': 'Update stream (protected)',
+        'DELETE /api/streams/:id': 'Delete stream (protected)',
+        'POST /api/streams/:id/start': 'Start stream (protected)',
+        'POST /api/streams/:id/stop': 'Stop stream (protected)'
+      },
+      analytics: {
+        'GET /api/analytics/dashboard': 'Get dashboard analytics (protected)',
+        'GET /api/analytics/streams/:id': 'Get stream analytics (protected)',
+        'GET /api/analytics/system': 'Get system analytics (admin only)',
+        'GET /api/analytics/realtime': 'Get real-time analytics (public)'
+      },
+      users: {
+        'GET /api/users/profile': 'Get user profile (protected)',
+        'PUT /api/users/profile': 'Update user profile (protected)'
+      },
+      sixSigma: {
+        'GET /api/six-sigma/dashboard': 'Get Six Sigma dashboard (protected)',
+        'GET /api/six-sigma/metrics': 'Get Six Sigma metrics (protected)'
       }
-    });
-
-    logger.info(`✅ Stream started: ${updatedStream.title}`);
-  } catch (error) {
-    logger.error('Start stream error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
+    },
+    status: {
+      database: dbConnected ? 'connected' : 'disconnected',
+      cache: cacheConnected ? 'connected' : 'disconnected'
+    }
+  });
 });
 
-// Update stream endpoint
-app.put('/api/streams/:id', authenticate, async (req, res) => {
-  try {
-    const streamId = req.params.id;
-    const { title, description, source_url, destination_url, protocol } = req.body;
-
-    // Validate URLs if provided
-    if (source_url && source_url !== '' && !isValidUrl(source_url)) {
-      return res.status(400).json({ success: false, error: 'Invalid source URL format' });
-    }
-    if (destination_url && destination_url !== '' && !isValidUrl(destination_url)) {
-      return res.status(400).json({ success: false, error: 'Invalid destination URL format' });
-    }
-
-    const updateFields = [];
-    const updateValues = [];
-    let paramIndex = 1;
-
-    if (title !== undefined) {
-      updateFields.push(`title = $${paramIndex++}`);
-      updateValues.push(title);
-    }
-    if (description !== undefined) {
-      updateFields.push(`description = $${paramIndex++}`);
-      updateValues.push(description);
-    }
-    if (source_url !== undefined) {
-      updateFields.push(`source_url = $${paramIndex++}`);
-      updateValues.push(source_url);
-    }
-    if (destination_url !== undefined) {
-      updateFields.push(`destination_url = $${paramIndex++}`);
-      updateValues.push(destination_url);
-    }
-    if (protocol !== undefined) {
-      updateFields.push(`protocol = $${paramIndex++}`);
-      updateValues.push(protocol);
-    }
-
-    if (updateFields.length === 0) {
-      return res.status(400).json({ success: false, error: 'No fields to update' });
-    }
-
-    updateValues.push(streamId, req.user.id);
-    const sql = `UPDATE streams SET ${updateFields.join(', ')} WHERE id = $${paramIndex++} AND user_id = $${paramIndex++} RETURNING *`;
-
-    const result = await query(sql, updateValues);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Stream not found' });
-    }
-
-    const updatedStream = result.rows[0];
-
-    res.json({
-      success: true,
-      data: {
-        stream: updatedStream,
-        source_url: updatedStream.source_url,
-        destination_url: updatedStream.destination_url,
-        protocol: updatedStream.protocol
-      }
-    });
-
-    logger.info(`✅ Stream updated: ${updatedStream.title} by ${req.user.email}`);
-  } catch (error) {
-    logger.error('Stream update error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
+// 404 handler for undefined API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'API endpoint not found',
+    message: `The endpoint ${req.method} ${req.originalUrl} does not exist.`,
+    available_endpoints: '/api'
+  });
 });
 
-// Get user profile endpoint
-app.get('/api/users/profile', authenticate, async (req, res) => {
-  try {
-    const { password_hash: _unused6, ...userWithoutPassword } = req.user;
-    res.json({
-      success: true,
-      data: { user: userWithoutPassword }
-    });
-  } catch (error) {
-    logger.error('Profile fetch error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-});
-
-// Analytics dashboard endpoint
-app.get('/api/analytics/dashboard', authenticate, async (req, res) => {
-  try {
-    // Get real analytics from PostgreSQL
-    const streamsResult = await query('SELECT COUNT(*) as total FROM streams');
-    const activeStreamsResult = await query('SELECT COUNT(*) as active FROM streams WHERE status = $1', ['active']);
-    const usersResult = await query('SELECT COUNT(*) as total FROM users');
-
-    const analytics = {
-      total_streams: parseInt(streamsResult.rows[0].total),
-      active_streams: parseInt(activeStreamsResult.rows[0].active),
-      total_users: parseInt(usersResult.rows[0].total),
-      total_views: 1250,
-      uptime: '99.9%'
-    };
-
-    res.json({
-      success: true,
-      data: analytics
-    });
-  } catch (error) {
-    logger.error('Analytics error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-});
-
-// Six Sigma Dashboard API endpoint
-app.get('/api/six-sigma/dashboard', authenticate, async (req, res) => {
-  try {
-    // Get real-time system metrics from database and services
-    const streamsResult = await query('SELECT COUNT(*) as total FROM streams');
-    const activeStreamsResult = await query('SELECT COUNT(*) as active FROM streams WHERE status = $1', ['active']);
-    const usersResult = await query('SELECT COUNT(*) as total FROM users WHERE is_active = true');
-    const errorStreamsResult = await query('SELECT COUNT(*) as errors FROM streams WHERE status = $1', ['error']);
-
-    const totalStreams = parseInt(streamsResult.rows[0].total) || 0;
-    const activeStreams = parseInt(activeStreamsResult.rows[0].active) || 0;
-    const totalUsers = parseInt(usersResult.rows[0].total) || 0;
-    const errorStreams = parseInt(errorStreamsResult.rows[0].errors) || 0;
-
-    // Calculate Six Sigma metrics (real, not mock)
-    const defectRate = totalStreams > 0 ? (errorStreams / totalStreams) * 100 : 0;
-    const uptimePercentage = 99.97; // Calculate from actual uptime monitoring
-    const overallSigmaLevel = defectRate < 0.1 ? 6.0 : defectRate < 1 ? 5.5 : defectRate < 5 ? 4.0 : 3.0;
-
-    const sixSigmaData = {
-      overview: {
-        overall_sigma_level: overallSigmaLevel,
-        defect_rate: defectRate,
-        uptime_percentage: uptimePercentage,
-        quality_score: Math.max(0, 100 - defectRate)
-      },
-      quality_gates: {
-        authentication: { status: 'pass', value: 99.9, threshold: 99.5 },
-        streaming: { status: activeStreams > 0 ? 'pass' : 'warning', value: 98.5, threshold: 95.0 },
-        monitoring: { status: 'pass', value: 99.7, threshold: 99.0 },
-        performance: { status: 'pass', value: 97.2, threshold: 95.0 }
-      },
-      categories: {
-        infrastructure: {
-          name: 'Infrastructure',
-          sigma_level: 5.8,
-          defect_count: 2,
-          opportunity_count: 1000,
-          metrics: ['uptime', 'latency', 'throughput']
-        },
-        application: {
-          name: 'Application',
-          sigma_level: 5.5,
-          defect_count: 5,
-          opportunity_count: 1000,
-          metrics: ['errors', 'response_time', 'availability']
-        },
-        user_experience: {
-          name: 'User Experience',
-          sigma_level: 5.2,
-          defect_count: 8,
-          opportunity_count: 1000,
-          metrics: ['satisfaction', 'completion_rate', 'bounce_rate']
-        }
-      },
-      system_health: {
-        cpu_usage: 25.3,
-        memory_usage: 67.8,
-        disk_usage: 45.2,
-        network_latency: 12.5,
-        active_connections: activeStreams,
-        total_users: totalUsers
-      },
-      real_time_metrics: {
-        timestamp: new Date().toISOString(),
-        active_streams: activeStreams,
-        total_streams: totalStreams,
-        error_rate: defectRate,
-        success_rate: 100 - defectRate
-      }
-    };
-
-    res.json({
-      success: true,
-      data: sixSigmaData
-    });
-
-    logger.info('✅ Six Sigma dashboard data provided');
-  } catch (error) {
-    logger.error('Six Sigma dashboard error:', error);
+// Global error handler
+app.use((error, req, res, next) => {
+  logger.error('Unhandled error:', error);
+  
+  // Don't leak error details in production
+  if (process.env.NODE_ENV === 'production') {
     res.status(500).json({
       success: false,
-      error: 'Failed to load Six Sigma metrics',
-      message: 'Six Sigma API is operational but data collection failed'
+      error: 'Internal server error'
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
     });
   }
 });
 
-// Remove static UI for production deployment
-// No app.get('/') endpoint
-
-// Start server (only if not in test environment)
+// Server startup function
 async function startServer() {
   try {
-    // Initialize both PostgreSQL and Redis - both are REQUIRED for production
-    logger.info('🔄 Initializing database connection...');
-    await initializeDatabase();
-    
-    logger.info('🔄 Initializing cache connection...');
-    await initializeCache();
-    
-    logger.info('✅ All services connected successfully');
+    // Initialize database connection (required in production)
+    try {
+      await initializeDatabase();
+      logger.info('✅ Database initialization completed');
+    } catch (error) {
+      if (process.env.NODE_ENV === 'production') {
+        logger.error('💥 FATAL: Database connection required in production');
+        process.exit(1);
+      }
+      logger.warn('⚠️  Continuing without database (development mode)');
+    }
 
-    app.listen(PORT, '0.0.0.0', () => {
-      logger.info(`🚀 Cruvz Streaming API running on port ${PORT}`);
-      logger.info('🗄️  Connected to PostgreSQL database');
-      logger.info('🔗 Connected to Redis cache');
-      logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
-      logger.info(`🔗 Metrics endpoint: http://localhost:${PORT}/metrics`);
+    // Initialize cache connection (required in production)
+    try {
+      await initializeCache();
+      logger.info('✅ Cache initialization completed');
+    } catch (error) {
+      if (process.env.NODE_ENV === 'production') {
+        logger.error('💥 FATAL: Cache connection required in production');
+        process.exit(1);
+      }
+      logger.warn('⚠️  Continuing without cache (development mode)');
+    }
+
+    // Start the server
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      logger.info(`🚀 Cruvz Streaming API v2.0.0 running on port ${PORT}`);
+      logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`🗄️  Database: ${dbConnected ? 'Connected (PostgreSQL)' : 'Disconnected'}`);
+      logger.info(`🔗 Cache: ${cacheConnected ? 'Connected (Redis)' : 'Disconnected'}`);
+      logger.info(`📊 Health check: http://localhost:${PORT}/health`);
+      logger.info(`📊 Metrics: http://localhost:${PORT}/metrics`);
+      logger.info(`📖 API docs: http://localhost:${PORT}/api`);
+      
+      if (process.env.NODE_ENV === 'production') {
+        logger.info('🔒 Production mode: All security features enabled');
+      }
     });
+
+    // Graceful shutdown handling
+    const gracefulShutdown = async (signal) => {
+      logger.info(`Received ${signal}. Starting graceful shutdown...`);
+      
+      server.close(async () => {
+        logger.info('HTTP server closed');
+        
+        // Close database connection
+        if (dbConnected && db) {
+          try {
+            await db.destroy();
+            logger.info('Database connection closed');
+          } catch (error) {
+            logger.error('Error closing database:', error);
+          }
+        }
+        
+        // Close cache connection
+        if (cacheConnected && cache) {
+          try {
+            await cache.disconnect();
+            logger.info('Cache connection closed');
+          } catch (error) {
+            logger.error('Error closing cache:', error);
+          }
+        }
+        
+        logger.info('Graceful shutdown completed');
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
   } catch (error) {
-    logger.error('❌ Failed to start server - missing required services:', error.message);
-    logger.error('💥 Server startup failed. Both PostgreSQL and Redis are required for production.');
+    logger.error('💥 Server startup failed:', error);
     process.exit(1);
   }
 }
@@ -722,7 +450,7 @@ async function startServer() {
 // Export app for testing
 module.exports = app;
 
-// Only start server if not in test environment
+// Start server if this file is run directly
 if (require.main === module) {
   startServer();
 }
