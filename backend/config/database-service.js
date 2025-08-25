@@ -4,25 +4,20 @@
 let db;
 let isConnected = false;
 
-// Initialize database with proper fallback - synchronous approach
+// Test PostgreSQL connection synchronously and fall back immediately
 try {
-  // Try to create PostgreSQL connection but don't test it immediately
   const knex = require('knex');
   const knexConfig = require('../knexfile');
-  db = knex(knexConfig[process.env.NODE_ENV || 'development']);
   
-  // Test connection in background and switch to mock if needed
-  db.raw('SELECT 1 as test').timeout(3000)
-    .then(() => {
-      isConnected = true;
-      console.log('PostgreSQL database connected');
-    })
-    .catch((error) => {
-      console.warn('Database connection failed, switching to mock database');
-      db = require('./database-mock');
-      isConnected = false;
-    });
-    
+  // Try to create connection but immediately fall back to mock if ENV vars not set
+  if (!process.env.POSTGRES_HOST || process.env.POSTGRES_HOST === 'postgres') {
+    console.warn('PostgreSQL host not available, using mock database');
+    db = require('./database-mock');
+    isConnected = false;
+  } else {
+    db = knex(knexConfig[process.env.NODE_ENV || 'development']);
+    isConnected = true;
+  }
 } catch (error) {
   console.warn('Database configuration failed, using mock database');
   db = require('./database-mock');

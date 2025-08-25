@@ -55,13 +55,26 @@ class MockDatabase {
           return {
             first: () => Promise.resolve(filtered[0] || null),
             limit: (n) => Promise.resolve(filtered.slice(0, n)),
-            orderBy: (field, order) => Promise.resolve(filtered)
+            orderBy: (field, order) => Promise.resolve(filtered),
+            update: (data) => {
+              let updated = 0;
+              this.data[tableName] = this.data[tableName].map(record => {
+                const matches = Object.keys(condition).every(key => record[key] === condition[key]);
+                if (matches) {
+                  updated++;
+                  return { ...record, ...data, updated_at: new Date() };
+                }
+                return record;
+              });
+              return Promise.resolve(updated);
+            }
           };
         }
         return {
           first: () => Promise.resolve(null),
           limit: (n) => Promise.resolve([]),
-          orderBy: (field, order) => Promise.resolve([])
+          orderBy: (field, order) => Promise.resolve([]),
+          update: (data) => Promise.resolve(0)
         };
       },
       
