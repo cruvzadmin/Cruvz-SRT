@@ -196,26 +196,26 @@ async function seedProductionData() {
       for (const metricType of metricTypes) {
         let value, target;
         switch (metricType) {
-          case 'latency':
-            value = Math.random() * 50 + 50; // 50-100ms
-            target = 75;
-            break;
-          case 'cpu_usage':
-            value = Math.random() * 80 + 10; // 10-90%
-            target = 70;
-            break;
-          case 'memory_usage':
-            value = Math.random() * 70 + 20; // 20-90%
-            target = 80;
-            break;
-          case 'disk_usage':
-            value = Math.random() * 50 + 30; // 30-80%
-            target = 85;
-            break;
-          case 'throughput':
-            value = Math.random() * 1000 + 2000; // 2000-3000 requests/sec
-            target = 2500;
-            break;
+        case 'latency':
+          value = Math.random() * 50 + 50; // 50-100ms
+          target = 75;
+          break;
+        case 'cpu_usage':
+          value = Math.random() * 80 + 10; // 10-90%
+          target = 70;
+          break;
+        case 'memory_usage':
+          value = Math.random() * 70 + 20; // 20-90%
+          target = 80;
+          break;
+        case 'disk_usage':
+          value = Math.random() * 50 + 30; // 30-80%
+          target = 85;
+          break;
+        case 'throughput':
+          value = Math.random() * 1000 + 2000; // 2000-3000 requests/sec
+          target = 2500;
+          break;
         }
 
         const metricsDate = new Date(Date.now() - i * 2 * 60 * 1000); // Every 2 minutes
@@ -224,8 +224,8 @@ async function seedProductionData() {
           id: uuidv4(),
           metric_name: metricType,
           metric_type: 'performance',
-          value: value,
-          target: target,
+          value,
+          target,
           sigma_level: value <= target ? 4.5 + Math.random() * 1.5 : 2.5 + Math.random() * 2,
           date: metricsDate.toISOString().split('T')[0],
           created_at: metricsDate,
@@ -238,11 +238,11 @@ async function seedProductionData() {
     console.log('\n🎉 Production data seeding completed successfully!');
     console.log('\n📊 Summary:');
     console.log(`   👤 Admin: ${adminEmail} / ${adminPassword}`);
-    console.log(`   👤 Demo Streamer: demo.streamer@cruvz.com / Demo123!_Stream`);
-    console.log(`   👤 Test User: test.user@cruvz.com / TestUser123!`);
+    console.log('   👤 Demo Streamer: demo.streamer@cruvz.com / Demo123!_Stream');
+    console.log('   👤 Test User: test.user@cruvz.com / TestUser123!');
     console.log(`   📺 Active Streams: 2 live streams with ${847 + 234} total viewers`);
-    console.log(`   📈 Analytics: 7 days of stream analytics data`);
-    console.log(`   📊 Metrics: 100 data points for Six Sigma monitoring`);
+    console.log('   📈 Analytics: 7 days of stream analytics data');
+    console.log('   📊 Metrics: 100 data points for Six Sigma monitoring');
     console.log('\n⚠️  IMPORTANT: Change default passwords in production!');
 
   } catch (error) {

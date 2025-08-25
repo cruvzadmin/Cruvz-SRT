@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Production-grade database configuration (PostgreSQL ONLY, NO SQLite or mock)
-const isProduction = process.env.NODE_ENV === 'production';
+const _isProduction = process.env.NODE_ENV === 'production';
 
 // Ensure directories exist (for logs/data)
 const dataDir = path.join(__dirname, '../data');

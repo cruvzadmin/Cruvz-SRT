@@ -97,7 +97,7 @@ router.get('/dashboard', auth, async (req, res) => {
       .orderBy('date', 'asc');
 
     // Quality metrics - simplified to use available columns
-    const qualityMetrics = await db('stream_analytics')
+    const _qualityMetrics = await db('stream_analytics')
       .join('streams', 'stream_analytics.stream_id', 'streams.id')
       .where('streams.user_id', req.user.id)
       .where('stream_analytics.created_at', '>=', timeFilter)
@@ -399,7 +399,7 @@ router.get('/realtime', async (req, res) => {
         average_latency: Number(averageLatency.toFixed(0)),
         active_streams: activeStreams,
         total_bandwidth: Number((activeStreams * 0.5).toFixed(1)), // Estimate bandwidth based on streams
-        status: status,
+        status,
         last_updated: new Date().toISOString()
       }
     });

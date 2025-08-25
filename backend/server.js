@@ -80,15 +80,15 @@ if (isProduction) {
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "ws:", "wss:"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'self'"],
+      defaultSrc: ['\'self\''],
+      styleSrc: ['\'self\'', '\'unsafe-inline\'', 'https:'],
+      scriptSrc: ['\'self\'', '\'unsafe-inline\''],
+      imgSrc: ['\'self\'', 'data:', 'https:'],
+      connectSrc: ['\'self\'', 'ws:', 'wss:'],
+      fontSrc: ['\'self\''],
+      objectSrc: ['\'none\''],
+      mediaSrc: ['\'self\''],
+      frameSrc: ['\'self\''],
     },
   },
   crossOriginEmbedderPolicy: false
@@ -163,7 +163,7 @@ async function initializeDatabase() {
     // Test database connection with timeout
     const testQuery = db.raw('SELECT 1 as test').timeout(5000);
     const result = await testQuery;
-    logger.info(`✅ Database test query successful`);
+    logger.info('✅ Database test query successful');
     
     // Run migrations in production if needed
     if (process.env.AUTO_MIGRATE === 'true') {
@@ -173,11 +173,11 @@ async function initializeDatabase() {
     }
     
     dbConnected = true;
-    logger.info(`✅ PostgreSQL database connected successfully`);
+    logger.info('✅ PostgreSQL database connected successfully');
     return true;
   } catch (error) {
-    logger.error(`❌ PostgreSQL database connection failed:`, error.message);
-    logger.error(`Database error details:`, error);
+    logger.error('❌ PostgreSQL database connection failed:', error.message);
+    logger.error('Database error details:', error);
     dbConnected = false;
     
     if (isProduction) {
@@ -201,11 +201,11 @@ async function initializeCache() {
     }
     
     cacheConnected = cache.isConnected;
-    logger.info(`✅ Redis cache connected successfully`);
+    logger.info('✅ Redis cache connected successfully');
     
     return true;
   } catch (error) {
-    logger.error(`❌ Redis cache connection failed:`, error.message);
+    logger.error('❌ Redis cache connection failed:', error.message);
     cacheConnected = false;
     
     if (isProduction) {
