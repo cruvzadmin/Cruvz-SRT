@@ -34,7 +34,7 @@ const hashApiKey = (key) => {
 router.get('/', auth, async (req, res) => {
   try {
     const apiKeys = await db('api_keys')
-      .select('id', 'name', 'permissions', 'is_active', 'expires_at', 'last_used', 'created_at')
+      .select('id', 'name', 'permissions', 'is_active', 'expires_at', 'last_used_at', 'created_at')
       .where({ user_id: req.user.id })
       .orderBy('created_at', 'desc');
 

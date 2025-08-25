@@ -5,30 +5,17 @@ class CacheManager {
   constructor() {
     this.redis = null;
     this.isConnected = false;
-    // Don't initialize in constructor - will be done explicitly in server startup
+    // Removed memory fallback for production-ready deployment
   }
 
   async init() {
     try {
-      // Check if Redis is disabled for development/sandbox
-      if (process.env.DISABLE_REDIS === 'true') {
-        logger.warn('⚠️  Redis is disabled via DISABLE_REDIS environment variable');
-        this.isConnected = false;
-        return false;
-      }
-      
-      // Redis is REQUIRED for production - no fallback
+      // Redis is REQUIRED for production deployment - no fallback allowed
       const redisHost = process.env.REDIS_HOST;
       if (!redisHost) {
-        if (process.env.NODE_ENV === 'production') {
-          const error = 'REDIS_HOST environment variable is required for production';
-          logger.error(error);
-          throw new Error(error);
-        } else {
-          logger.warn('⚠️  REDIS_HOST not set, disabling Redis for development');
-          this.isConnected = false;
-          return false;
-        }
+        const error = 'REDIS_HOST environment variable is required for production deployment';
+        logger.error(error);
+        throw new Error(error);
       }
 
       const redisConfig = {
@@ -56,26 +43,23 @@ class CacheManager {
       });
 
       this.redis.on('error', (err) => {
-        logger.error('Redis cache connection error - this is FATAL in production:', err.message);
+        logger.error('Redis cache connection error:', err.message);
         this.isConnected = false;
-        // In production, Redis failures should be treated as critical
-        if (process.env.NODE_ENV === 'production') {
-          logger.error('Redis connection lost in production environment');
-        }
+        // In production deployment, Redis failures are critical and should stop the server
+        throw new Error(`Redis connection failed: ${err.message}`);
       });
 
       this.redis.on('close', () => {
-        logger.error('Redis cache connection closed - this is FATAL in production');
+        logger.error('Redis cache connection closed');
         this.isConnected = false;
+        throw new Error('Redis connection lost - production deployment requires Redis');
       });
 
     } catch (error) {
-      logger.error('Failed to initialize Redis cache - this is FATAL in production:', error.message);
+      logger.error('Failed to initialize Redis cache:', error.message);
       this.isConnected = false;
-      // In production, Redis must be available
-      if (process.env.NODE_ENV === 'production') {
-        throw error;
-      }
+      // Redis is mandatory for production deployment
+      throw error;
     }
   }
 
@@ -94,68 +78,78 @@ class CacheManager {
     } catch (error) {
       logger.error('❌ Redis connection failed:', error.message);
       this.isConnected = false;
-      throw error;
+      throw error; // No fallback for production deployment
     }
   }
 
   // Session management for streaming users
   async setSession(userId, sessionData, ttl = 3600) {
     try {
-      if (!this.isConnected) return false;
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const key = `session:${userId}`;
       const result = await this.redis.setex(key, ttl, JSON.stringify(sessionData));
       return result === 'OK';
     } catch (error) {
       logger.error('Cache setSession error:', error);
-      return false;
+      throw error;
     }
   }
 
   async getSession(userId) {
     try {
-      if (!this.isConnected) return null;
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const key = `session:${userId}`;
       const data = await this.redis.get(key);
       return data ? JSON.parse(data) : null;
     } catch (error) {
       logger.error('Cache getSession error:', error);
-      return null;
+      throw error;
     }
   }
 
   // Stream data caching for real-time performance
   async setStreamData(streamId, data, ttl = 300) {
     try {
-      if (!this.isConnected) return false;
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const key = `stream:${streamId}`;
       const result = await this.redis.setex(key, ttl, JSON.stringify(data));
       return result === 'OK';
     } catch (error) {
       logger.error('Cache setStreamData error:', error);
-      return false;
+      throw error;
     }
   }
 
   async getStreamData(streamId) {
     try {
-      if (!this.isConnected) return null;
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const key = `stream:${streamId}`;
       const data = await this.redis.get(key);
       return data ? JSON.parse(data) : null;
     } catch (error) {
       logger.error('Cache getStreamData error:', error);
-      return null;
+      throw error;
     }
   }
 
   // Real-time viewer count tracking
   async incrementViewerCount(streamId) {
     try {
-      if (!this.isConnected) return 0;
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const key = `viewers:${streamId}`;
       const count = await this.redis.incr(key);
@@ -163,40 +157,46 @@ class CacheManager {
       return count;
     } catch (error) {
       logger.error('Cache incrementViewerCount error:', error);
-      return 0;
+      throw error;
     }
   }
 
   async decrementViewerCount(streamId) {
     try {
-      if (!this.isConnected) return 0;
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const key = `viewers:${streamId}`;
       const count = await this.redis.decr(key);
       return Math.max(0, count); // Ensure non-negative
     } catch (error) {
       logger.error('Cache decrementViewerCount error:', error);
-      return 0;
+      throw error;
     }
   }
 
   async getViewerCount(streamId) {
     try {
-      if (!this.isConnected) return 0;
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const key = `viewers:${streamId}`;
       const count = await this.redis.get(key);
       return parseInt(count) || 0;
     } catch (error) {
       logger.error('Cache getViewerCount error:', error);
-      return 0;
+      throw error;
     }
   }
 
   // Rate limiting for API endpoints
   async checkRateLimit(identifier, limit = 100, window = 900) {
     try {
-      if (!this.isConnected) return { allowed: true, remaining: limit };
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const key = `ratelimit:${identifier}`;
       const current = await this.redis.incr(key);
@@ -211,57 +211,65 @@ class CacheManager {
       return { allowed, remaining, current };
     } catch (error) {
       logger.error('Cache checkRateLimit error:', error);
-      return { allowed: true, remaining: limit };
+      throw error;
     }
   }
 
   // General cache operations
   async set(key, value, ttl = 3600) {
     try {
-      if (!this.isConnected) return false;
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const result = await this.redis.setex(key, ttl, JSON.stringify(value));
       return result === 'OK';
     } catch (error) {
       logger.error('Cache set error:', error);
-      return false;
+      throw error;
     }
   }
 
   async get(key) {
     try {
-      if (!this.isConnected) return null;
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const data = await this.redis.get(key);
       return data ? JSON.parse(data) : null;
     } catch (error) {
       logger.error('Cache get error:', error);
-      return null;
+      throw error;
     }
   }
 
   async delete(key) {
     try {
-      if (!this.isConnected) return false;
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const result = await this.redis.del(key);
       return result > 0;
     } catch (error) {
       logger.error('Cache delete error:', error);
-      return false;
+      throw error;
     }
   }
 
   // Health check
   async ping() {
     try {
-      if (!this.isConnected) return false;
+      if (!this.isConnected) {
+        throw new Error('Redis not connected');
+      }
       
       const result = await this.redis.ping();
       return result === 'PONG';
     } catch (error) {
       logger.error('Cache ping error:', error);
-      return false;
+      throw error;
     }
   }
 

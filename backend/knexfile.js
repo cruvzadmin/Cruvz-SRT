@@ -1,8 +1,9 @@
-// Production-ready Knex configuration - PostgreSQL only
+// Production-ready Knex configuration - PostgreSQL ONLY (no fallbacks)
 require('dotenv').config({ path: '../.env' });
 
 const config = {
   development: {
+    // PostgreSQL for all environments - no SQLite fallback
     client: 'pg',
     connection: {
       host: process.env.POSTGRES_HOST || 'localhost',

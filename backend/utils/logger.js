@@ -2,21 +2,63 @@ const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
 
-// Create logs directory if it doesn't exist
+// Create logs directory if it doesn't exist (with error handling)
 const fs = require('fs');
 const logDir = process.env.LOG_DIR || path.join(__dirname, '../logs');
-if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir, { recursive: true });
+
+let fileLoggingEnabled = true;
+try {
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+  // Test write permissions
+  const testFile = path.join(logDir, 'test.log');
+  fs.writeFileSync(testFile, 'test');
+  fs.unlinkSync(testFile);
+} catch (error) {
+  fileLoggingEnabled = false;
+  console.warn('File logging disabled due to permissions:', error.message);
 }
 
-// Configure daily rotate file transport
-const dailyRotateFileTransport = new DailyRotateFile({
-  filename: path.join(logDir, '%DATE%-cruvz-api.log'),
-  datePattern: 'YYYY-MM-DD',
-  zippedArchive: true,
-  maxSize: process.env.LOG_FILE_MAX_SIZE || '20m',
-  maxFiles: process.env.LOG_MAX_FILES || '14d'
-});
+// Configure transports based on environment and permissions
+const transports = [];
+
+// Always add console transport
+transports.push(new winston.transports.Console({
+  format: winston.format.combine(
+    winston.format.colorize(),
+    winston.format.timestamp({
+      format: 'YYYY-MM-DD HH:mm:ss'
+    }),
+    winston.format.printf(({ timestamp, level, message, ...meta }) => {
+      return `${timestamp} [${level}] ${message} ${Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
+    })
+  )
+}));
+
+// Add file transports only if permissions allow
+if (fileLoggingEnabled) {
+  try {
+    // Configure daily rotate file transport
+    const dailyRotateFileTransport = new DailyRotateFile({
+      filename: path.join(logDir, '%DATE%-cruvz-api.log'),
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: process.env.LOG_FILE_MAX_SIZE || '20m',
+      maxFiles: process.env.LOG_MAX_FILES || '14d'
+    });
+
+    transports.push(
+      new winston.transports.File({ 
+        filename: path.join(logDir, 'error.log'), 
+        level: 'error' 
+      }),
+      dailyRotateFileTransport
+    );
+  } catch (error) {
+    console.warn('File logging transport failed to initialize:', error.message);
+  }
+}
 
 // Create logger instance
 const logger = winston.createLogger({
@@ -29,27 +71,8 @@ const logger = winston.createLogger({
     winston.format.json()
   ),
   defaultMeta: { service: 'cruvz-streaming-api' },
-  transports: [
-    // Write all logs with level `error` and below to `error.log`
-    new winston.transports.File({ 
-      filename: path.join(logDir, 'error.log'), 
-      level: 'error' 
-    }),
-    // Write all logs to daily rotate file
-    dailyRotateFileTransport
-  ]
+  transports
 });
-
-// If we're not in production, log to the console with the format:
-// `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple()
-    )
-  }));
-}
 
 // Six Sigma logging functions for quality tracking
 logger.sixSigma = {
