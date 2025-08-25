@@ -382,4 +382,462 @@ router.get('/status/:stream_id', auth, async (req, res) => {
   }
 });
 
+// @route   POST /api/streaming/llhls/start
+// @desc    Start Low Latency HLS streaming session
+// @access  Private
+router.post('/llhls/start', auth, async (req, res) => {
+  try {
+    const { stream_id, llhls_settings } = req.body;
+
+    if (!stream_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Stream ID required'
+      });
+    }
+
+    // Verify stream ownership
+    const stream = await db('streams')
+      .where({ id: stream_id, user_id: req.user.id })
+      .first();
+
+    if (!stream) {
+      return res.status(404).json({
+        success: false,
+        error: 'Stream not found'
+      });
+    }
+
+    // Configure LLHLS settings
+    const llhlsConfig = {
+      segment_duration: llhls_settings?.segment_duration || 2000, // 2 seconds
+      part_duration: llhls_settings?.part_duration || 500, // 500ms
+      partial_segments: llhls_settings?.partial_segments || 6,
+      target_latency: llhls_settings?.target_latency || 3000,
+      ...llhls_settings
+    };
+
+    // Update stream with LLHLS configuration
+    await db('streams')
+      .where({ id: stream_id })
+      .update({
+        status: 'active',
+        protocol: 'llhls',
+        started_at: new Date(),
+        settings: JSON.stringify({
+          llhls: llhlsConfig,
+          quality: '1080p',
+          bitrate: 5000
+        })
+      });
+
+    // Generate LLHLS URLs
+    const sessionId = `llhls_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const playlistUrl = `https://your-domain.com/live/${stream.stream_key}/playlist.m3u8`;
+    const partialPlaylistUrl = `https://your-domain.com/live/${stream.stream_key}/playlist_ll.m3u8`;
+
+    logger.info(`LLHLS stream started: ${stream.title} by user ${req.user.email}`);
+
+    res.json({
+      success: true,
+      data: {
+        session_id: sessionId,
+        protocol: 'llhls',
+        config: llhlsConfig,
+        urls: {
+          playlist: playlistUrl,
+          partial_playlist: partialPlaylistUrl,
+          stats: `https://your-domain.com/stats/${stream.stream_key}`
+        },
+        estimated_latency: llhlsConfig.target_latency
+      }
+    });
+
+  } catch (error) {
+    logger.error('LLHLS start error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start LLHLS stream'
+    });
+  }
+});
+
+// @route   POST /api/streaming/ovt/start  
+// @desc    Start OVT (OvenPlayer WebRTC Transport) streaming session
+// @access  Private
+router.post('/ovt/start', auth, async (req, res) => {
+  try {
+    const { stream_id, ovt_settings } = req.body;
+
+    if (!stream_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Stream ID required'
+      });
+    }
+
+    // Verify stream ownership
+    const stream = await db('streams')
+      .where({ id: stream_id, user_id: req.user.id })
+      .first();
+
+    if (!stream) {
+      return res.status(404).json({
+        success: false,
+        error: 'Stream not found'
+      });
+    }
+
+    // Configure OVT settings for ultra-low latency
+    const ovtConfig = {
+      transport: 'tcp',
+      latency_mode: 'ultra_low',
+      max_bitrate: ovt_settings?.max_bitrate || 8000000,
+      min_bitrate: ovt_settings?.min_bitrate || 1000000,
+      adaptive_bitrate: ovt_settings?.adaptive_bitrate !== false,
+      ...ovt_settings
+    };
+
+    // Update stream with OVT configuration
+    await db('streams')
+      .where({ id: stream_id })
+      .update({
+        status: 'active',
+        protocol: 'ovt',
+        started_at: new Date(),
+        settings: JSON.stringify({
+          ovt: ovtConfig,
+          quality: '1080p',
+          target_latency: 50
+        })
+      });
+
+    const sessionId = `ovt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const ovtUrl = `wss://your-domain.com/ovt/${stream.stream_key}`;
+
+    logger.info(`OVT stream started: ${stream.title} by user ${req.user.email}`);
+
+    res.json({
+      success: true,
+      data: {
+        session_id: sessionId,
+        protocol: 'ovt',
+        config: ovtConfig,
+        urls: {
+          websocket: ovtUrl,
+          player: `https://your-domain.com/player/${stream.stream_key}`,
+          stats: `https://your-domain.com/stats/${stream.stream_key}`
+        },
+        estimated_latency: 50
+      }
+    });
+
+  } catch (error) {
+    logger.error('OVT start error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start OVT stream'
+    });
+  }
+});
+
+// @route   POST /api/streaming/recording/start
+// @desc    Start recording for a stream
+// @access  Private
+router.post('/recording/start', auth, async (req, res) => {
+  try {
+    const { stream_id, recording_settings } = req.body;
+
+    if (!stream_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Stream ID required'
+      });
+    }
+
+    // Verify stream ownership and that stream is active
+    const stream = await db('streams')
+      .where({ id: stream_id, user_id: req.user.id })
+      .first();
+
+    if (!stream) {
+      return res.status(404).json({
+        success: false,
+        error: 'Stream not found'
+      });
+    }
+
+    if (stream.status !== 'active') {
+      return res.status(400).json({
+        success: false,
+        error: 'Stream must be active to start recording'
+      });
+    }
+
+    // Configure recording settings
+    const recordingConfig = {
+      format: recording_settings?.format || 'mp4',
+      quality: recording_settings?.quality || '1080p',
+      bitrate: recording_settings?.bitrate || 5000,
+      segment_duration: recording_settings?.segment_duration || 3600, // 1 hour segments
+      storage_path: recording_settings?.storage_path || `/recordings/${stream.stream_key}`,
+      auto_delete_after: recording_settings?.auto_delete_after || 2592000, // 30 days
+      ...recording_settings
+    };
+
+    // Update stream to enable recording
+    await db('streams')
+      .where({ id: stream_id })
+      .update({
+        is_recording: true,
+        recording_url: `/recordings/${stream.stream_key}/${Date.now()}.${recordingConfig.format}`
+      });
+
+    const recordingId = `rec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    logger.info(`Recording started for stream: ${stream.title} by user ${req.user.email}`);
+
+    res.json({
+      success: true,
+      data: {
+        recording_id: recordingId,
+        stream_id: stream_id,
+        config: recordingConfig,
+        started_at: new Date().toISOString(),
+        estimated_file_size: '~2GB per hour',
+        storage_location: recordingConfig.storage_path
+      }
+    });
+
+  } catch (error) {
+    logger.error('Recording start error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start recording'
+    });
+  }
+});
+
+// @route   POST /api/streaming/recording/stop
+// @desc    Stop recording for a stream
+// @access  Private
+router.post('/recording/stop', auth, async (req, res) => {
+  try {
+    const { stream_id, recording_id } = req.body;
+
+    if (!stream_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Stream ID required'
+      });
+    }
+
+    // Verify stream ownership
+    const stream = await db('streams')
+      .where({ id: stream_id, user_id: req.user.id })
+      .first();
+
+    if (!stream) {
+      return res.status(404).json({
+        success: false,
+        error: 'Stream not found'
+      });
+    }
+
+    // Update stream to disable recording
+    await db('streams')
+      .where({ id: stream_id })
+      .update({
+        is_recording: false
+      });
+
+    logger.info(`Recording stopped for stream: ${stream.title} by user ${req.user.email}`);
+
+    res.json({
+      success: true,
+      data: {
+        recording_id: recording_id,
+        stream_id: stream_id,
+        stopped_at: new Date().toISOString(),
+        final_location: stream.recording_url,
+        status: 'processing'
+      }
+    });
+
+  } catch (error) {
+    logger.error('Recording stop error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to stop recording'
+    });
+  }
+});
+
+// @route   POST /api/streaming/transcode/configure
+// @desc    Configure transcoding settings for a stream
+// @access  Private
+router.post('/transcode/configure', auth, async (req, res) => {
+  try {
+    const { stream_id, transcode_settings } = req.body;
+
+    if (!stream_id || !transcode_settings) {
+      return res.status(400).json({
+        success: false,
+        error: 'Stream ID and transcode settings required'
+      });
+    }
+
+    // Verify stream ownership
+    const stream = await db('streams')
+      .where({ id: stream_id, user_id: req.user.id })
+      .first();
+
+    if (!stream) {
+      return res.status(404).json({
+        success: false,
+        error: 'Stream not found'
+      });
+    }
+
+    // Configure transcoding profiles
+    const transcodeConfig = {
+      profiles: transcode_settings.profiles || [
+        {
+          name: '1080p',
+          video: { width: 1920, height: 1080, bitrate: 5000, fps: 30, codec: 'h264' },
+          audio: { bitrate: 192, codec: 'aac', channels: 2 }
+        },
+        {
+          name: '720p',
+          video: { width: 1280, height: 720, bitrate: 3000, fps: 30, codec: 'h264' },
+          audio: { bitrate: 128, codec: 'aac', channels: 2 }
+        },
+        {
+          name: '480p',
+          video: { width: 854, height: 480, bitrate: 1500, fps: 30, codec: 'h264' },
+          audio: { bitrate: 96, codec: 'aac', channels: 2 }
+        }
+      ],
+      hardware_acceleration: transcode_settings.hardware_acceleration || 'auto',
+      adaptive_bitrate: transcode_settings.adaptive_bitrate !== false,
+      preset: transcode_settings.preset || 'faster',
+      ...transcode_settings
+    };
+
+    // Update stream with transcoding configuration
+    const currentSettings = stream.settings ? JSON.parse(stream.settings) : {};
+    currentSettings.transcoding = transcodeConfig;
+
+    await db('streams')
+      .where({ id: stream_id })
+      .update({
+        settings: JSON.stringify(currentSettings)
+      });
+
+    logger.info(`Transcoding configured for stream: ${stream.title} by user ${req.user.email}`);
+
+    res.json({
+      success: true,
+      data: {
+        stream_id: stream_id,
+        config: transcodeConfig,
+        profiles_count: transcodeConfig.profiles.length,
+        estimated_cpu_usage: '40-60%',
+        urls: transcodeConfig.profiles.map(profile => ({
+          quality: profile.name,
+          url: `https://your-domain.com/live/${stream.stream_key}/${profile.name}/playlist.m3u8`
+        }))
+      }
+    });
+
+  } catch (error) {
+    logger.error('Transcode configure error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to configure transcoding'
+    });
+  }
+});
+
+// @route   POST /api/streaming/push/configure
+// @desc    Configure push publishing to external services
+// @access  Private
+router.post('/push/configure', auth, async (req, res) => {
+  try {
+    const { stream_id, push_settings } = req.body;
+
+    if (!stream_id || !push_settings) {
+      return res.status(400).json({
+        success: false,
+        error: 'Stream ID and push settings required'
+      });
+    }
+
+    // Verify stream ownership
+    const stream = await db('streams')
+      .where({ id: stream_id, user_id: req.user.id })
+      .first();
+
+    if (!stream) {
+      return res.status(404).json({
+        success: false,
+        error: 'Stream not found'
+      });
+    }
+
+    // Configure push publishing targets
+    const pushConfig = {
+      targets: push_settings.targets || [],
+      retry_count: push_settings.retry_count || 3,
+      retry_delay: push_settings.retry_delay || 5000,
+      health_check_interval: push_settings.health_check_interval || 30000,
+      ...push_settings
+    };
+
+    // Validate push targets
+    for (const target of pushConfig.targets) {
+      if (!target.url || !target.name) {
+        return res.status(400).json({
+          success: false,
+          error: 'Each push target must have a name and URL'
+        });
+      }
+    }
+
+    // Update stream with push configuration
+    const currentSettings = stream.settings ? JSON.parse(stream.settings) : {};
+    currentSettings.push_publishing = pushConfig;
+
+    await db('streams')
+      .where({ id: stream_id })
+      .update({
+        settings: JSON.stringify(currentSettings)
+      });
+
+    logger.info(`Push publishing configured for stream: ${stream.title} by user ${req.user.email}`);
+
+    res.json({
+      success: true,
+      data: {
+        stream_id: stream_id,
+        config: pushConfig,
+        targets_count: pushConfig.targets.length,
+        status: 'configured',
+        targets: pushConfig.targets.map(target => ({
+          name: target.name,
+          url: target.url,
+          status: 'ready'
+        }))
+      }
+    });
+
+  } catch (error) {
+    logger.error('Push configure error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to configure push publishing'
+    });
+  }
+});
+
 module.exports = router;

@@ -387,6 +387,12 @@ app.get('/api', (req, res) => {
         'POST /api/streaming/srt/stop': 'Stop SRT session (protected)',
         'POST /api/streaming/rtmp/start': 'Start RTMP session (protected)',
         'POST /api/streaming/rtmp/stop': 'Stop RTMP session (protected)',
+        'POST /api/streaming/llhls/start': 'Start Low Latency HLS session (protected)',
+        'POST /api/streaming/ovt/start': 'Start OVT session (protected)',
+        'POST /api/streaming/recording/start': 'Start recording (protected)',
+        'POST /api/streaming/recording/stop': 'Stop recording (protected)',
+        'POST /api/streaming/transcode/configure': 'Configure transcoding (protected)',
+        'POST /api/streaming/push/configure': 'Configure push publishing (protected)',
         'GET /api/streaming/status/:stream_id': 'Get streaming status (protected)'
       },
       analytics: {
