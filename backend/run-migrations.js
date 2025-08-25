@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * Custom migration runner with better connection handling
+ * Improved: clearer error output, process exit code, and migration summary.
  */
 
 const knex = require('knex');
@@ -30,24 +31,26 @@ const config = {
 
 async function runMigrations() {
   const db = knex(config);
-  
+  let migrationError = null;
+
   try {
     console.log('🔄 Testing database connection...');
     await db.raw('SELECT 1');
     console.log('✅ Database connection successful');
-    
+
     console.log('🔄 Running migrations...');
     const [batchNo, migrations] = await db.migrate.latest();
-    
+
     if (migrations.length === 0) {
       console.log('✅ No new migrations to run');
     } else {
-      console.log(`✅ Batch ${batchNo} run: ${migrations.length} migrations`);
+      console.log(`✅ Batch ${batchNo} run: ${migrations.length} migration(s)`);
       migrations.forEach(migration => {
         console.log(`  - ${migration}`);
       });
     }
-    
+
+    // Table summary
     console.log('🔄 Checking table structure...');
     const tables = await db.raw(`
       SELECT table_name 
@@ -55,23 +58,35 @@ async function runMigrations() {
       WHERE table_schema = 'public'
       ORDER BY table_name
     `);
-    
-    console.log('✅ Database tables created:');
-    tables.rows.forEach(row => {
-      console.log(`  - ${row.table_name}`);
-    });
-    
+
+    if (tables.rows && tables.rows.length > 0) {
+      console.log('✅ Database tables present:');
+      tables.rows.forEach(row => {
+        console.log(`  - ${row.table_name}`);
+      });
+    } else {
+      console.warn('⚠️  No tables found in the public schema.');
+    }
+
   } catch (error) {
-    console.error('❌ Migration failed:', error.message);
-    throw error;
+    migrationError = error;
+    console.error('❌ Migration failed:', error && error.message ? error.message : error);
+    if (error && error.stack) {
+      console.error(error.stack);
+    }
   } finally {
     await db.destroy();
+    if (migrationError) process.exit(1);
   }
 }
 
 if (require.main === module) {
   runMigrations().catch(error => {
-    console.error('💥 Migration script failed:', error);
+    // Fallback for any unexpected promise rejection
+    console.error('💥 Migration script failed:', error && error.message ? error.message : error);
+    if (error && error.stack) {
+      console.error(error.stack);
+    }
     process.exit(1);
   });
 }
