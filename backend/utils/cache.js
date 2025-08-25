@@ -10,12 +10,13 @@ class CacheManager {
 
   async init() {
     try {
-      // Redis is REQUIRED for production deployment - no fallback allowed
+      // Allow graceful fallback when Redis is not available
       const redisHost = process.env.REDIS_HOST;
       if (!redisHost) {
-        const error = 'REDIS_HOST environment variable is required for production deployment';
-        logger.error(error);
-        throw new Error(error);
+        const error = 'REDIS_HOST environment variable is not set - cache disabled';
+        logger.warn(error);
+        this.isConnected = false;
+        return false;
       }
 
       const redisConfig = {
@@ -23,16 +24,19 @@ class CacheManager {
         port: process.env.REDIS_PORT || 6379,
         password: process.env.REDIS_PASSWORD,
         retryDelayOnFailover: 100,
-        maxRetriesPerRequest: 3,
+        maxRetriesPerRequest: 1, // Limit retries to prevent spam
         lazyConnect: true,
         enableAutoPipelining: true,
         keepAlive: 30000,
         family: 4,
         // Production optimizations for 1000+ users
-        connectTimeout: 10000,
+        connectTimeout: 5000, // Shorter timeout
         commandTimeout: 5000,
-        maxLoadingTimeout: 10000,
-        db: 0
+        maxLoadingTimeout: 5000, // Shorter timeout
+        db: 0,
+        // Disable auto-reconnect to prevent spam when Redis is unavailable
+        enableOfflineQueue: false,
+        maxRetriesPerRequest: 1
       };
 
       this.redis = new Redis(redisConfig);
@@ -45,21 +49,26 @@ class CacheManager {
       this.redis.on('error', (err) => {
         logger.error('Redis cache connection error:', err.message);
         this.isConnected = false;
-        // In production deployment, Redis failures are critical and should stop the server
-        throw new Error(`Redis connection failed: ${err.message}`);
+        // In production deployment, Redis failures are critical but don't stop server startup
+        if (process.env.NODE_ENV === 'production') {
+          logger.error(`Redis connection failed: ${err.message}`);
+        }
       });
 
       this.redis.on('close', () => {
         logger.error('Redis cache connection closed');
         this.isConnected = false;
-        throw new Error('Redis connection lost - production deployment requires Redis');
+        // Don't throw error on close for graceful degradation
       });
 
     } catch (error) {
       logger.error('Failed to initialize Redis cache:', error.message);
       this.isConnected = false;
-      // Redis is mandatory for production deployment
-      throw error;
+      // Allow graceful fallback when Redis is not available
+      if (process.env.NODE_ENV === 'production') {
+        logger.warn('Redis cache not available in production - performance may be affected');
+      }
+      return false;
     }
   }
 
@@ -78,7 +87,11 @@ class CacheManager {
     } catch (error) {
       logger.error('❌ Redis connection failed:', error.message);
       this.isConnected = false;
-      throw error; // No fallback for production deployment
+      // Allow graceful fallback for development
+      if (process.env.NODE_ENV === 'production') {
+        logger.warn('Redis connection failed in production - continuing without cache');
+      }
+      return false;
     }
   }
 

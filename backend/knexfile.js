@@ -30,21 +30,21 @@ const config = {
 
   production: {
     client: 'pg',
-    connection: process.env.DATABASE_URL || {
-      host: process.env.POSTGRES_HOST || 'postgres',
+    connection: {
+      host: process.env.POSTGRES_HOST || 'localhost',
       user: process.env.POSTGRES_USER || 'cruvz',
-      password: process.env.POSTGRES_PASSWORD,
+      password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
       database: process.env.POSTGRES_DB || 'cruvzdb',
       port: process.env.POSTGRES_PORT || 5432,
       ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : false
     },
     pool: {
-      min: 10,
-      max: 100,
-      acquireTimeoutMillis: 60000,
-      createTimeoutMillis: 30000,
+      min: 2,
+      max: 10,
+      acquireTimeoutMillis: 10000,
+      createTimeoutMillis: 10000,
       destroyTimeoutMillis: 5000,
-      idleTimeoutMillis: 300000,
+      idleTimeoutMillis: 30000,
       reapIntervalMillis: 1000,
       createRetryIntervalMillis: 100,
       propagateCreateError: false

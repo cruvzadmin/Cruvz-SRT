@@ -1,12 +1,16 @@
-// Test database using SQLite in-memory for quick testing
+// Test database using PostgreSQL for production-ready testing
 const knex = require('knex');
 
 const config = {
-  client: 'sqlite3',
+  client: 'pg',
   connection: {
-    filename: ':memory:'
+    host: process.env.POSTGRES_HOST || 'localhost',
+    user: process.env.POSTGRES_USER || 'cruvz',
+    password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
+    database: process.env.POSTGRES_TEST_DB || 'cruvzdb_test',
+    port: process.env.POSTGRES_PORT || 5432,
   },
-  useNullAsDefault: true
+  pool: { min: 1, max: 5 }
 };
 
 const db = knex(config);
@@ -35,8 +39,7 @@ class TestDB {
       table.string('name').notNullable();
       table.string('role').defaultTo('user');
       table.boolean('is_active').defaultTo(true);
-      table.timestamp('created_at').defaultTo(this.db.fn.now());
-      table.timestamp('updated_at').defaultTo(this.db.fn.now());
+      table.timestamps(true, true);
     });
 
     // Create streams table
@@ -51,8 +54,7 @@ class TestDB {
       table.integer('viewer_count').defaultTo(0);
       table.timestamp('started_at');
       table.timestamp('ended_at');
-      table.timestamp('created_at').defaultTo(this.db.fn.now());
-      table.timestamp('updated_at').defaultTo(this.db.fn.now());
+      table.timestamps(true, true);
     });
 
     // Create stream_analytics table
@@ -62,7 +64,7 @@ class TestDB {
       table.integer('viewer_count').defaultTo(0);
       table.decimal('bitrate', 10, 2);
       table.integer('duration_seconds');
-      table.timestamp('recorded_at').defaultTo(this.db.fn.now());
+      table.timestamps(true, true);
     });
 
     console.log('[INFO] ✅ Database tables created successfully');

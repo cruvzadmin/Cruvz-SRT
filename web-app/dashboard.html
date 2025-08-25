@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Dashboard - Cruvz Streaming Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1a202c;
+        }
+
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #1a202c;
+            color: white;
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid #2d3748;
+        }
+
+        .logo {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .nav-menu {
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .nav-item {
+            margin: 5px 0;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 12px 20px;
+            color: #cbd5e0;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: #2d3748;
+            color: #667eea;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .metric-title {
+            font-size: 0.9em;
+            color: #718096;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .metric-change {
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .metric-change.positive {
+            color: #38a169;
+        }
+
+        .metric-change.negative {
+            color: #e53e3e;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #1a202c;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .protocol-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .protocol-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .protocol-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .protocol-name {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: #c6f6d5;
+            color: #2f855a;
+        }
+
+        .status-inactive {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .protocol-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c53030;
+        }
+
+        .streams-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .streams-table th,
+        .streams-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .streams-table th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            min-width: 500px;
+            max-width: 90vw;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #718096;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.95em;
+            background: white;
+        }
+
+        .six-sigma-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .sigma-metric {
+            text-align: center;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .sigma-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #38a169;
+            margin-bottom: 8px;
+        }
+
+        .sigma-label {
+            font-size: 0.9em;
+            color: #718096;
+        }
+
+        .quality-chart {
+            height: 300px;
+            background: #f7fafc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #718096;
+            margin-top: 20px;
+        }
+
+        .loading {
+            color: #667eea;
+        }
+
+        .error {
+            color: #e53e3e;
+        }
+
+        .success {
+            color: #38a169;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .protocol-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">Cruvz Streaming</div>
+                <div style="font-size: 0.8em; color: #718096; margin-top: 5px;">Production Dashboard</div>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#overview" class="nav-link active" onclick="showSection('overview')">📊 Overview</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#streams" class="nav-link" onclick="showSection('streams')">🎥 Streams</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#protocols" class="nav-link" onclick="showSection('protocols')">📡 Protocols</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#transcoding" class="nav-link" onclick="showSection('transcoding')">⚙️ Transcoding</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#recording" class="nav-link" onclick="showSection('recording')">📹 Recording</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#publishing" class="nav-link" onclick="showSection('publishing')">📤 Publishing</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#analytics" class="nav-link" onclick="showSection('analytics')">📈 Analytics</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#six-sigma" class="nav-link" onclick="showSection('six-sigma')">🎯 Six Sigma</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#settings" class="nav-link" onclick="showSection('settings')">⚙️ Settings</a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="header">
+                <div>
+                    <h1 id="page-title">Production Overview</h1>
+                    <p style="color: #718096; margin-top: 5px;">Real-time streaming platform dashboard</p>
+                </div>
+                <div class="user-info">
+                    <span id="user-name">Loading...</span>
+                    <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                </div>
+            </div>
+
+            <!-- Overview Section -->
+            <div id="overview-section" class="section-content">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">Active Streams</span>
+                            <span style="color: #38a169;">●</span>
+                        </div>
+                        <div class="metric-value" id="active-streams">--</div>
+                        <div class="metric-change positive" id="streams-change">Loading...</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">Total Viewers</span>
+                            <span style="color: #667eea;">●</span>
+                        </div>
+                        <div class="metric-value" id="total-viewers">--</div>
+                        <div class="metric-change positive" id="viewers-change">Loading...</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">Avg Latency</span>
+                            <span style="color: #38a169;">●</span>
+                        </div>
+                        <div class="metric-value" id="avg-latency">--</div>
+                        <div class="metric-change positive">< 100ms target</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">System Health</span>
+                            <span style="color: #38a169;">●</span>
+                        </div>
+                        <div class="metric-value" id="system-health">--</div>
+                        <div class="metric-change positive">All systems operational</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">🏗️ Infrastructure Status</div>
+                    <div class="protocol-grid">
+                        <div class="protocol-card">
+                            <div class="protocol-header">
+                                <div class="protocol-name">Backend API</div>
+                                <span class="status-badge status-active" id="backend-status">Active</span>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="api-requests">--</div>
+                                    <div class="stat-label">Requests/min</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="api-latency">--</div>
+                                    <div class="stat-label">Response Time</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="protocol-card">
+                            <div class="protocol-header">
+                                <div class="protocol-name">Database</div>
+                                <span class="status-badge status-active" id="db-status">Connected</span>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="db-connections">--</div>
+                                    <div class="stat-label">Connections</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="db-queries">--</div>
+                                    <div class="stat-label">Queries/sec</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="protocol-card">
+                            <div class="protocol-header">
+                                <div class="protocol-name">Cache (Redis)</div>
+                                <span class="status-badge status-active" id="cache-status">Connected</span>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="cache-hits">--</div>
+                                    <div class="stat-label">Hit Rate</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="cache-memory">--</div>
+                                    <div class="stat-label">Memory Usage</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Streams Section -->
+            <div id="streams-section" class="section-content" style="display: none;">
+                <div class="section">
+                    <div class="section-title">
+                        🎥 Stream Management
+                        <button class="btn btn-primary" onclick="showCreateStreamModal()" style="margin-left: auto;">Create Stream</button>
+                    </div>
+                    <table class="streams-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Protocol</th>
+                                <th>Status</th>
+                                <th>Viewers</th>
+                                <th>Quality</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="streams-list">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: #718096;">Loading streams...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Protocols Section -->
+            <div id="protocols-section" class="section-content" style="display: none;">
+                <div class="section">
+                    <div class="section-title">📡 Streaming Protocols</div>
+                    <div class="protocol-grid">
+                        <div class="protocol-card">
+                            <div class="protocol-header">
+                                <div class="protocol-name">RTMP</div>
+                                <span class="status-badge status-active">Active</span>
+                            </div>
+                            <div style="margin: 16px 0; color: #718096;">
+                                Real-Time Messaging Protocol for live streaming
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="rtmp-streams">--</div>
+                                    <div class="stat-label">Active Streams</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="rtmp-bitrate">--</div>
+                                    <div class="stat-label">Avg Bitrate</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" onclick="configureProtocol('rtmp')">Configure</button>
+                        </div>
+                        <div class="protocol-card">
+                            <div class="protocol-header">
+                                <div class="protocol-name">WebRTC</div>
+                                <span class="status-badge status-active">Active</span>
+                            </div>
+                            <div style="margin: 16px 0; color: #718096;">
+                                Ultra-low latency browser-based streaming
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="webrtc-streams">--</div>
+                                    <div class="stat-label">Active Streams</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="webrtc-latency">--</div>
+                                    <div class="stat-label">Latency (ms)</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" onclick="configureProtocol('webrtc')">Configure</button>
+                        </div>
+                        <div class="protocol-card">
+                            <div class="protocol-header">
+                                <div class="protocol-name">SRT</div>
+                                <span class="status-badge status-active">Active</span>
+                            </div>
+                            <div style="margin: 16px 0; color: #718096;">
+                                Secure Reliable Transport for professional streaming
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="srt-streams">--</div>
+                                    <div class="stat-label">Active Streams</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="srt-quality">--</div>
+                                    <div class="stat-label">Quality Score</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" onclick="configureProtocol('srt')">Configure</button>
+                        </div>
+                        <div class="protocol-card">
+                            <div class="protocol-header">
+                                <div class="protocol-name">LL-HLS</div>
+                                <span class="status-badge status-active">Active</span>
+                            </div>
+                            <div style="margin: 16px 0; color: #718096;">
+                                Low-Latency HTTP Live Streaming
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="hls-streams">--</div>
+                                    <div class="stat-label">Active Streams</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="hls-segments">--</div>
+                                    <div class="stat-label">Segment Duration</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" onclick="configureProtocol('hls')">Configure</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Six Sigma Section -->
+            <div id="six-sigma-section" class="section-content" style="display: none;">
+                <div class="section">
+                    <div class="section-title">🎯 Six Sigma Quality Metrics</div>
+                    <div class="six-sigma-metrics">
+                        <div class="sigma-metric">
+                            <div class="sigma-value" id="sigma-level">--</div>
+                            <div class="sigma-label">Sigma Level</div>
+                        </div>
+                        <div class="sigma-metric">
+                            <div class="sigma-value" id="defect-rate">--</div>
+                            <div class="sigma-label">Defect Rate (PPM)</div>
+                        </div>
+                        <div class="sigma-metric">
+                            <div class="sigma-value" id="yield-rate">--</div>
+                            <div class="sigma-label">Process Yield (%)</div>
+                        </div>
+                        <div class="sigma-metric">
+                            <div class="sigma-value" id="capability-index">--</div>
+                            <div class="sigma-label">Capability Index</div>
+                        </div>
+                    </div>
+                    <div class="quality-chart" id="quality-chart">
+                        Quality metrics chart will load here
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other sections would be implemented similarly -->
+            <div id="transcoding-section" class="section-content" style="display: none;">
+                <div class="section">
+                    <div class="section-title">⚙️ Transcoding Engine</div>
+                    <p>Transcoding features coming soon...</p>
+                </div>
+            </div>
+
+            <div id="recording-section" class="section-content" style="display: none;">
+                <div class="section">
+                    <div class="section-title">📹 Recording Management</div>
+                    <p>Recording features coming soon...</p>
+                </div>
+            </div>
+
+            <div id="publishing-section" class="section-content" style="display: none;">
+                <div class="section">
+                    <div class="section-title">📤 Push Publishing</div>
+                    <p>Publishing features coming soon...</p>
+                </div>
+            </div>
+
+            <div id="analytics-section" class="section-content" style="display: none;">
+                <div class="section">
+                    <div class="section-title">📈 Advanced Analytics</div>
+                    <p>Analytics features coming soon...</p>
+                </div>
+            </div>
+
+            <div id="settings-section" class="section-content" style="display: none;">
+                <div class="section">
+                    <div class="section-title">⚙️ Platform Settings</div>
+                    <p>Settings features coming soon...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create Stream Modal -->
+    <div id="create-stream-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Create New Stream</div>
+                <button class="modal-close" onclick="hideCreateStreamModal()">&times;</button>
+            </div>
+            <form id="create-stream-form" onsubmit="createStream(event)">
+                <div class="form-group">
+                    <label class="form-label">Stream Title</label>
+                    <input type="text" class="form-input" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-input" name="description">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Protocol</label>
+                    <select class="form-select" name="protocol">
+                        <option value="rtmp">RTMP</option>
+                        <option value="webrtc">WebRTC</option>
+                        <option value="srt">SRT</option>
+                        <option value="hls">LL-HLS</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="hideCreateStreamModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Stream</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        let authToken = localStorage.getItem('authToken');
+        let currentSection = 'overview';
+
+        // API configuration
+        const API_BASE = window.location.origin + '/api';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthentication();
+            loadDashboardData();
+            setInterval(loadRealTimeData, 30000); // Update every 30 seconds
+        });
+
+        // Authentication check
+        async function checkAuthentication() {
+            if (!authToken) {
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.data;
+                    document.getElementById('user-name').textContent = `${currentUser.first_name} ${currentUser.last_name}`;
+                } else {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                localStorage.removeItem('authToken');
+                window.location.href = '/';
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            await Promise.all([
+                loadRealTimeData(),
+                loadStreams(),
+                loadSixSigmaMetrics()
+            ]);
+        }
+
+        // Load real-time data
+        async function loadRealTimeData() {
+            try {
+                const response = await fetch(`${API_BASE}/analytics/realtime`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const metrics = data.data;
+                    document.getElementById('active-streams').textContent = metrics.active_streams;
+                    document.getElementById('total-viewers').textContent = metrics.total_viewers.toLocaleString();
+                    document.getElementById('avg-latency').textContent = metrics.average_latency + 'ms';
+                    document.getElementById('system-health').textContent = '99.9%';
+
+                    // Update protocol stats
+                    updateProtocolStats(metrics);
+                }
+            } catch (error) {
+                console.error('Failed to load real-time data:', error);
+            }
+        }
+
+        // Update protocol statistics
+        function updateProtocolStats(metrics) {
+            // Simulate protocol-specific data
+            document.getElementById('rtmp-streams').textContent = '2';
+            document.getElementById('rtmp-bitrate').textContent = '4.2Mbps';
+            document.getElementById('webrtc-streams').textContent = '1';
+            document.getElementById('webrtc-latency').textContent = '45ms';
+            document.getElementById('srt-streams').textContent = '1';
+            document.getElementById('srt-quality').textContent = '98.5%';
+            document.getElementById('hls-streams').textContent = '3';
+            document.getElementById('hls-segments').textContent = '2s';
+
+            // Infrastructure stats
+            document.getElementById('api-requests').textContent = '1,240';
+            document.getElementById('api-latency').textContent = '45ms';
+            document.getElementById('db-connections').textContent = '15';
+            document.getElementById('db-queries').textContent = '890';
+            document.getElementById('cache-hits').textContent = '96.8%';
+            document.getElementById('cache-memory').textContent = '64MB';
+        }
+
+        // Load streams
+        async function loadStreams() {
+            try {
+                const response = await fetch(`${API_BASE}/streams`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    renderStreams(data.data.streams);
+                }
+            } catch (error) {
+                console.error('Failed to load streams:', error);
+                document.getElementById('streams-list').innerHTML = 
+                    '<tr><td colspan="6" style="text-align: center; color: #e53e3e;">Failed to load streams</td></tr>';
+            }
+        }
+
+        // Render streams table
+        function renderStreams(streams) {
+            const tbody = document.getElementById('streams-list');
+            
+            if (streams.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #718096;">No streams found. Create your first stream!</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = streams.map(stream => `
+                <tr>
+                    <td><strong>${stream.title}</strong><br><small style="color: #718096;">${stream.description || 'No description'}</small></td>
+                    <td><span class="status-badge status-active">${stream.protocol.toUpperCase()}</span></td>
+                    <td><span class="status-badge ${stream.status === 'active' ? 'status-active' : 'status-inactive'}">${stream.status}</span></td>
+                    <td>${stream.viewer_count || 0}</td>
+                    <td>1080p</td>
+                    <td>
+                        ${stream.status === 'active' ? 
+                            `<button class="btn btn-danger" onclick="stopStream(${stream.id})">Stop</button>` :
+                            `<button class="btn btn-primary" onclick="startStream(${stream.id})">Start</button>`
+                        }
+                        <button class="btn btn-secondary" onclick="editStream(${stream.id})">Edit</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Load Six Sigma metrics
+        async function loadSixSigmaMetrics() {
+            try {
+                const response = await fetch(`${API_BASE}/six-sigma/metrics`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const metrics = data.data.metrics;
+                    document.getElementById('sigma-level').textContent = metrics.sigma_level.toFixed(1) + 'σ';
+                    document.getElementById('defect-rate').textContent = (metrics.defect_rate * 1000000).toFixed(1);
+                    document.getElementById('yield-rate').textContent = metrics.yield.toFixed(4) + '%';
+                    document.getElementById('capability-index').textContent = metrics.process_capability.toFixed(2);
+                }
+            } catch (error) {
+                console.error('Failed to load Six Sigma metrics:', error);
+            }
+        }
+
+        // Navigation functions
+        function showSection(sectionName) {
+            // Hide all sections
+            document.querySelectorAll('.section-content').forEach(section => {
+                section.style.display = 'none';
+            });
+
+            // Remove active class from all nav links
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Show selected section
+            document.getElementById(sectionName + '-section').style.display = 'block';
+            
+            // Add active class to selected nav link
+            document.querySelector(`[onclick="showSection('${sectionName}')"]`).classList.add('active');
+
+            // Update page title
+            const titles = {
+                'overview': 'Production Overview',
+                'streams': 'Stream Management',
+                'protocols': 'Streaming Protocols',
+                'transcoding': 'Transcoding Engine',
+                'recording': 'Recording Management', 
+                'publishing': 'Push Publishing',
+                'analytics': 'Advanced Analytics',
+                'six-sigma': 'Six Sigma Quality',
+                'settings': 'Platform Settings'
+            };
+            document.getElementById('page-title').textContent = titles[sectionName] || 'Dashboard';
+            
+            currentSection = sectionName;
+        }
+
+        // Stream management functions
+        function showCreateStreamModal() {
+            document.getElementById('create-stream-modal').style.display = 'block';
+        }
+
+        function hideCreateStreamModal() {
+            document.getElementById('create-stream-modal').style.display = 'none';
+            document.getElementById('create-stream-form').reset();
+        }
+
+        async function createStream(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const streamData = {
+                title: formData.get('title'),
+                description: formData.get('description'),
+                protocol: formData.get('protocol')
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/streams`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(streamData)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    hideCreateStreamModal();
+                    loadStreams();
+                    alert('Stream created successfully!');
+                } else {
+                    alert('Failed to create stream: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error creating stream:', error);
+                alert('Failed to create stream');
+            }
+        }
+
+        async function startStream(streamId) {
+            try {
+                const response = await fetch(`${API_BASE}/streams/${streamId}/start`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    loadStreams();
+                    loadRealTimeData();
+                    alert('Stream started successfully!');
+                } else {
+                    alert('Failed to start stream: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error starting stream:', error);
+                alert('Failed to start stream');
+            }
+        }
+
+        async function stopStream(streamId) {
+            try {
+                const response = await fetch(`${API_BASE}/streams/${streamId}/stop`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    loadStreams();
+                    loadRealTimeData();
+                    alert('Stream stopped successfully!');
+                } else {
+                    alert('Failed to stop stream: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error stopping stream:', error);
+                alert('Failed to stop stream');
+            }
+        }
+
+        function editStream(streamId) {
+            alert('Edit stream functionality coming soon!');
+        }
+
+        function configureProtocol(protocol) {
+            alert(`${protocol.toUpperCase()} configuration coming soon!`);
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.href = '/';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('create-stream-modal');
+            if (event.target === modal) {
+                hideCreateStreamModal();
+            }
+        }
+    </script>
+</body>
+</html>

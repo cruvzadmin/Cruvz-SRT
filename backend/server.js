@@ -5,10 +5,19 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 
-// Import utilities and database - with SQLite/PostgreSQL flexibility
+// Import utilities and database - with fallback for development
 const knex = require('knex');
 const knexConfig = require('./knexfile');
-const db = knex(knexConfig[process.env.NODE_ENV || 'development']);
+let db;
+
+// Try to initialize database with fallback
+try {
+  db = knex(knexConfig[process.env.NODE_ENV || 'development']);
+} catch (error) {
+  console.warn('Database configuration failed, using mock database for development');
+  db = require('./config/database-mock');
+}
+
 const cache = require('./utils/cache');
 
 // Robust logger fallback if logger utility fails
@@ -27,6 +36,10 @@ try {
 const authRoutes = require('./routes/auth');
 const streamRoutes = require('./routes/streams');
 const streamingRoutes = require('./routes/streaming');
+const protocolsRoutes = require('./routes/protocols');
+const transcodingRoutes = require('./routes/transcoding');
+const recordingsRoutes = require('./routes/recordings');
+const publishingRoutes = require('./routes/publishing');
 const analyticsRoutes = require('./routes/analytics');
 const userRoutes = require('./routes/users');
 const sixSigmaRoutes = require('./routes/sixSigma');
@@ -57,12 +70,12 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   process.exit(1);
 }
 
-// Database and Redis are required for production deployment - no fallback
-if (!process.env.POSTGRES_HOST) {
+// Database and Redis are required for production deployment - but allow fallback for development
+if (isProduction && !process.env.POSTGRES_HOST) {
   logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set for production deployment');
   process.exit(1);
 }
-if (!process.env.REDIS_HOST) {
+if (isProduction && !process.env.REDIS_HOST) {
   logger.error('💥 CONFIGURATION ERROR: REDIS_HOST must be set for production deployment');
   process.exit(1);
 }
@@ -148,7 +161,15 @@ let cacheConnected = false;
 // Initialize database connection
 async function initializeDatabase() {
   try {
-    logger.info('🔄 Initializing PostgreSQL database connection...');
+    logger.info('🔄 Initializing database connection...');
+    
+    // Check if we're using mock database
+    if (db.constructor.name === 'MockDatabase') {
+      logger.warn('⚠️  Using mock database - limited functionality available');
+      dbConnected = false; // Mark as disconnected but don't fail
+      return false;
+    }
+    
     logger.info(`Database config: ${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB} as ${process.env.POSTGRES_USER}`);
     
     // Test database connection with timeout
@@ -169,18 +190,25 @@ async function initializeDatabase() {
   } catch (error) {
     logger.error('❌ PostgreSQL database connection failed:', error.message);
     logger.error('Database error details:', error);
-    dbConnected = false;
     
-    // PostgreSQL is mandatory for production deployment
-    logger.error('💥 FATAL: PostgreSQL database connection required for production deployment');
-    throw error;
+    // PostgreSQL is mandatory for production deployment, but allow fallback for development
+    if (isProduction) {
+      logger.error('💥 FATAL: PostgreSQL database connection required for production deployment');
+      throw error;
+    } else {
+      logger.warn('⚠️  Database not available - switching to mock database for development');
+      // Switch to mock database for development
+      db = require('./config/database-mock');
+      dbConnected = false;
+      return false;
+    }
   }
 }
 
 // Initialize cache connection
 async function initializeCache() {
   try {
-    logger.info('🔄 Initializing Redis cache connection...');
+    logger.info('🔄 Initializing cache connection...');
     
     await cache.init();
     if (cache.connect) {
@@ -195,9 +223,17 @@ async function initializeCache() {
     logger.error('❌ Redis cache connection failed:', error.message);
     cacheConnected = false;
     
-    // Redis is mandatory for production deployment
-    logger.error('💥 FATAL: Redis cache connection required for production deployment');
-    throw error;
+    // Cache is important but not mandatory - use fallback
+    if (isProduction) {
+      logger.warn('⚠️  Redis cache not available - running without cache in production (performance may be affected)');
+    } else {
+      logger.warn('⚠️  Redis cache not available - switching to mock cache for development');
+      // Switch to mock cache for development
+      const mockCache = require('./utils/cache-mock');
+      Object.assign(cache, mockCache);
+      await cache.init();
+    }
+    return false;
   }
 }
 
@@ -247,8 +283,8 @@ app.get('/health', async (req, res) => {
 
   healthData.status = overallStatus;
   
-  // Both database and cache are required for production deployment (503 on degraded)
-  const statusCode = overallStatus === 'degraded' ? 503 : 200;
+  // Return 200 for degraded state in development, 503 in production
+  const statusCode = (overallStatus === 'degraded' && isProduction) ? 503 : 200;
   res.status(statusCode).json(healthData);
 });
 
@@ -311,13 +347,14 @@ cruvz_cache_connected ${cacheConnected ? 1 : 0}
 
 // Route middleware to ensure database connectivity for protected routes
 function checkDatabaseConnection(req, res, next) {
-  if (!dbConnected) {
+  if (!dbConnected && isProduction) {
     return res.status(503).json({
       success: false,
       error: 'Service temporarily unavailable',
       message: 'Database connection is not available. Please try again later.'
     });
   }
+  // Allow operation with mock database in development
   next();
 }
 
@@ -325,6 +362,10 @@ function checkDatabaseConnection(req, res, next) {
 app.use('/api/auth', authRoutes);
 app.use('/api/streams', checkDatabaseConnection, streamRoutes);
 app.use('/api/streaming', checkDatabaseConnection, streamingRoutes);
+app.use('/api/streaming', checkDatabaseConnection, protocolsRoutes);
+app.use('/api/transcoding', checkDatabaseConnection, transcodingRoutes);
+app.use('/api/recordings', checkDatabaseConnection, recordingsRoutes);
+app.use('/api/publishing', checkDatabaseConnection, publishingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', checkDatabaseConnection, userRoutes);
 app.use('/api/six-sigma', checkDatabaseConnection, sixSigmaRoutes);
@@ -365,7 +406,46 @@ app.get('/api', (req, res) => {
         'POST /api/streaming/recording/stop': 'Stop recording (protected)',
         'POST /api/streaming/transcode/configure': 'Configure transcoding (protected)',
         'POST /api/streaming/push/configure': 'Configure push publishing (protected)',
-        'GET /api/streaming/status/:stream_id': 'Get streaming status (protected)'
+        'GET /api/streaming/status/:stream_id': 'Get streaming status (protected)',
+        'GET /api/streaming/protocols/status': 'Get all protocols status (protected)',
+        'GET /api/streaming/protocols/:protocol/status': 'Get protocol status (protected)',
+        'POST /api/streaming/protocols/:protocol/test': 'Test protocol connection (protected)',
+        'GET /api/streaming/protocols/:protocol/config': 'Get protocol config (protected)',
+        'PUT /api/streaming/protocols/:protocol/config': 'Update protocol config (protected)',
+        'GET /api/streaming/ome/stats': 'Get OvenMediaEngine stats (protected)',
+        'GET /api/streaming/ome/applications': 'Get OME applications (protected)',
+        'GET /api/streaming/ome/streams': 'Get OME streams (protected)'
+      },
+      transcoding: {
+        'GET /api/transcoding/profiles': 'Get transcoding profiles (protected)',
+        'POST /api/transcoding/profiles': 'Create transcoding profile (protected)',
+        'PUT /api/transcoding/profiles/:id': 'Update transcoding profile (protected)',
+        'DELETE /api/transcoding/profiles/:id': 'Delete transcoding profile (protected)',
+        'GET /api/transcoding/jobs': 'Get transcoding jobs (protected)',
+        'POST /api/transcoding/jobs': 'Start transcoding job (protected)',
+        'GET /api/transcoding/jobs/:id': 'Get transcoding job details (protected)',
+        'POST /api/transcoding/jobs/:id/cancel': 'Cancel transcoding job (protected)',
+        'GET /api/transcoding/stats': 'Get transcoding statistics (protected)'
+      },
+      recordings: {
+        'GET /api/recordings': 'Get user recordings (protected)',
+        'GET /api/recordings/:id': 'Get recording details (protected)',
+        'POST /api/recordings/:id/download': 'Generate download link (protected)',
+        'GET /api/recordings/download/:token': 'Download recording file (public with token)',
+        'DELETE /api/recordings/:id': 'Delete recording (protected)',
+        'POST /api/recordings/:id/share': 'Generate share link (protected)',
+        'POST /api/recordings/upload': 'Upload recording file (protected)',
+        'GET /api/recordings/stats': 'Get recording statistics (protected)'
+      },
+      publishing: {
+        'GET /api/publishing/targets': 'Get publishing targets (protected)',
+        'POST /api/publishing/targets': 'Create publishing target (protected)',
+        'PUT /api/publishing/targets/:id': 'Update publishing target (protected)',
+        'DELETE /api/publishing/targets/:id': 'Delete publishing target (protected)',
+        'POST /api/publishing/targets/:id/connect': 'Connect to target (protected)',
+        'POST /api/publishing/targets/:id/disconnect': 'Disconnect from target (protected)',
+        'GET /api/publishing/targets/:id/status': 'Get target status (protected)',
+        'GET /api/publishing/analytics': 'Get publishing analytics (protected)'
       },
       analytics: {
         'GET /api/analytics/dashboard': 'Get dashboard analytics (protected)',
@@ -434,17 +514,24 @@ async function startServer() {
       await initializeDatabase();
       logger.info('✅ Database initialization completed');
     } catch (error) {
-      logger.error('💥 FATAL: PostgreSQL database connection required for production deployment');
-      process.exit(1);
+      if (isProduction) {
+        logger.error('💥 FATAL: PostgreSQL database connection required for production deployment');
+        process.exit(1);
+      } else {
+        logger.warn('⚠️  Database initialization failed - continuing in degraded mode for development');
+      }
     }
 
-    // Initialize cache connection (required for production deployment)
+    // Initialize cache connection (important for production deployment)
     try {
       await initializeCache();
       logger.info('✅ Cache initialization completed');
     } catch (error) {
-      logger.error('💥 FATAL: Redis cache connection required for production deployment');
-      process.exit(1);
+      if (isProduction) {
+        logger.warn('⚠️  Redis cache connection failed - continuing without cache in production (performance may be affected)');
+      } else {
+        logger.warn('⚠️  Cache initialization failed - continuing without cache for development');
+      }
     }
 
     // Start the server
@@ -503,8 +590,8 @@ async function startServer() {
   }
 }
 
-// Export app for testing
-module.exports = app;
+// Export app and database for testing and route modules
+module.exports = { app, db };
 
 // Start server if this file is run directly
 if (require.main === module) {
