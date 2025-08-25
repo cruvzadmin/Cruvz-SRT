@@ -204,6 +204,7 @@ async function initializeCache() {
 // Health check endpoint
 app.get('/health', async (req, res) => {
   const healthData = {
+    success: true,
     status: 'healthy',
     service: 'cruvz-streaming-api',
     timestamp: new Date().toISOString(),

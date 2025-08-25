@@ -251,7 +251,7 @@ router.get('/:id', auth, async (req, res) => {
     // Get latest analytics
     const analytics = await db('stream_analytics')
       .where({ stream_id: stream.id })
-      .orderBy('recorded_at', 'desc')
+      .orderBy('created_at', 'desc')
       .first();
 
     res.json({
