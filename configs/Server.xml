@@ -37,15 +37,13 @@
 
 	<!-- Settings for the ports to bind -->
 	<Bind>
-		<!-- Disable API Server to avoid AccessToken configuration issues -->
-		<!--
+		<!-- Enable API Server for production monitoring -->
 		<Managers>
 			<API>
 				<Port>${env:OME_API_PORT:8080}</Port>
 				<WorkerCount>1</WorkerCount>
 			</API>
 		</Managers>
-		-->
 		<Providers>
 			<!-- Pull providers -->
 			<RTSPC>
