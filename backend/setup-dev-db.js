@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Development database setup script
- * Creates SQLite database with all required tables
+ * Creates PostgreSQL database with all required tables (NO SQLite support)
  */
 
 const { v4: uuidv4 } = require('uuid');
@@ -15,17 +15,9 @@ const knexConfig = require('./knexfile');
 const knex = require('knex')(knexConfig[process.env.NODE_ENV || 'development']);
 
 async function setupDatabase() {
-  console.log('🚀 Setting up development database...');
+  console.log('🚀 Setting up development database with PostgreSQL...');
   
   try {
-    // Remove existing database file if it exists
-    const dbPath = path.join(__dirname, 'dev-database.sqlite');
-    if (fs.existsSync(dbPath)) {
-      fs.unlinkSync(dbPath);
-      console.log('✨ Removed existing database');
-    }
-
-    // Create all tables manually
     console.log('📋 Creating database tables...');
     
     // Users table
