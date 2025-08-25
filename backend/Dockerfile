@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package*.json ./
 
 # Install dependencies (use npm ci if lockfile exists for reproducibility)
-RUN if [ -f package-lock.json ]; then npm ci --only=production --timeout=300000; else npm install --only=production --timeout=300000; fi
+RUN if [ -f package-lock.json ]; then npm ci --omit=dev --timeout=300000; else npm install --production --timeout=300000; fi
 
 # Copy application source and configuration
 COPY . .
