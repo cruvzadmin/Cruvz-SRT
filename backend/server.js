@@ -57,23 +57,14 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   process.exit(1);
 }
 
-// Database and Redis are required for production, but allow graceful degradation in development
-if (isProduction) {
-  if (!process.env.POSTGRES_HOST) {
-    logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set for production-ready streaming platform');
-    process.exit(1);
-  }
-  if (!process.env.REDIS_HOST) {
-    logger.error('💥 CONFIGURATION ERROR: REDIS_HOST must be set for production-ready streaming platform');
-    process.exit(1);
-  }
-} else {
-  if (!process.env.POSTGRES_HOST) {
-    logger.warn('⚠️  POSTGRES_HOST not set - some features will be limited in development mode');
-  }
-  if (!process.env.REDIS_HOST) {
-    logger.warn('⚠️  REDIS_HOST not set - caching will be disabled in development mode');
-  }
+// Database and Redis are required for production deployment - no fallback
+if (!process.env.POSTGRES_HOST) {
+  logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set for production deployment');
+  process.exit(1);
+}
+if (!process.env.REDIS_HOST) {
+  logger.error('💥 CONFIGURATION ERROR: REDIS_HOST must be set for production deployment');
+  process.exit(1);
 }
 
 // Production security middleware
@@ -180,13 +171,9 @@ async function initializeDatabase() {
     logger.error('Database error details:', error);
     dbConnected = false;
     
-    if (isProduction) {
-      logger.error('💥 FATAL: PostgreSQL database connection required for production-ready streaming platform');
-      throw error;
-    } else {
-      logger.warn('⚠️  Database unavailable in development mode - some features will be limited');
-      return false;
-    }
+    // PostgreSQL is mandatory for production deployment
+    logger.error('💥 FATAL: PostgreSQL database connection required for production deployment');
+    throw error;
   }
 }
 
@@ -208,13 +195,9 @@ async function initializeCache() {
     logger.error('❌ Redis cache connection failed:', error.message);
     cacheConnected = false;
     
-    if (isProduction) {
-      logger.error('💥 FATAL: Redis cache connection required for production-ready streaming platform');
-      throw error;
-    } else {
-      logger.warn('⚠️  Cache unavailable in development mode - caching will be disabled');
-      return false;
-    }
+    // Redis is mandatory for production deployment
+    logger.error('💥 FATAL: Redis cache connection required for production deployment');
+    throw error;
   }
 }
 
@@ -249,34 +232,22 @@ app.get('/health', async (req, res) => {
     if (cacheConnected && cache.isConnected) {
       const pingResult = await cache.ping();
       healthData.cache = { connected: pingResult, type: 'redis' };
-      if (!pingResult && isProduction) {
+      if (!pingResult) {
         overallStatus = 'degraded';
       }
     } else {
       healthData.cache = { connected: false, type: 'redis', error: 'No connection' };
-      // Only mark as degraded if in production - development can work without Redis
-      if (isProduction) {
-        overallStatus = 'degraded';
-      }
+      overallStatus = 'degraded';
     }
   } catch (error) {
     healthData.cache = { connected: false, type: 'redis', error: error.message };
-    // Only mark as degraded if in production - development can work without Redis
-    if (isProduction) {
-      overallStatus = 'degraded';
-    }
-  }
-
-  // In development mode, if database is connected, system is healthy regardless of cache
-  if (!isProduction && healthData.database.connected) {
-    overallStatus = 'healthy';
+    overallStatus = 'degraded';
   }
 
   healthData.status = overallStatus;
   
-  // In production, both database and cache are required (503 on degraded)
-  // In development, allow degraded state with 200 status for development workflow
-  const statusCode = (overallStatus === 'degraded' && isProduction) ? 503 : 200;
+  // Both database and cache are required for production deployment (503 on degraded)
+  const statusCode = overallStatus === 'degraded' ? 503 : 200;
   res.status(statusCode).json(healthData);
 });
 
@@ -457,30 +428,22 @@ app.use((error, req, res, next) => {
 // Server startup function
 async function startServer() {
   try {
-    // Initialize database connection (required for production-ready platform)
+    // Initialize database connection (required for production deployment)
     try {
       await initializeDatabase();
       logger.info('✅ Database initialization completed');
     } catch (error) {
-      if (isProduction) {
-        logger.error('💥 FATAL: PostgreSQL database connection required for production-ready streaming platform');
-        process.exit(1);
-      } else {
-        logger.warn('⚠️  Database initialization failed - continuing in limited mode');
-      }
+      logger.error('💥 FATAL: PostgreSQL database connection required for production deployment');
+      process.exit(1);
     }
 
-    // Initialize cache connection (required for production-ready platform)
+    // Initialize cache connection (required for production deployment)
     try {
       await initializeCache();
       logger.info('✅ Cache initialization completed');
     } catch (error) {
-      if (isProduction) {
-        logger.error('💥 FATAL: Redis cache connection required for production-ready streaming platform');
-        process.exit(1);
-      } else {
-        logger.warn('⚠️  Cache initialization failed - continuing without caching');
-      }
+      logger.error('💥 FATAL: Redis cache connection required for production deployment');
+      process.exit(1);
     }
 
     // Start the server

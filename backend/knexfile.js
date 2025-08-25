@@ -1,54 +1,9 @@
-// Production-ready Knex configuration - PostgreSQL for production, SQLite fallback for dev
+// Production-ready Knex configuration - PostgreSQL ONLY (no fallbacks)
 require('dotenv').config({ path: '../.env' });
 
-// Helper function to test PostgreSQL connectivity
-async function testPostgreSQLConnection() {
-  try {
-    const { Pool } = require('pg');
-    const pool = new Pool({
-      host: process.env.POSTGRES_HOST || 'localhost',
-      user: process.env.POSTGRES_USER || 'cruvz',
-      password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
-      database: process.env.POSTGRES_DB || 'cruvzdb',
-      port: process.env.POSTGRES_PORT || 5432,
-      connectionTimeoutMillis: 5000
-    });
-    
-    const client = await pool.connect();
-    await client.release();
-    await pool.end();
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-// Determine if we should use PostgreSQL or SQLite fallback
-const USE_SQLITE_FALLBACK = process.env.FORCE_SQLITE === 'true' || process.env.NODE_ENV === 'development';
-
 const config = {
-  development: USE_SQLITE_FALLBACK ? {
-    // SQLite fallback for development when PostgreSQL is not available
-    client: 'sqlite3',
-    connection: {
-      filename: './dev-database.sqlite'
-    },
-    useNullAsDefault: true,
-    migrations: {
-      directory: './scripts/migrations'
-    },
-    seeds: {
-      directory: './scripts/seeds'
-    },
-    pool: { 
-      min: 1, 
-      max: 5,
-      afterCreate: (conn, cb) => {
-        conn.run('PRAGMA foreign_keys = ON', cb);
-      }
-    }
-  } : {
-    // PostgreSQL for production-like development
+  development: {
+    // PostgreSQL for all environments - no SQLite fallback
     client: 'pg',
     connection: {
       host: process.env.POSTGRES_HOST || 'localhost',
