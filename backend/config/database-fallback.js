@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Production-grade database configuration (PostgreSQL ONLY, NO fallback/support for SQLite)
-const isProduction = process.env.NODE_ENV === 'production';
+const _isProduction = process.env.NODE_ENV === 'production';
 
 // Ensure directories exist (for logs/data)
 // Changed from '../../data' to '../data' to avoid EACCES error in Docker

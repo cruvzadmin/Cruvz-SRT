@@ -8,22 +8,22 @@ console.log('JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRE
 
 try {
   console.log('Testing database import...');
-  const db = require('./config/database');
+  const _db = require('./config/database');
   console.log('✅ Database module loaded');
   
   console.log('Testing logger import...');
-  const logger = require('./utils/logger');
+  const _logger = require('./utils/logger');
   console.log('✅ Logger module loaded');
   
   console.log('Testing cache import...');
-  const cache = require('./utils/cache');
+  const _cache = require('./utils/cache');
   console.log('✅ Cache module loaded');
   
   console.log('Testing route imports...');
-  const authRoutes = require('./routes/auth');
+  const _authRoutes = require('./routes/auth');
   console.log('✅ Auth routes loaded');
   
-  const streamRoutes = require('./routes/streams');
+  const _streamRoutes = require('./routes/streams');
   console.log('✅ Stream routes loaded');
   
   console.log('All modules loaded successfully. Starting simplified server...');

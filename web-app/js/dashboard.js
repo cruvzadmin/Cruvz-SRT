@@ -688,7 +688,96 @@ function updateProtocolHelpText(protocol) {
 
 async function handleCreateStream(e) {
     e.preventDefault();
-    // Should implement modal create stream logic
+    showCreateStreamModal();
+}
+
+function showCreateStreamModal() {
+    const modalHTML = `
+        <div class="modal active" id="createStreamModal">
+            <div class="modal-overlay" onclick="hideCreateStreamModal()"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Create New Stream</h3>
+                    <button class="modal-close" onclick="hideCreateStreamModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="createStreamForm">
+                        <div class="form-group">
+                            <label for="createStreamTitle">Title *</label>
+                            <input type="text" id="createStreamTitle" required maxlength="200" placeholder="Enter stream title">
+                        </div>
+                        <div class="form-group">
+                            <label for="createStreamDescription">Description</label>
+                            <textarea id="createStreamDescription" rows="3" maxlength="1000" placeholder="Enter stream description (optional)"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="createStreamProtocol">Protocol *</label>
+                            <select id="createStreamProtocol" required>
+                                <option value="rtmp">RTMP (Recommended)</option>
+                                <option value="srt">SRT (Low Latency)</option>
+                                <option value="webrtc">WebRTC (Real-time)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="createMaxViewers">Max Viewers</label>
+                            <input type="number" id="createMaxViewers" value="1000" min="1" max="100000">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="createIsRecording"> 
+                                Enable Recording
+                            </label>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-outline" onclick="hideCreateStreamModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Create Stream</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    document.getElementById('createStreamForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await createNewStream();
+    });
+}
+
+function hideCreateStreamModal() {
+    const modal = document.getElementById('createStreamModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function createNewStream() {
+    try {
+        const formData = {
+            title: document.getElementById('createStreamTitle').value,
+            description: document.getElementById('createStreamDescription').value,
+            protocol: document.getElementById('createStreamProtocol').value,
+            max_viewers: parseInt(document.getElementById('createMaxViewers').value),
+            is_recording: document.getElementById('createIsRecording').checked
+        };
+
+        const response = await apiRequest('/streams', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+
+        if (response.success) {
+            showNotification('Stream created successfully!', 'success');
+            hideCreateStreamModal();
+            loadStreams(); // Refresh streams list
+        }
+    } catch (error) {
+        console.error('Failed to create stream:', error);
+        showNotification('Failed to create stream. Please try again.', 'error');
+    }
 }
 
 async function handleMainCreateStream(e) {
