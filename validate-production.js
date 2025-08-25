@@ -187,9 +187,10 @@ async function testAuthentication() {
   log('INFO', '🔐 Testing Authentication...');
   
   let userToken = null;
+  let testUser = null;
   
   await runTest('authentication', 'user_registration', async () => {
-    const testUser = {
+    testUser = {
       first_name: 'Validation',
       last_name: 'Test', 
       email: `test-${Date.now()}@cruvz.com`,
@@ -210,10 +211,14 @@ async function testAuthentication() {
   });
 
   await runTest('authentication', 'user_login', async () => {
+    if (!testUser) {
+      return { success: false, message: 'No test user available from registration' };
+    }
+    
     const response = await makeRequest(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'demo@cruvzstreaming.com', password: 'demo123!' })
+      body: JSON.stringify({ email: testUser.email, password: testUser.password })
     });
     
     if (response.status === 200 && response.data.success && response.data.data.token) {

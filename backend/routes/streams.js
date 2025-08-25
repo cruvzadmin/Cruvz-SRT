@@ -1,9 +1,7 @@
 const express = require('express');
 const Joi = require('joi');
 const { v4: uuidv4 } = require('uuid');
-const knex = require('knex');
-const knexConfig = require('../knexfile');
-const db = knex(knexConfig[process.env.NODE_ENV || 'development']);
+const { db } = require('../config/database-service');
 const cache = require('../utils/cache');
 const { auth } = require('../middleware/auth');
 const logger = require('../utils/logger');
@@ -152,7 +150,13 @@ router.get('/', auth, async (req, res) => {
     const cacheKey = `user_streams:${req.user.id}:${page}:${limit}:${status || 'all'}:${protocol || 'all'}`;
 
     // Try to get from cache first
-    const cachedData = await cache.get(cacheKey);
+    let cachedData = null;
+    try {
+      cachedData = await cache.get(cacheKey);
+    } catch (error) {
+      logger.warn('Cache get error:', error.message);
+    }
+    
     if (cachedData) {
       return res.json({
         success: true,
@@ -181,7 +185,12 @@ router.get('/', auth, async (req, res) => {
     // Get real-time viewer counts from cache
     for (const stream of streams) {
       if (stream.status === 'active') {
-        stream.current_viewers = await cache.getViewerCount(stream.id);
+        try {
+          stream.current_viewers = await cache.getViewerCount(stream.id);
+        } catch (error) {
+          logger.warn('Cache getViewerCount error:', error.message);
+          stream.current_viewers = 0;
+        }
       }
       
       // Add streaming URLs
@@ -214,7 +223,11 @@ router.get('/', auth, async (req, res) => {
     };
 
     // Cache the result for 30 seconds
-    await cache.set(cacheKey, responseData, 30);
+    try {
+      await cache.set(cacheKey, responseData, 30);
+    } catch (error) {
+      logger.warn('Cache set error:', error.message);
+    }
 
     res.json({
       success: true,
