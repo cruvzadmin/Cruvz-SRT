@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
-const db = require('../config/database-fallback');
+const knex = require('knex');
+const knexConfig = require('../knexfile');
+const db = knex(knexConfig[process.env.NODE_ENV || 'development']);
 const logger = require('../utils/logger');
 
 const auth = async (req, res, next) => {

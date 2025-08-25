@@ -5,8 +5,10 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 
-// Import utilities and database - PostgreSQL ONLY for production
-const db = require('./config/database');
+// Import utilities and database - with SQLite/PostgreSQL flexibility
+const knex = require('knex');
+const knexConfig = require('./knexfile');
+const db = knex(knexConfig[process.env.NODE_ENV || 'development']);
 const cache = require('./utils/cache');
 
 // Robust logger fallback if logger utility fails
@@ -28,6 +30,7 @@ const streamingRoutes = require('./routes/streaming');
 const analyticsRoutes = require('./routes/analytics');
 const userRoutes = require('./routes/users');
 const sixSigmaRoutes = require('./routes/sixSigma');
+const apiRoutes = require('./routes/api');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -51,11 +54,11 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   process.exit(1);
 }
 if (!process.env.POSTGRES_HOST) {
-  logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set');
+  logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set for production-ready streaming platform');
   process.exit(1);
 }
 if (!process.env.REDIS_HOST) {
-  logger.error('💥 CONFIGURATION ERROR: REDIS_HOST must be set');
+  logger.error('💥 CONFIGURATION ERROR: REDIS_HOST must be set for production-ready streaming platform');
   process.exit(1);
 }
 
@@ -140,15 +143,11 @@ let cacheConnected = false;
 // Initialize database connection
 async function initializeDatabase() {
   try {
-    const usePostgres = process.env.USE_POSTGRES === 'true';
-    const dbType = usePostgres ? 'PostgreSQL' : 'SQLite';
-    logger.info(`🔄 Initializing ${dbType} database connection...`);
-    if (usePostgres) {
-      logger.info(`Database config: ${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB} as ${process.env.POSTGRES_USER}`);
-    }
+    logger.info('🔄 Initializing PostgreSQL database connection...');
+    logger.info(`Database config: ${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB} as ${process.env.POSTGRES_USER}`);
     
     // Test database connection with timeout
-    const testQuery = db.raw('SELECT 1 as test').timeout(3000);
+    const testQuery = db.raw('SELECT 1 as test').timeout(5000);
     const result = await testQuery;
     logger.info(`✅ Database test query successful`);
     
@@ -160,28 +159,22 @@ async function initializeDatabase() {
     }
     
     dbConnected = true;
-    logger.info(`✅ ${dbType} database connected successfully`);
+    logger.info(`✅ PostgreSQL database connected successfully`);
     return true;
   } catch (error) {
-    logger.error(`❌ Database connection failed:`, error.message);
+    logger.error(`❌ PostgreSQL database connection failed:`, error.message);
     logger.error(`Database error details:`, error);
     dbConnected = false;
     
-    if (process.env.NODE_ENV === 'production') {
-      logger.error('💥 FATAL: Database connection required in production');
-      throw error;
-    }
-    
-    logger.warn('⚠️  Continuing without database connection (development mode)');
-    return false;
+    logger.error('💥 FATAL: PostgreSQL database connection required for production-ready streaming platform');
+    throw error;
   }
 }
 
 // Initialize cache connection
 async function initializeCache() {
   try {
-    const cacheType = 'Redis';
-    logger.info(`🔄 Initializing ${cacheType} cache connection...`);
+    logger.info('🔄 Initializing Redis cache connection...');
     
     await cache.init();
     if (cache.connect) {
@@ -189,22 +182,15 @@ async function initializeCache() {
     }
     
     cacheConnected = cache.isConnected;
-    logger.info(`✅ ${cacheType} cache connected successfully`);
+    logger.info(`✅ Redis cache connected successfully`);
     
     return true;
   } catch (error) {
-    logger.error(`❌ Cache connection failed:`, error.message);
+    logger.error(`❌ Redis cache connection failed:`, error.message);
     cacheConnected = false;
     
-    if (process.env.NODE_ENV === 'production') {
-      logger.error('💥 FATAL: Cache connection required in production');
-      throw error;
-    }
-    
-    // For development, always report as connected to avoid health check failures
-    cacheConnected = false;
-    logger.warn('⚠️  Continuing without cache connection (development mode)');
-    return false;
+    logger.error('💥 FATAL: Redis cache connection required for production-ready streaming platform');
+    throw error;
   }
 }
 
@@ -253,13 +239,8 @@ app.get('/health', async (req, res) => {
 
   healthData.status = overallStatus;
   
-  // In development, if database is connected, report as healthy even if cache is down
-  if (process.env.NODE_ENV !== 'production' && dbConnected && overallStatus === 'degraded') {
-    healthData.status = 'healthy';
-  }
-
-  // Return 503 if any critical service is down in production
-  const statusCode = (overallStatus === 'degraded' && process.env.NODE_ENV === 'production') ? 503 : 200;
+  // In production-ready streaming platform, both database and cache are required
+  const statusCode = (overallStatus === 'degraded') ? 503 : 200;
   res.status(statusCode).json(healthData);
 });
 
@@ -339,6 +320,7 @@ app.use('/api/streaming', checkDatabaseConnection, streamingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', checkDatabaseConnection, userRoutes);
 app.use('/api/six-sigma', checkDatabaseConnection, sixSigmaRoutes);
+app.use('/api/keys', checkDatabaseConnection, apiRoutes);
 
 // API Documentation endpoint
 app.get('/api', (req, res) => {
@@ -380,6 +362,14 @@ app.get('/api', (req, res) => {
       users: {
         'GET /api/users/profile': 'Get user profile (protected)',
         'PUT /api/users/profile': 'Update user profile (protected)'
+      },
+      keys: {
+        'GET /api/keys': 'Get user API keys (protected)',
+        'POST /api/keys': 'Create new API key (protected)',
+        'PUT /api/keys/:id': 'Update API key (protected)',
+        'DELETE /api/keys/:id': 'Delete API key (protected)',
+        'POST /api/keys/:id/regenerate': 'Regenerate API key (protected)',
+        'GET /api/keys/:id/usage': 'Get API key usage statistics (protected)'
       },
       sixSigma: {
         'GET /api/six-sigma/dashboard': 'Get Six Sigma dashboard (protected)',
@@ -425,28 +415,22 @@ app.use((error, req, res, next) => {
 // Server startup function
 async function startServer() {
   try {
-    // Initialize database connection (required in production)
+    // Initialize database connection (required for production-ready platform)
     try {
       await initializeDatabase();
       logger.info('✅ Database initialization completed');
     } catch (error) {
-      if (process.env.NODE_ENV === 'production') {
-        logger.error('💥 FATAL: Database connection required in production');
-        process.exit(1);
-      }
-      logger.warn('⚠️  Continuing without database (development mode)');
+      logger.error('💥 FATAL: PostgreSQL database connection required for production-ready streaming platform');
+      process.exit(1);
     }
 
-    // Initialize cache connection (required in production)
+    // Initialize cache connection (required for production-ready platform)
     try {
       await initializeCache();
       logger.info('✅ Cache initialization completed');
     } catch (error) {
-      if (process.env.NODE_ENV === 'production') {
-        logger.error('💥 FATAL: Cache connection required in production');
-        process.exit(1);
-      }
-      logger.warn('⚠️  Continuing without cache (development mode)');
+      logger.error('💥 FATAL: Redis cache connection required for production-ready streaming platform');
+      process.exit(1);
     }
 
     // Start the server

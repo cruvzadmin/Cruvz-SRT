@@ -1,7 +1,9 @@
 const express = require('express');
 const crypto = require('crypto');
 const Joi = require('joi');
-const db = require('../config/database-fallback');
+const knex = require('knex');
+const knexConfig = require('../knexfile');
+const db = knex(knexConfig[process.env.NODE_ENV || 'development']);
 const { auth } = require('../middleware/auth');
 const logger = require('../utils/logger');
 

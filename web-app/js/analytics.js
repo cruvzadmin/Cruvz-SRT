@@ -104,7 +104,7 @@ class AnalyticsEngine {
         if (!ctx) return;
 
         this.charts.bandwidth = new Chart(ctx, {
-            type: 'area',
+            type: 'line',
             data: {
                 labels: this.generateTimeLabels(),
                 datasets: [{
