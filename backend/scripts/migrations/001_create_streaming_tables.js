@@ -1,17 +1,12 @@
 /**
  * Database migrations for production streaming platform
  * Supports both PostgreSQL (production) and SQLite (development)
- * 
- * IMPORTANT: This file is corrected to work with Knex migrations in production.
- *             Do NOT use async/await in the top-level 'exports.up' in Knex.
- *             Instead, use promise chaining as shown below.
  */
 
 exports.up = function(knex) {
   const isPostgreSQL = knex.client.config.client === 'pg';
   const schema = knex.schema;
 
-  // Enable UUID extension for PostgreSQL only
   let chain = isPostgreSQL
     ? schema.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
     : Promise.resolve();
@@ -20,7 +15,7 @@ exports.up = function(knex) {
   chain = chain.then(() =>
     schema.hasTable('users').then(exists => {
       if (!exists) {
-        return schema.createTable('users', (table) => {
+        return schema.createTable('users', table => {
           if (isPostgreSQL) {
             table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
           } else {
@@ -38,8 +33,6 @@ exports.up = function(knex) {
           table.integer('max_viewers_per_stream').defaultTo(1000);
           table.timestamp('last_login_at');
           table.timestamps(true, true);
-
-          // Indexes for high-performance lookups
           table.index(['email']);
           table.index(['role']);
           table.index(['is_active']);
@@ -53,7 +46,7 @@ exports.up = function(knex) {
   chain = chain.then(() =>
     schema.hasTable('api_keys').then(exists => {
       if (!exists) {
-        return schema.createTable('api_keys', (table) => {
+        return schema.createTable('api_keys', table => {
           if (isPostgreSQL) {
             table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
             table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE');
@@ -68,8 +61,6 @@ exports.up = function(knex) {
           table.timestamp('expires_at');
           table.timestamp('last_used_at');
           table.timestamps(true, true);
-
-          // Indexes for API key lookups
           table.index(['key_hash']);
           table.index(['user_id']);
           table.index(['is_active']);
@@ -82,7 +73,7 @@ exports.up = function(knex) {
   chain = chain.then(() =>
     schema.hasTable('streams').then(exists => {
       if (!exists) {
-        return schema.createTable('streams', (table) => {
+        return schema.createTable('streams', table => {
           if (isPostgreSQL) {
             table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
             table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE');
@@ -97,25 +88,23 @@ exports.up = function(knex) {
           table.string('source_url', 500);
           table.string('destination_url', 500);
           table.string('status').defaultTo('inactive');
-          table.text('settings'); // JSON field
+          table.text('settings');
           table.integer('max_viewers').defaultTo(1000);
           table.integer('current_viewers').defaultTo(0);
           table.boolean('is_recording').defaultTo(false);
           table.string('recording_url', 500);
           table.timestamp('started_at');
           table.timestamp('ended_at');
-          table.bigInteger('total_view_time').defaultTo(0); // in seconds
+          table.bigInteger('total_view_time').defaultTo(0);
           table.integer('peak_viewers').defaultTo(0);
           table.timestamps(true, true);
-
-          // High-performance indexes for streaming queries
           table.index(['user_id']);
           table.index(['stream_key']);
           table.index(['status']);
           table.index(['protocol']);
           table.index(['started_at']);
           table.index(['created_at']);
-          table.index(['user_id', 'status']); // Composite index for user streams
+          table.index(['user_id', 'status']);
         });
       }
     })
@@ -125,7 +114,7 @@ exports.up = function(knex) {
   chain = chain.then(() =>
     schema.hasTable('stream_sessions').then(exists => {
       if (!exists) {
-        return schema.createTable('stream_sessions', (table) => {
+        return schema.createTable('stream_sessions', table => {
           if (isPostgreSQL) {
             table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
             table.uuid('stream_id').references('id').inTable('streams').onDelete('CASCADE');
@@ -133,19 +122,17 @@ exports.up = function(knex) {
             table.string('id', 36).primary();
             table.string('stream_id', 36).references('id').inTable('streams').onDelete('CASCADE');
           }
-          table.string('viewer_ip', 45); // IPv6 support
+          table.string('viewer_ip', 45);
           table.string('user_agent', 500);
           table.string('location', 100);
           table.timestamp('joined_at').defaultTo(knex.fn.now());
           table.timestamp('left_at');
-          table.integer('watch_duration').defaultTo(0); // in seconds
-          table.text('quality_metrics'); // JSON field
-
-          // Indexes for analytics and real-time tracking
+          table.integer('watch_duration').defaultTo(0);
+          table.text('quality_metrics');
           table.index(['stream_id']);
           table.index(['joined_at']);
           table.index(['viewer_ip']);
-          table.index(['stream_id', 'joined_at']); // Composite for session analytics
+          table.index(['stream_id', 'joined_at']);
         });
       }
     })
@@ -155,7 +142,7 @@ exports.up = function(knex) {
   chain = chain.then(() =>
     schema.hasTable('stream_analytics').then(exists => {
       if (!exists) {
-        return schema.createTable('stream_analytics', (table) => {
+        return schema.createTable('stream_analytics', table => {
           if (isPostgreSQL) {
             table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
             table.uuid('stream_id').references('id').inTable('streams').onDelete('CASCADE');
@@ -169,12 +156,10 @@ exports.up = function(knex) {
           table.integer('peak_concurrent_viewers').defaultTo(0);
           table.bigInteger('total_watch_time').defaultTo(0);
           table.decimal('avg_watch_duration', 10, 2).defaultTo(0);
-          table.text('geographic_data'); // JSON field
-          table.text('device_data'); // JSON field
-          table.text('quality_metrics'); // JSON field
+          table.text('geographic_data');
+          table.text('device_data');
+          table.text('quality_metrics');
           table.timestamps(true, true);
-
-          // Unique constraint and indexes for analytics
           table.unique(['stream_id', 'date']);
           table.index(['stream_id']);
           table.index(['date']);
@@ -187,7 +172,7 @@ exports.up = function(knex) {
   chain = chain.then(() =>
     schema.hasTable('notifications').then(exists => {
       if (!exists) {
-        return schema.createTable('notifications', (table) => {
+        return schema.createTable('notifications', table => {
           if (isPostgreSQL) {
             table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
             table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE');
@@ -198,16 +183,14 @@ exports.up = function(knex) {
           table.string('type', 50).notNullable();
           table.string('title', 200).notNullable();
           table.text('message');
-          table.text('metadata'); // JSON field
+          table.text('metadata');
           table.boolean('is_read').defaultTo(false);
           table.timestamp('expires_at');
           table.timestamps(true, true);
-
-          // Indexes for notification queries
           table.index(['user_id']);
           table.index(['is_read']);
           table.index(['created_at']);
-          table.index(['user_id', 'is_read']); // Composite for unread notifications
+          table.index(['user_id', 'is_read']);
         });
       }
     })
@@ -217,25 +200,24 @@ exports.up = function(knex) {
   chain = chain.then(() =>
     schema.hasTable('six_sigma_metrics').then(exists => {
       if (!exists) {
-        return schema.createTable('six_sigma_metrics', (table) => {
+        return schema.createTable('six_sigma_metrics', table => {
           if (isPostgreSQL) {
             table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
           } else {
             table.string('id', 36).primary();
           }
           table.string('metric_name', 100).notNullable();
-          table.string('metric_type', 50).notNullable(); // 'defect', 'performance', 'quality'
+          table.string('metric_type', 50).notNullable();
           table.decimal('value', 15, 6).notNullable();
           table.decimal('target', 15, 6).notNullable();
           table.decimal('sigma_level', 10, 6);
           table.date('date').notNullable();
-          table.timestamp('measured_at').defaultTo(knex.fn.now()); // Add timestamp for analytics
+          table.timestamp('measured_at').defaultTo(knex.fn.now());
           table.timestamps(true, true);
-
           table.index(['metric_name']);
           table.index(['metric_type']);
           table.index(['date']);
-          table.index(['metric_name', 'date']); // Composite for time series
+          table.index(['metric_name', 'date']);
         });
       }
     })
@@ -245,7 +227,7 @@ exports.up = function(knex) {
   chain = chain.then(() =>
     schema.hasTable('system_health').then(exists => {
       if (!exists) {
-        return schema.createTable('system_health', (table) => {
+        return schema.createTable('system_health', table => {
           if (isPostgreSQL) {
             table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
           } else {
@@ -256,16 +238,15 @@ exports.up = function(knex) {
           table.decimal('disk_usage', 5, 2);
           table.integer('active_connections').defaultTo(0);
           table.integer('active_streams').defaultTo(0);
-          table.decimal('network_in_mbps', 15, 2); // Network input in Mbps
-          table.decimal('network_out_mbps', 15, 2); // Network output in Mbps 
-          table.decimal('response_time', 10, 3); // milliseconds
+          table.decimal('network_in_mbps', 15, 2);
+          table.decimal('network_out_mbps', 15, 2);
+          table.decimal('response_time', 10, 3);
           table.boolean('is_healthy').defaultTo(true);
-          table.text('alerts'); // JSON field
-          table.timestamp('recorded_at').defaultTo(knex.fn.now()); // Add timestamp for system health tracking
+          table.text('alerts');
+          table.timestamp('recorded_at').defaultTo(knex.fn.now());
           table.timestamps(true, true);
-
           table.index(['created_at']);
-          table.index(['recorded_at']); // Index for time-based queries
+          table.index(['recorded_at']);
           table.index(['is_healthy']);
         });
       }
@@ -276,7 +257,7 @@ exports.up = function(knex) {
   chain = chain.then(() =>
     schema.hasTable('user_sessions').then(exists => {
       if (!exists) {
-        return schema.createTable('user_sessions', (table) => {
+        return schema.createTable('user_sessions', table => {
           if (isPostgreSQL) {
             table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
             table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE');
@@ -292,7 +273,6 @@ exports.up = function(knex) {
           table.timestamp('expires_at').notNullable();
           table.timestamp('last_activity').defaultTo(knex.fn.now());
           table.timestamps(true, true);
-
           table.index(['user_id']);
           table.index(['session_token']);
           table.index(['refresh_token']);
