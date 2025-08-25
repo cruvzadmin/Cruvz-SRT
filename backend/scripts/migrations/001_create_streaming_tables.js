@@ -3,7 +3,7 @@
  * Supports both PostgreSQL (production) and SQLite (development)
  */
 
-exports.up = function(knex) {
+exports.up = async function(knex) {
   const isPostgreSQL = knex.client.config.client === 'pg';
 
   // Helper function to define UUID column
@@ -18,12 +18,14 @@ exports.up = function(knex) {
   const schema = knex.schema;
 
   // Enable UUID extension for PostgreSQL only
-  const createExtension = isPostgreSQL ?
-    schema.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"') :
-    Promise.resolve();
+  if (isPostgreSQL) {
+    await schema.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+  }
 
-  return createExtension
-    .then(() => schema.createTable('users', (table) => {
+  // USERS TABLE
+  const hasUsers = await schema.hasTable('users');
+  if (!hasUsers) {
+    await schema.createTable('users', (table) => {
       if (isPostgreSQL) {
         table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
       } else {
@@ -47,8 +49,13 @@ exports.up = function(knex) {
       table.index(['role']);
       table.index(['is_active']);
       table.index(['created_at']);
-    }))
-    .then(() => schema.createTable('api_keys', (table) => {
+    });
+  }
+
+  // API_KEYS TABLE
+  const hasApiKeys = await schema.hasTable('api_keys');
+  if (!hasApiKeys) {
+    await schema.createTable('api_keys', (table) => {
       if (isPostgreSQL) {
         table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
         table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE');
@@ -68,8 +75,13 @@ exports.up = function(knex) {
       table.index(['key_hash']);
       table.index(['user_id']);
       table.index(['is_active']);
-    }))
-    .then(() => schema.createTable('streams', (table) => {
+    });
+  }
+
+  // STREAMS TABLE
+  const hasStreams = await schema.hasTable('streams');
+  if (!hasStreams) {
+    await schema.createTable('streams', (table) => {
       if (isPostgreSQL) {
         table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
         table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE');
@@ -103,8 +115,13 @@ exports.up = function(knex) {
       table.index(['started_at']);
       table.index(['created_at']);
       table.index(['user_id', 'status']); // Composite index for user streams
-    }))
-    .then(() => schema.createTable('stream_sessions', (table) => {
+    });
+  }
+
+  // STREAM_SESSIONS TABLE
+  const hasStreamSessions = await schema.hasTable('stream_sessions');
+  if (!hasStreamSessions) {
+    await schema.createTable('stream_sessions', (table) => {
       if (isPostgreSQL) {
         table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
         table.uuid('stream_id').references('id').inTable('streams').onDelete('CASCADE');
@@ -125,8 +142,13 @@ exports.up = function(knex) {
       table.index(['joined_at']);
       table.index(['viewer_ip']);
       table.index(['stream_id', 'joined_at']); // Composite for session analytics
-    }))
-    .then(() => schema.createTable('stream_analytics', (table) => {
+    });
+  }
+
+  // STREAM_ANALYTICS TABLE
+  const hasStreamAnalytics = await schema.hasTable('stream_analytics');
+  if (!hasStreamAnalytics) {
+    await schema.createTable('stream_analytics', (table) => {
       if (isPostgreSQL) {
         table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
         table.uuid('stream_id').references('id').inTable('streams').onDelete('CASCADE');
@@ -149,8 +171,13 @@ exports.up = function(knex) {
       table.unique(['stream_id', 'date']);
       table.index(['stream_id']);
       table.index(['date']);
-    }))
-    .then(() => schema.createTable('notifications', (table) => {
+    });
+  }
+
+  // NOTIFICATIONS TABLE
+  const hasNotifications = await schema.hasTable('notifications');
+  if (!hasNotifications) {
+    await schema.createTable('notifications', (table) => {
       if (isPostgreSQL) {
         table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
         table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE');
@@ -171,8 +198,13 @@ exports.up = function(knex) {
       table.index(['is_read']);
       table.index(['created_at']);
       table.index(['user_id', 'is_read']); // Composite for unread notifications
-    }))
-    .then(() => schema.createTable('six_sigma_metrics', (table) => {
+    });
+  }
+
+  // SIX_SIGMA_METRICS TABLE
+  const hasSixSigma = await schema.hasTable('six_sigma_metrics');
+  if (!hasSixSigma) {
+    await schema.createTable('six_sigma_metrics', (table) => {
       if (isPostgreSQL) {
         table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
       } else {
@@ -191,8 +223,13 @@ exports.up = function(knex) {
       table.index(['metric_type']);
       table.index(['date']);
       table.index(['metric_name', 'date']); // Composite for time series
-    }))
-    .then(() => schema.createTable('system_health', (table) => {
+    });
+  }
+
+  // SYSTEM_HEALTH TABLE
+  const hasSystemHealth = await schema.hasTable('system_health');
+  if (!hasSystemHealth) {
+    await schema.createTable('system_health', (table) => {
       if (isPostgreSQL) {
         table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
       } else {
@@ -214,8 +251,13 @@ exports.up = function(knex) {
       table.index(['created_at']);
       table.index(['recorded_at']); // Index for time-based queries
       table.index(['is_healthy']);
-    }))
-    .then(() => schema.createTable('user_sessions', (table) => {
+    });
+  }
+
+  // USER_SESSIONS TABLE
+  const hasUserSessions = await schema.hasTable('user_sessions');
+  if (!hasUserSessions) {
+    await schema.createTable('user_sessions', (table) => {
       if (isPostgreSQL) {
         table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
         table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE');
@@ -237,7 +279,8 @@ exports.up = function(knex) {
       table.index(['refresh_token']);
       table.index(['is_active']);
       table.index(['expires_at']);
-    }));
+    });
+  }
 };
 
 exports.down = function(knex) {
