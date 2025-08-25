@@ -249,16 +249,27 @@ app.get('/health', async (req, res) => {
     if (cacheConnected && cache.isConnected) {
       const pingResult = await cache.ping();
       healthData.cache = { connected: pingResult, type: 'redis' };
-      if (!pingResult) {
+      if (!pingResult && isProduction) {
         overallStatus = 'degraded';
       }
     } else {
       healthData.cache = { connected: false, type: 'redis', error: 'No connection' };
-      overallStatus = 'degraded';
+      // Only mark as degraded if in production - development can work without Redis
+      if (isProduction) {
+        overallStatus = 'degraded';
+      }
     }
   } catch (error) {
     healthData.cache = { connected: false, type: 'redis', error: error.message };
-    overallStatus = 'degraded';
+    // Only mark as degraded if in production - development can work without Redis
+    if (isProduction) {
+      overallStatus = 'degraded';
+    }
+  }
+
+  // In development mode, if database is connected, system is healthy regardless of cache
+  if (!isProduction && healthData.database.connected) {
+    overallStatus = 'healthy';
   }
 
   healthData.status = overallStatus;
