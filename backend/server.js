@@ -36,6 +36,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Fix Express trust proxy configuration for correct client IP in rate limiting
+app.set('trust proxy', true);
+
 // Dummy dbConfig for dev table creation (prevents ReferenceError if missing)
 const dbConfig = (function() {
   try {
@@ -48,18 +51,29 @@ const dbConfig = (function() {
 // Log server boot for debug
 logger.info(`🟢 Starting server.js (env: ${process.env.NODE_ENV})`);
 
-// Validate configuration - Production-ready requirements for all environments
+// Validate configuration - Production-ready requirements
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   logger.error('💥 CONFIGURATION ERROR: JWT_SECRET must be set and be at least 32 characters long');
   process.exit(1);
 }
-if (!process.env.POSTGRES_HOST) {
-  logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set for production-ready streaming platform');
-  process.exit(1);
-}
-if (!process.env.REDIS_HOST) {
-  logger.error('💥 CONFIGURATION ERROR: REDIS_HOST must be set for production-ready streaming platform');
-  process.exit(1);
+
+// Database and Redis are required for production, but allow graceful degradation in development
+if (isProduction) {
+  if (!process.env.POSTGRES_HOST) {
+    logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set for production-ready streaming platform');
+    process.exit(1);
+  }
+  if (!process.env.REDIS_HOST) {
+    logger.error('💥 CONFIGURATION ERROR: REDIS_HOST must be set for production-ready streaming platform');
+    process.exit(1);
+  }
+} else {
+  if (!process.env.POSTGRES_HOST) {
+    logger.warn('⚠️  POSTGRES_HOST not set - some features will be limited in development mode');
+  }
+  if (!process.env.REDIS_HOST) {
+    logger.warn('⚠️  REDIS_HOST not set - caching will be disabled in development mode');
+  }
 }
 
 // Production security middleware
@@ -166,8 +180,13 @@ async function initializeDatabase() {
     logger.error(`Database error details:`, error);
     dbConnected = false;
     
-    logger.error('💥 FATAL: PostgreSQL database connection required for production-ready streaming platform');
-    throw error;
+    if (isProduction) {
+      logger.error('💥 FATAL: PostgreSQL database connection required for production-ready streaming platform');
+      throw error;
+    } else {
+      logger.warn('⚠️  Database unavailable in development mode - some features will be limited');
+      return false;
+    }
   }
 }
 
@@ -189,8 +208,13 @@ async function initializeCache() {
     logger.error(`❌ Redis cache connection failed:`, error.message);
     cacheConnected = false;
     
-    logger.error('💥 FATAL: Redis cache connection required for production-ready streaming platform');
-    throw error;
+    if (isProduction) {
+      logger.error('💥 FATAL: Redis cache connection required for production-ready streaming platform');
+      throw error;
+    } else {
+      logger.warn('⚠️  Cache unavailable in development mode - caching will be disabled');
+      return false;
+    }
   }
 }
 
@@ -239,8 +263,9 @@ app.get('/health', async (req, res) => {
 
   healthData.status = overallStatus;
   
-  // In production-ready streaming platform, both database and cache are required
-  const statusCode = (overallStatus === 'degraded') ? 503 : 200;
+  // In production, both database and cache are required (503 on degraded)
+  // In development, allow degraded state with 200 status for development workflow
+  const statusCode = (overallStatus === 'degraded' && isProduction) ? 503 : 200;
   res.status(statusCode).json(healthData);
 });
 
@@ -420,8 +445,12 @@ async function startServer() {
       await initializeDatabase();
       logger.info('✅ Database initialization completed');
     } catch (error) {
-      logger.error('💥 FATAL: PostgreSQL database connection required for production-ready streaming platform');
-      process.exit(1);
+      if (isProduction) {
+        logger.error('💥 FATAL: PostgreSQL database connection required for production-ready streaming platform');
+        process.exit(1);
+      } else {
+        logger.warn('⚠️  Database initialization failed - continuing in limited mode');
+      }
     }
 
     // Initialize cache connection (required for production-ready platform)
@@ -429,8 +458,12 @@ async function startServer() {
       await initializeCache();
       logger.info('✅ Cache initialization completed');
     } catch (error) {
-      logger.error('💥 FATAL: Redis cache connection required for production-ready streaming platform');
-      process.exit(1);
+      if (isProduction) {
+        logger.error('💥 FATAL: Redis cache connection required for production-ready streaming platform');
+        process.exit(1);
+      } else {
+        logger.warn('⚠️  Cache initialization failed - continuing without caching');
+      }
     }
 
     // Start the server
