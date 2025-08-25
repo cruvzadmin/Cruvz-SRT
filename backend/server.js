@@ -27,6 +27,10 @@ try {
 const authRoutes = require('./routes/auth');
 const streamRoutes = require('./routes/streams');
 const streamingRoutes = require('./routes/streaming');
+const protocolsRoutes = require('./routes/protocols');
+const transcodingRoutes = require('./routes/transcoding');
+const recordingsRoutes = require('./routes/recordings');
+const publishingRoutes = require('./routes/publishing');
 const analyticsRoutes = require('./routes/analytics');
 const userRoutes = require('./routes/users');
 const sixSigmaRoutes = require('./routes/sixSigma');
@@ -325,6 +329,10 @@ function checkDatabaseConnection(req, res, next) {
 app.use('/api/auth', authRoutes);
 app.use('/api/streams', checkDatabaseConnection, streamRoutes);
 app.use('/api/streaming', checkDatabaseConnection, streamingRoutes);
+app.use('/api/streaming', checkDatabaseConnection, protocolsRoutes);
+app.use('/api/transcoding', checkDatabaseConnection, transcodingRoutes);
+app.use('/api/recordings', checkDatabaseConnection, recordingsRoutes);
+app.use('/api/publishing', checkDatabaseConnection, publishingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', checkDatabaseConnection, userRoutes);
 app.use('/api/six-sigma', checkDatabaseConnection, sixSigmaRoutes);
@@ -365,7 +373,46 @@ app.get('/api', (req, res) => {
         'POST /api/streaming/recording/stop': 'Stop recording (protected)',
         'POST /api/streaming/transcode/configure': 'Configure transcoding (protected)',
         'POST /api/streaming/push/configure': 'Configure push publishing (protected)',
-        'GET /api/streaming/status/:stream_id': 'Get streaming status (protected)'
+        'GET /api/streaming/status/:stream_id': 'Get streaming status (protected)',
+        'GET /api/streaming/protocols/status': 'Get all protocols status (protected)',
+        'GET /api/streaming/protocols/:protocol/status': 'Get protocol status (protected)',
+        'POST /api/streaming/protocols/:protocol/test': 'Test protocol connection (protected)',
+        'GET /api/streaming/protocols/:protocol/config': 'Get protocol config (protected)',
+        'PUT /api/streaming/protocols/:protocol/config': 'Update protocol config (protected)',
+        'GET /api/streaming/ome/stats': 'Get OvenMediaEngine stats (protected)',
+        'GET /api/streaming/ome/applications': 'Get OME applications (protected)',
+        'GET /api/streaming/ome/streams': 'Get OME streams (protected)'
+      },
+      transcoding: {
+        'GET /api/transcoding/profiles': 'Get transcoding profiles (protected)',
+        'POST /api/transcoding/profiles': 'Create transcoding profile (protected)',
+        'PUT /api/transcoding/profiles/:id': 'Update transcoding profile (protected)',
+        'DELETE /api/transcoding/profiles/:id': 'Delete transcoding profile (protected)',
+        'GET /api/transcoding/jobs': 'Get transcoding jobs (protected)',
+        'POST /api/transcoding/jobs': 'Start transcoding job (protected)',
+        'GET /api/transcoding/jobs/:id': 'Get transcoding job details (protected)',
+        'POST /api/transcoding/jobs/:id/cancel': 'Cancel transcoding job (protected)',
+        'GET /api/transcoding/stats': 'Get transcoding statistics (protected)'
+      },
+      recordings: {
+        'GET /api/recordings': 'Get user recordings (protected)',
+        'GET /api/recordings/:id': 'Get recording details (protected)',
+        'POST /api/recordings/:id/download': 'Generate download link (protected)',
+        'GET /api/recordings/download/:token': 'Download recording file (public with token)',
+        'DELETE /api/recordings/:id': 'Delete recording (protected)',
+        'POST /api/recordings/:id/share': 'Generate share link (protected)',
+        'POST /api/recordings/upload': 'Upload recording file (protected)',
+        'GET /api/recordings/stats': 'Get recording statistics (protected)'
+      },
+      publishing: {
+        'GET /api/publishing/targets': 'Get publishing targets (protected)',
+        'POST /api/publishing/targets': 'Create publishing target (protected)',
+        'PUT /api/publishing/targets/:id': 'Update publishing target (protected)',
+        'DELETE /api/publishing/targets/:id': 'Delete publishing target (protected)',
+        'POST /api/publishing/targets/:id/connect': 'Connect to target (protected)',
+        'POST /api/publishing/targets/:id/disconnect': 'Disconnect from target (protected)',
+        'GET /api/publishing/targets/:id/status': 'Get target status (protected)',
+        'GET /api/publishing/analytics': 'Get publishing analytics (protected)'
       },
       analytics: {
         'GET /api/analytics/dashboard': 'Get dashboard analytics (protected)',

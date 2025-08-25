@@ -1,4 +1,5 @@
-// Dashboard-specific JavaScript functionality
+// Production-Ready Dashboard JavaScript - Complete OvenMediaEngine Integration
+// All features: RTMP, SRT, WebRTC, LLHLS, OVT, Transcoding, Publishing, Analytics, etc.
 
 // API Configuration - Development vs Production
 let apiBaseUrl = '/api';
@@ -16,16 +17,23 @@ let currentSection = 'overview';
 let userDropdownOpen = false;
 let streams = [];
 let analytics = {};
-
+let realtimeUpdatesActive = true;
+let realtimeInterval = null;
+let protocolsStatus = {};
+let transcodingJobs = [];
+let recordings = [];
+let publishingTargets = [];
+let webhooks = [];
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
     initializeDashboard();
     setupDashboardEventListeners();
     loadDashboardData();
+    startRealtimeUpdates();
 });
 
-// API helper function
+// API helper function with robust error handling
 async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('cruvz_auth_token');
     
@@ -38,7 +46,7 @@ async function apiRequest(endpoint, options = {}) {
         ...options
     };
 
-    // FIX: Ensure body is only set for non-GET requests
+    // Ensure body is only set for non-GET requests
     if (config.body && typeof config.body === 'object' && config.method && config.method.toUpperCase() !== 'GET') {
         config.body = JSON.stringify(config.body);
     } else if (config.method && config.method.toUpperCase() === 'GET') {
@@ -47,6 +55,767 @@ async function apiRequest(endpoint, options = {}) {
 
     try {
         const response = await fetch(`${apiBaseUrl}${endpoint}`, config);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        
+        return data;
+    } catch (error) {
+        console.error(`API Error (${endpoint}):`, error);
+        throw error;
+    }
+}
+
+// Initialize dashboard
+function initializeDashboard() {
+    // Check authentication
+    const token = localStorage.getItem('cruvz_auth_token');
+    if (!token) {
+        window.location.href = '../index.html';
+        return;
+    }
+
+    // Load user info
+    loadUserInfo();
+    
+    // Initialize sections
+    showSection('overview');
+    
+    // Set up protocol status monitoring
+    initializeProtocolMonitoring();
+    
+    // Initialize charts
+    initializeAnalyticsCharts();
+}
+
+// Event listeners setup
+function setupDashboardEventListeners() {
+    // Menu navigation
+    document.querySelectorAll('[data-section]').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = item.getAttribute('data-section');
+            showSection(section);
+        });
+    });
+
+    // Create stream buttons
+    document.querySelectorAll('#createStreamBtn, #createStreamBtn2, #quickCreateStreamBtn').forEach(btn => {
+        if (btn) {
+            btn.addEventListener('click', () => showCreateStreamModal());
+        }
+    });
+
+    // Quick action buttons
+    const quickActions = {
+        'viewAnalyticsBtn': () => showSection('analytics'),
+        'apiSetupBtn': () => showSection('api'),
+        'monitoringBtn': () => showSection('realtime'),
+        'refreshDataBtn': () => loadDashboardData()
+    };
+
+    Object.entries(quickActions).forEach(([btnId, action]) => {
+        const btn = document.getElementById(btnId);
+        if (btn) btn.addEventListener('click', action);
+    });
+
+    // Form submissions
+    const forms = {
+        'createStreamForm': handleCreateStream,
+        'generalSettingsForm': handleGeneralSettings,
+        'streamingSettingsForm': handleStreamingSettings,
+        'securitySettingsForm': handleSecuritySettings
+    };
+
+    Object.entries(forms).forEach(([formId, handler]) => {
+        const form = document.getElementById(formId);
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                handler(new FormData(form));
+            });
+        }
+    });
+
+    // Real-time updates toggle
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            hideAllModals();
+        }
+    });
+}
+
+// Load dashboard data
+async function loadDashboardData() {
+    try {
+        // Load all data concurrently for better performance
+        const dataPromises = [
+            loadOverviewStats(),
+            loadRecentStreams(),
+            loadProtocolsStatus(),
+            loadTranscodingJobs(),
+            loadRecordings(),
+            loadPublishingTargets(),
+            loadWebhooks(),
+            loadAnalyticsData()
+        ];
+
+        await Promise.allSettled(dataPromises);
+        updateLastRefreshTime();
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        showNotification('Error loading dashboard data', 'error');
+    }
+}
+
+// Load overview statistics
+async function loadOverviewStats() {
+    try {
+        const response = await apiRequest('/analytics/realtime');
+        if (response.success) {
+            updateOverviewStats(response.data);
+        }
+    } catch (error) {
+        console.error('Error loading overview stats:', error);
+        // Show fallback data
+        updateOverviewStats({
+            active_streams: '--',
+            total_viewers: '--',
+            average_latency: '--',
+            total_bandwidth: '--'
+        });
+    }
+}
+
+// Update overview statistics display
+function updateOverviewStats(data) {
+    const elements = {
+        'activeStreams': data.active_streams || '--',
+        'totalViewers': data.total_viewers || '--',
+        'avgLatency': data.average_latency ? `${data.average_latency}ms` : '--',
+        'bandwidth': data.total_bandwidth ? `${data.total_bandwidth} Gbps` : '--'
+    };
+
+    Object.entries(elements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    });
+}
+
+// Load recent streams
+async function loadRecentStreams() {
+    try {
+        const response = await apiRequest('/streams');
+        if (response.success) {
+            streams = response.data;
+            updateRecentStreamsList();
+            updateStreamsGrid();
+        }
+    } catch (error) {
+        console.error('Error loading streams:', error);
+        updateRecentStreamsList([]);
+    }
+}
+
+// Update recent streams display
+function updateRecentStreamsList(streamsData = streams) {
+    const container = document.getElementById('recentStreams');
+    if (!container) return;
+
+    if (!streamsData || streamsData.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🎥</div>
+                <h3>No Recent Streams</h3>
+                <p>Create your first stream to get started!</p>
+                <button class="btn btn-primary" onclick="showSection('create')">Create Stream</button>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = streamsData.slice(0, 5).map(stream => `
+        <div class="stream-item" data-stream-id="${stream.id}">
+            <div class="stream-info">
+                <h4 class="stream-title">${escapeHtml(stream.title)}</h4>
+                <p class="stream-meta">
+                    ${stream.protocol.toUpperCase()} • 
+                    ${stream.status === 'active' ? '🔴 Live' : '⚫ Offline'} • 
+                    ${stream.current_viewers || 0} viewers
+                </p>
+                ${stream.description ? `<p class="stream-description">${escapeHtml(stream.description)}</p>` : ''}
+            </div>
+            <div class="stream-actions">
+                <button class="btn btn-small btn-outline" onclick="viewStreamDetails('${stream.id}')">📊 Details</button>
+                <button class="btn btn-small btn-outline" onclick="editStream('${stream.id}')">✏️ Edit</button>
+                ${stream.status === 'active' ? 
+                    `<button class="btn btn-small btn-danger" onclick="stopStream('${stream.id}')">⏹️ Stop</button>` :
+                    `<button class="btn btn-small btn-primary" onclick="startStream('${stream.id}')">▶️ Start</button>`
+                }
+            </div>
+        </div>
+    `).join('');
+}
+
+// Load protocols status
+async function loadProtocolsStatus() {
+    try {
+        // Check each protocol endpoint
+        const protocols = ['rtmp', 'srt', 'webrtc', 'llhls', 'ovt', 'api'];
+        const statusPromises = protocols.map(async (protocol) => {
+            try {
+                const response = await apiRequest(`/streaming/protocols/${protocol}/status`);
+                return { protocol, status: response.success ? 'active' : 'error', data: response.data };
+            } catch (error) {
+                return { protocol, status: 'error', error: error.message };
+            }
+        });
+
+        const results = await Promise.allSettled(statusPromises);
+        results.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                protocolsStatus[protocols[index]] = result.value;
+            } else {
+                protocolsStatus[protocols[index]] = { protocol: protocols[index], status: 'error' };
+            }
+        });
+
+        updateProtocolsDisplay();
+    } catch (error) {
+        console.error('Error loading protocols status:', error);
+    }
+}
+
+// Update protocols status display
+function updateProtocolsDisplay() {
+    const protocols = ['rtmp', 'srt', 'webrtc', 'llhls', 'ovt', 'api'];
+    
+    protocols.forEach(protocol => {
+        const card = document.getElementById(`${protocol}-status`);
+        const status = protocolsStatus[protocol]?.status || 'error';
+        
+        if (card) {
+            card.className = `protocol-card ${status}`;
+            const indicator = card.querySelector('.status-indicator');
+            if (indicator) {
+                indicator.textContent = status === 'active' ? '🟢' : '🔴';
+            }
+        }
+    });
+
+    // Update overall protocols status
+    const allActive = protocols.every(p => protocolsStatus[p]?.status === 'active');
+    const statusBadge = document.getElementById('protocolsStatus');
+    if (statusBadge) {
+        statusBadge.textContent = allActive ? '✅ All Operational' : '⚠️ Issues Detected';
+        statusBadge.className = `status-badge ${allActive ? 'success' : 'warning'}`;
+    }
+}
+
+// Section navigation
+function showSection(sectionName) {
+    // Hide all sections
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active');
+    });
+
+    // Show target section
+    const targetSection = document.getElementById(`${sectionName}-section`);
+    if (targetSection) {
+        targetSection.classList.add('active');
+        currentSection = sectionName;
+    }
+
+    // Update menu active state
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    const menuItem = document.querySelector(`[data-section="${sectionName}"]`);
+    if (menuItem) {
+        menuItem.classList.add('active');
+    }
+
+    // Load section-specific data
+    loadSectionData(sectionName);
+}
+
+// Load section-specific data
+function loadSectionData(sectionName) {
+    switch (sectionName) {
+        case 'analytics':
+            loadAnalyticsData();
+            break;
+        case 'streams':
+            loadStreamsGrid();
+            break;
+        case 'protocols':
+            loadProtocolsStatus();
+            break;
+        case 'transcoding':
+            loadTranscodingJobs();
+            break;
+        case 'recordings':
+            loadRecordings();
+            break;
+        case 'publishing':
+            loadPublishingTargets();
+            break;
+        case 'files':
+            loadFileManager();
+            break;
+        case 'realtime':
+            initializeRealtimeMonitor();
+            break;
+        case 'security':
+            loadSecurityData();
+            break;
+        case 'webhooks':
+            loadWebhooks();
+            break;
+        case 'api':
+            loadAPIKeys();
+            break;
+    }
+}
+
+// Stream management functions
+async function createStream(formData) {
+    try {
+        const streamData = {
+            title: formData.get('title'),
+            description: formData.get('description'),
+            protocol: formData.get('protocol'),
+            source_url: formData.get('source_url'),
+            destination_url: formData.get('destination_url'),
+            settings: {
+                quality: formData.get('quality'),
+                bitrate: parseInt(formData.get('bitrate')),
+                record: formData.has('record'),
+                chat: formData.has('chat')
+            }
+        };
+
+        const response = await apiRequest('/streams', {
+            method: 'POST',
+            body: streamData
+        });
+
+        if (response.success) {
+            showNotification('Stream created successfully!', 'success');
+            loadRecentStreams();
+            hideCreateStreamModal();
+            showSection('streams');
+        } else {
+            throw new Error(response.error || 'Failed to create stream');
+        }
+    } catch (error) {
+        console.error('Error creating stream:', error);
+        showNotification(`Error creating stream: ${error.message}`, 'error');
+    }
+}
+
+async function editStream(streamId) {
+    try {
+        const response = await apiRequest(`/streams/${streamId}`);
+        if (response.success) {
+            showEditStreamModal(response.data);
+        }
+    } catch (error) {
+        console.error('Error loading stream for edit:', error);
+        showNotification('Error loading stream details', 'error');
+    }
+}
+
+async function startStream(streamId) {
+    try {
+        const response = await apiRequest(`/streams/${streamId}/start`, { method: 'POST' });
+        if (response.success) {
+            showNotification('Stream started successfully!', 'success');
+            loadRecentStreams();
+        }
+    } catch (error) {
+        console.error('Error starting stream:', error);
+        showNotification(`Error starting stream: ${error.message}`, 'error');
+    }
+}
+
+async function stopStream(streamId) {
+    if (!confirm('Are you sure you want to stop this stream?')) return;
+    
+    try {
+        const response = await apiRequest(`/streams/${streamId}/stop`, { method: 'POST' });
+        if (response.success) {
+            showNotification('Stream stopped successfully!', 'success');
+            loadRecentStreams();
+        }
+    } catch (error) {
+        console.error('Error stopping stream:', error);
+        showNotification(`Error stopping stream: ${error.message}`, 'error');
+    }
+}
+
+// Protocol configuration functions
+function editProtocolConfig(protocol) {
+    showProtocolConfigModal(protocol);
+}
+
+async function testProtocolConnection(protocol) {
+    try {
+        const response = await apiRequest(`/streaming/protocols/${protocol}/test`, { method: 'POST' });
+        if (response.success) {
+            showNotification(`${protocol.toUpperCase()} connection test successful!`, 'success');
+        } else {
+            throw new Error(response.error || 'Connection test failed');
+        }
+    } catch (error) {
+        console.error(`Error testing ${protocol} connection:`, error);
+        showNotification(`${protocol.toUpperCase()} connection test failed: ${error.message}`, 'error');
+    }
+}
+
+// Transcoding management
+async function loadTranscodingJobs() {
+    try {
+        const response = await apiRequest('/transcoding/jobs');
+        if (response.success) {
+            transcodingJobs = response.data;
+            updateTranscodingJobsDisplay();
+        }
+    } catch (error) {
+        console.error('Error loading transcoding jobs:', error);
+    }
+}
+
+function updateTranscodingJobsDisplay() {
+    const container = document.getElementById('transcodingJobsList');
+    if (!container) return;
+
+    if (transcodingJobs.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🔄</div>
+                <p>No active transcoding jobs</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = transcodingJobs.map(job => `
+        <div class="transcoding-job">
+            <div class="job-info">
+                <h4>${escapeHtml(job.stream_title)}</h4>
+                <p>Profile: ${job.profile_name}</p>
+                <div class="job-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${job.progress}%"></div>
+                    </div>
+                    <span class="progress-text">${job.progress}%</span>
+                </div>
+            </div>
+            <div class="job-actions">
+                <button class="btn btn-small btn-outline" onclick="viewTranscodingJobDetails('${job.id}')">📊 Details</button>
+                <button class="btn btn-small btn-danger" onclick="cancelTranscodingJob('${job.id}')">❌ Cancel</button>
+            </div>
+        </div>
+    `).join('');
+
+    // Update job count
+    const countElement = document.getElementById('activeJobsCount');
+    if (countElement) {
+        countElement.textContent = `${transcodingJobs.length} jobs running`;
+    }
+}
+
+// Recording management
+async function loadRecordings() {
+    try {
+        const response = await apiRequest('/recordings');
+        if (response.success) {
+            recordings = response.data;
+            updateRecordingsDisplay();
+        }
+    } catch (error) {
+        console.error('Error loading recordings:', error);
+    }
+}
+
+function updateRecordingsDisplay() {
+    const container = document.getElementById('recordingsGrid');
+    if (!container) return;
+
+    if (recordings.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🎬</div>
+                <h3>No Recordings</h3>
+                <p>Your stream recordings will appear here</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = recordings.map(recording => `
+        <div class="recording-card">
+            <div class="recording-thumbnail">
+                <img src="${recording.thumbnail_url || '../assets/default-thumbnail.png'}" alt="Recording thumbnail">
+                <div class="recording-duration">${formatDuration(recording.duration)}</div>
+            </div>
+            <div class="recording-info">
+                <h4 class="recording-title">${escapeHtml(recording.title)}</h4>
+                <p class="recording-meta">
+                    ${formatDate(recording.created_at)} • ${recording.quality} • ${formatFileSize(recording.file_size)}
+                </p>
+            </div>
+            <div class="recording-actions">
+                <button class="btn btn-small btn-outline" onclick="playRecording('${recording.id}')">▶️ Play</button>
+                <button class="btn btn-small btn-outline" onclick="downloadRecording('${recording.id}')">⬇️ Download</button>
+                <button class="btn btn-small btn-danger" onclick="deleteRecording('${recording.id}')">🗑️ Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Publishing targets management
+async function loadPublishingTargets() {
+    try {
+        const response = await apiRequest('/publishing/targets');
+        if (response.success) {
+            publishingTargets = response.data;
+            updatePublishingTargetsDisplay();
+        }
+    } catch (error) {
+        console.error('Error loading publishing targets:', error);
+    }
+}
+
+// Real-time monitoring
+function startRealtimeUpdates() {
+    if (realtimeInterval) clearInterval(realtimeInterval);
+    
+    realtimeInterval = setInterval(() => {
+        if (realtimeUpdatesActive) {
+            updateRealtimeData();
+        }
+    }, 5000); // Update every 5 seconds
+}
+
+function toggleRealtimeUpdates() {
+    realtimeUpdatesActive = !realtimeUpdatesActive;
+    const btn = document.getElementById('pauseRealtimeBtn');
+    if (btn) {
+        btn.textContent = realtimeUpdatesActive ? '⏸️ Pause' : '▶️ Resume';
+    }
+}
+
+async function updateRealtimeData() {
+    try {
+        // Update overview stats
+        await loadOverviewStats();
+        
+        // Update protocol status
+        await loadProtocolsStatus();
+        
+        // Update system health if on realtime section
+        if (currentSection === 'realtime') {
+            await updateSystemHealth();
+        }
+        
+        // Update activity feed
+        await updateActivityFeed();
+    } catch (error) {
+        console.error('Error updating realtime data:', error);
+    }
+}
+
+async function updateSystemHealth() {
+    try {
+        const response = await apiRequest('/system/health');
+        if (response.success) {
+            const health = response.data;
+            
+            // Update CPU meter
+            updateHealthMeter('cpu', health.cpu_usage);
+            
+            // Update Memory meter
+            updateHealthMeter('memory', health.memory_usage);
+            
+            // Update Network meter
+            const networkEl = document.getElementById('networkValue');
+            if (networkEl) networkEl.textContent = `${health.network_io} Mbps`;
+            updateHealthMeter('network', health.network_usage);
+            
+            // Update Storage meter
+            updateHealthMeter('storage', health.storage_usage);
+        }
+    } catch (error) {
+        console.error('Error updating system health:', error);
+    }
+}
+
+function updateHealthMeter(type, percentage) {
+    const meter = document.getElementById(`${type}Meter`);
+    const value = document.getElementById(`${type}Value`);
+    
+    if (meter) {
+        meter.style.width = `${percentage}%`;
+        meter.className = `meter-fill ${getHealthColor(percentage)}`;
+    }
+    
+    if (value && type !== 'network') {
+        value.textContent = `${percentage}%`;
+    }
+}
+
+function getHealthColor(percentage) {
+    if (percentage < 60) return 'good';
+    if (percentage < 80) return 'warning';
+    return 'critical';
+}
+
+// Utility functions
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString();
+}
+
+function formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
+
+function formatFileSize(bytes) {
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    if (bytes === 0) return '0 B';
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showNotification('Copied to clipboard!', 'success');
+    }).catch(() => {
+        showNotification('Failed to copy to clipboard', 'error');
+    });
+}
+
+// Modal management
+function showCreateStreamModal() {
+    const modal = document.getElementById('createStreamModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        generateStreamKey();
+    }
+}
+
+function hideCreateStreamModal() {
+    const modal = document.getElementById('createStreamModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function hideAllModals() {
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.classList.add('hidden');
+    });
+}
+
+async function generateStreamKey() {
+    try {
+        const response = await apiRequest('/streams/generate-key', { method: 'POST' });
+        if (response.success) {
+            const keyElement = document.getElementById('modalStreamKey');
+            if (keyElement) {
+                keyElement.value = response.data.stream_key;
+            }
+        }
+    } catch (error) {
+        console.error('Error generating stream key:', error);
+    }
+}
+
+// User management
+async function loadUserInfo() {
+    try {
+        const response = await apiRequest('/auth/me');
+        if (response.success) {
+            const userNameEl = document.getElementById('userName');
+            if (userNameEl) {
+                userNameEl.textContent = `${response.data.first_name} ${response.data.last_name}`;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading user info:', error);
+        // Redirect to login if token is invalid
+        localStorage.removeItem('cruvz_auth_token');
+        window.location.href = '../index.html';
+    }
+}
+
+function toggleUserDropdown() {
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) {
+        userDropdownOpen = !userDropdownOpen;
+        dropdown.style.display = userDropdownOpen ? 'block' : 'none';
+    }
+}
+
+function signOut() {
+    localStorage.removeItem('cruvz_auth_token');
+    window.location.href = '../index.html';
+}
+
+// Update last refresh time
+function updateLastRefreshTime() {
+    const elements = document.querySelectorAll('.last-updated');
+    const now = new Date().toLocaleTimeString();
+    elements.forEach(el => {
+        el.textContent = `Last updated: ${now}`;
+    });
+}
+
+// Export this for global access
+window.dashboardAPI = {
+    showSection,
+    createStream,
+    editStream,
+    startStream,
+    stopStream,
+    loadDashboardData,
+    showNotification,
+    copyToClipboard
+};
         
         // Check if response is valid JSON
         let data;
