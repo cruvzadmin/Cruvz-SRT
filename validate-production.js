@@ -10,7 +10,7 @@ const net = require('net');
 const dgram = require('dgram');
 
 // Configuration
-const BASE_URL = 'http://localhost'; // Web app on port 80
+const BASE_URL = 'http://localhost:8080'; // Web app on port 8080
 const API_URL = 'http://localhost:5000';
 const STREAMING_HOST = 'localhost';
 

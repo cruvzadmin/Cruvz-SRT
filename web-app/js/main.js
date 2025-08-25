@@ -469,7 +469,7 @@ async function handleAuthSubmit(e) {
 
             // Redirect to dashboard if appropriate
             setTimeout(() => {
-                window.location.href = 'pages/dashboard.html';
+                window.location.href = 'dashboard.html';
             }, 1000);
         }
     } catch (error) {
