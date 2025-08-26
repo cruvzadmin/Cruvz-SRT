@@ -25,7 +25,10 @@ RUN mkdir -p /opt/ovenmediaengine/logs \
 RUN chmod 777 /tmp/nginx-logs
 
 # Production Port Exposure
-EXPOSE 80/tcp 8080/tcp 1935/tcp 3333/tcp 3334/tcp 4000-4005/udp 10000-10010/udp 9000/tcp
+EXPOSE 80/tcp 8080/tcp 1935/tcp 3333/tcp 3334/tcp 4000-4005/udp 10000-10100/udp 9000/tcp
+
+# Correction: expose full candidate port range for WebRTC as per compose (10000-10100/udp)
+# Note: expose 10000-10100/udp above
 
 # Production Health Check Script  
 COPY docker/health-check.sh /opt/ovenmediaengine/bin/health-check.sh
