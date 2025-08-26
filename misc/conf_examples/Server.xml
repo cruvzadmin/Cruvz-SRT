@@ -176,7 +176,8 @@
 			<CrossDomains>
 				<Url>*.airensoft.com</Url>
 				<Url>http://*.sub-domain.airensoft.com</Url>
-				<Url>http?://airensoft.*</Url>
+				<Url>http://airensoft.*</Url>
+				<Url>https://airensoft.*</Url>
 			</CrossDomains>
 		</API>
 	</Managers>
