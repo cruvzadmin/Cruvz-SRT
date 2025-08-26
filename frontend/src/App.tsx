@@ -7,6 +7,9 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import MainLayout from './components/MainLayout';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
+import StreamManager from './components/StreamManager';
+import Analytics from './components/Analytics';
+import Profile from './components/Profile';
 import LoadingSpinner from './components/LoadingSpinner';
 
 // Protected Route Component
@@ -57,7 +60,7 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <MainLayout>
-              <div>Streams Page (Coming Soon)</div>
+              <StreamManager />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -68,18 +71,18 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <MainLayout>
-              <div>Analytics Page (Coming Soon)</div>
+              <Analytics />
             </MainLayout>
           </ProtectedRoute>
         }
       />
       
       <Route
-        path="/settings"
+        path="/profile"
         element={
           <ProtectedRoute>
             <MainLayout>
-              <div>Settings Page (Coming Soon)</div>
+              <Profile />
             </MainLayout>
           </ProtectedRoute>
         }
