@@ -156,20 +156,22 @@
 		<AccessToken> is a token for authentication, and when you invoke the API, you must put "Basic base64encode(<AccessToken>)" in the "Authorization" header of HTTP request.
 		For example, if you set <AccessToken> to "ome-access-token", you must set "Basic b21lLWFjY2Vzcy10b2tlbg==" in the "Authorization" header.
 	-->
-	<!--
 	<Managers>
 		<Host>
 			<Names>
 				<Name>*</Name>
 			</Names>
+			<!--
 			<TLS>
 				<CertPath>path/to/file.crt</CertPath>
 				<KeyPath>path/to/file.key</KeyPath>
 				<ChainCertPath>path/to/file.crt</ChainCertPath>
 			</TLS>
+			-->
 		</Host>
 		<API>
-			<AccessToken>ome-access-token</AccessToken>
+			<AccessToken>cruvz-production-api-token-2025</AccessToken>
+			<!-- Replace with your actual secure token -->
 
 			<CrossDomains>
 				<Url>*.airensoft.com</Url>
@@ -178,7 +180,6 @@
 			</CrossDomains>
 		</API>
 	</Managers>
-	-->
 
 	<!--
 		Refer https://airensoft.gitbook.io/ovenmediaengine/alert
