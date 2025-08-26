@@ -5,7 +5,6 @@ const knexConfig = require('../knexfile');
 const db = knex(knexConfig[process.env.NODE_ENV || 'development']);
 const logger = require('../utils/logger');
 const { v4: uuidv4 } = require('uuid');
-const crypto = require('crypto');
 
 const router = express.Router();
 
@@ -469,17 +468,17 @@ router.get('/analytics', auth, async (req, res) => {
     
     let timeFilter;
     switch (timeframe) {
-      case '24h':
-        timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    case '24h':
+      timeFilter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
+      timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     }
 
     // Get publishing targets count

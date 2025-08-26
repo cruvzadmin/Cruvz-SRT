@@ -185,7 +185,7 @@ function setSecurityHeaders(res) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
+  res.setHeader('Content-Security-Policy', 'default-src \'self\'; script-src \'self\' \'unsafe-inline\'; style-src \'self\' \'unsafe-inline\'');
 }
 
 // Response helpers
@@ -705,14 +705,14 @@ const server = http.createServer(handleRequest);
 server.listen(CONFIG.PORT, '0.0.0.0', () => {
   console.log(`🚀 Cruvz Streaming API v2.0.0 running on port ${CONFIG.PORT}`);
   console.log(`🌍 Environment: ${CONFIG.NODE_ENV}`);
-  console.log(`🗄️  Database: Production Ready`);
-  console.log(`🔗 Cache: Redis Connected`);
+  console.log('🗄️  Database: Production Ready');
+  console.log('🔗 Cache: Redis Connected');
   console.log(`📊 Health check: http://localhost:${CONFIG.PORT}/health`);
   console.log(`📊 Metrics: http://localhost:${CONFIG.PORT}/metrics`);
   console.log(`📖 API docs: http://localhost:${CONFIG.PORT}/api`);
-  console.log(`🔒 Production mode: All security features enabled`);
-  console.log(`✅ Six Sigma metrics enabled`);
-  console.log(`⚡ Sub-second latency streaming ready`);
+  console.log('🔒 Production mode: All security features enabled');
+  console.log('✅ Six Sigma metrics enabled');
+  console.log('⚡ Sub-second latency streaming ready');
 });
 
 // Graceful shutdown

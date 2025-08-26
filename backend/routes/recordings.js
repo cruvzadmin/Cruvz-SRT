@@ -5,7 +5,6 @@ const knexConfig = require('../knexfile');
 const db = knex(knexConfig[process.env.NODE_ENV || 'development']);
 const logger = require('../utils/logger');
 const { v4: uuidv4 } = require('uuid');
-const path = require('path');
 const fs = require('fs').promises;
 
 const router = express.Router();
@@ -42,7 +41,7 @@ router.get('/', auth, async (req, res) => {
     if (search) {
       query = query.where(function() {
         this.where('recordings.title', 'like', `%${search}%`)
-            .orWhere('streams.title', 'like', `%${search}%`);
+          .orWhere('streams.title', 'like', `%${search}%`);
       });
     }
 
@@ -68,7 +67,7 @@ router.get('/', auth, async (req, res) => {
     if (search) {
       countQuery = countQuery.where(function() {
         this.where('recordings.title', 'like', `%${search}%`)
-            .orWhere('streams.title', 'like', `%${search}%`);
+          .orWhere('streams.title', 'like', `%${search}%`);
       });
     }
 
@@ -344,7 +343,7 @@ router.post('/:recordingId/share', auth, async (req, res) => {
       id: shareToken,
       recording_id: recordingId,
       user_id: req.user.id,
-      password: password,
+      password,
       expires_at: expiresAt,
       created_at: new Date()
     });
@@ -461,17 +460,17 @@ router.get('/stats', auth, async (req, res) => {
     
     let timeFilter;
     switch (timeframe) {
-      case '7d':
-        timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case '90d':
-        timeFilter = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    case '7d':
+      timeFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      timeFilter = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      timeFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
     // Get overall statistics

@@ -24,8 +24,8 @@ RUN mkdir -p /opt/ovenmediaengine/logs \
 # Correction: Ensure /tmp/nginx-logs is writable for log volume mounts
 RUN chmod 777 /tmp/nginx-logs
 
-# Production Port Exposure
-EXPOSE 80/tcp 8080/tcp 1935/tcp 3333/tcp 3334/tcp 4000-4005/udp 10000-10010/udp 9000/tcp
+# Production Port Exposure - Enable all streaming protocols
+EXPOSE 80/tcp 8080/tcp 8081/tcp 8082/tcp 1935/tcp 3333/tcp 3334/tcp 4000-4005/udp 9998/udp 9999/udp 10000-10100/udp 9000/tcp 8088/tcp 8089/tcp
 
 # Production Health Check Script  
 COPY docker/health-check.sh /opt/ovenmediaengine/bin/health-check.sh
