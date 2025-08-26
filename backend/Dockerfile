@@ -18,8 +18,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy package files and install dependencies first for better caching
 COPY package*.json ./
 
-# Install dependencies (include dev deps for migrations)
-RUN if [ -f package-lock.json ]; then npm ci --timeout=300000; else npm install --timeout=300000; fi
+# Install dependencies (include dev deps for migrations) with verbose output
+RUN if [ -f package-lock.json ]; then npm ci --timeout=300000 --verbose; else npm install --timeout=300000 --verbose; fi
 
 # Copy application source and configuration
 COPY . .
@@ -27,13 +27,11 @@ COPY . .
 # Create a non-root user for security
 RUN useradd -r -u 1001 -m appuser
 
-# Fix permissions: ensure logs, data, uploads are owned by appuser (important for logging!)
-RUN mkdir -p /app/data /app/logs /app/uploads \
- && chown -R appuser:appuser /app/data /app/logs /app/uploads \
- && chmod 755 /app/data /app/logs /app/uploads
-
-# Correction: Make /tmp/nginx-logs writable for log volume mounts (for log aggregator)
-RUN mkdir -p /tmp/nginx-logs && chmod 777 /tmp/nginx-logs
+# Create directories and fix permissions in simpler way
+RUN mkdir -p /app/data /app/logs /app/uploads /tmp/nginx-logs \
+ && chown -R appuser:appuser /app \
+ && chmod -R 755 /app \
+ && chmod 777 /tmp/nginx-logs
 
 # Switch to non-root user
 USER appuser
