@@ -5,10 +5,7 @@ import {
   Grid,
   Card,
   CardContent,
-  Paper,
   Chip,
-  IconButton,
-  Tooltip,
   Switch,
   FormControlLabel,
   Button,
@@ -21,7 +18,6 @@ import {
   Divider
 } from '@mui/material';
 import {
-  Timeline,
   LineChart,
   Line,
   XAxis,
@@ -93,25 +89,11 @@ const Analytics: React.FC = () => {
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
-  const [timeRange, setTimeRange] = useState('1h');
-
-  useEffect(() => {
-    fetchAnalyticsData();
-    
-    let interval: NodeJS.Timeout;
-    if (realTimeEnabled) {
-      interval = setInterval(fetchAnalyticsData, 5000);
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [realTimeEnabled, timeRange]);
 
   const fetchAnalyticsData = async () => {
     try {
       const [analyticsRes, metricsRes, healthRes] = await Promise.all([
-        api.get(`/api/analytics/data?range=${timeRange}`),
+        api.get(`/api/analytics/data?range=1h`),
         api.get('/api/analytics/metrics'),
         api.get('/api/system/health')
       ]);
@@ -125,6 +107,19 @@ const Analytics: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAnalyticsData();
+    
+    let interval: NodeJS.Timeout;
+    if (realTimeEnabled) {
+      interval = setInterval(fetchAnalyticsData, 5000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [realTimeEnabled]);
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
@@ -339,7 +334,7 @@ const Analytics: React.FC = () => {
                     cy="50%"
                     outerRadius={80}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                   >
                     {pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />

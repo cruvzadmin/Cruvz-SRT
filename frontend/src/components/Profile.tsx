@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
+  Grid,
   Card,
   CardContent,
   Avatar,
   TextField,
   Button,
-  Grid,
   Chip,
   Switch,
   FormControlLabel,
@@ -15,7 +15,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon,
   IconButton,
   Dialog,
   DialogTitle,
@@ -41,9 +40,7 @@ import {
   Cancel as CancelIcon,
   Key as KeyIcon,
   Add as AddIcon,
-  Delete as DeleteIcon,
-  Visibility as ViewIcon,
-  VisibilityOff as VisibilityOffIcon
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -85,7 +82,7 @@ interface SecurityLog {
 }
 
 const Profile: React.FC = () => {
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);

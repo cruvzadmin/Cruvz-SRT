@@ -109,7 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       axios.interceptors.response.eject(interceptor);
     };
-  }, [token]); // Removed logout dependency to fix order issue
+  }, [token]); // Keep original dependency array
 
   const logout = (): void => {
     setToken(null);

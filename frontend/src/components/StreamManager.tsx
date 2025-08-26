@@ -5,7 +5,6 @@ import {
   Grid,
   Card,
   CardContent,
-  CardActions,
   Button,
   Chip,
   Dialog,
@@ -36,16 +35,13 @@ import {
   Add as AddIcon,
   PlayArrow as PlayIcon,
   Stop as StopIcon,
-  Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as ViewIcon,
-  Settings as SettingsIcon,
   ContentCopy as CopyIcon,
   RadioButtonChecked as LiveIcon,
   RadioButtonUnchecked as OfflineIcon
 } from '@mui/icons-material';
 import { api } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
 
 interface Stream {
   id: string;
@@ -70,12 +66,9 @@ interface Stream {
 }
 
 const StreamManager: React.FC = () => {
-  const { user } = useAuth();
   const [streams, setStreams] = useState<Stream[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
   // Form state for creating/editing streams
@@ -343,8 +336,8 @@ const StreamManager: React.FC = () => {
                               size="small" 
                               color="primary"
                               onClick={() => {
-                                setSelectedStream(stream);
-                                setEditDialogOpen(true);
+                                // Navigate to stream details page
+                                console.log('View stream details:', stream.id);
                               }}
                             >
                               <ViewIcon />
