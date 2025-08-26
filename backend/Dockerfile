@@ -18,8 +18,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy package files and install dependencies first for better caching
 COPY package*.json ./
 
-# Install dependencies (use npm ci if lockfile exists for reproducibility)
-RUN if [ -f package-lock.json ]; then npm ci --omit=dev --timeout=300000; else npm install --production --timeout=300000; fi
+# Install dependencies (include dev deps for migrations)
+RUN if [ -f package-lock.json ]; then npm ci --timeout=300000; else npm install --timeout=300000; fi
 
 # Copy application source and configuration
 COPY . .
