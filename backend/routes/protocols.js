@@ -15,13 +15,19 @@ const OME_API_KEY = process.env.OME_API_KEY || '';
 // Helper function to make OME API requests
 async function omeApiRequest(endpoint, options = {}) {
   try {
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    // OvenMediaEngine uses Basic authentication with just the token (no username:password format)
+    if (OME_API_KEY) {
+      headers['Authorization'] = `Basic ${Buffer.from(OME_API_KEY).toString('base64')}`;
+    }
+
     const config = {
       method: 'GET',
       baseURL: OME_API_BASE,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(OME_API_KEY && { 'Authorization': `Bearer ${OME_API_KEY}` })
-      },
+      headers,
       timeout: 5000,
       ...options
     };

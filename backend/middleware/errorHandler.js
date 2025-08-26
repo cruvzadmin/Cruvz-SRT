@@ -36,9 +36,19 @@ const errorHandler = (err, req, res, _next) => {
     error = { message, statusCode: 401 };
   }
 
-  // SQLite errors
-  if (err.code === 'SQLITE_CONSTRAINT') {
-    const message = 'Database constraint violation';
+  // PostgreSQL errors
+  if (err.code === '23505') { // Unique violation
+    const message = 'Database constraint violation - duplicate entry';
+    error = { message, statusCode: 400 };
+  }
+
+  if (err.code === '23503') { // Foreign key violation
+    const message = 'Database constraint violation - invalid reference';
+    error = { message, statusCode: 400 };
+  }
+
+  if (err.code === '23502') { // Not null violation
+    const message = 'Database constraint violation - required field missing';
     error = { message, statusCode: 400 };
   }
 

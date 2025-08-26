@@ -1895,6 +1895,24 @@ window.toggleUserDropdown = toggleUserDropdown;
 window.signOut = signOut;
 window.copyToClipboard = copyToClipboard;
 window.resetCreateForm = resetCreateForm;
+window.refreshOMEStatus = refreshOMEStatus;
+
+// OvenMediaEngine status refresh
+async function refreshOMEStatus() {
+    try {
+        const response = await apiRequest('/health/ome');
+        if (response.success) {
+            protocolsStatus = response.data;
+            updateProtocolsStatus();
+            showToast('OvenMediaEngine status refreshed', 'success');
+        } else {
+            showToast('Failed to refresh OME status', 'error');
+        }
+    } catch (error) {
+        console.error('Error refreshing OME status:', error);
+        showToast('Error refreshing OME status', 'error');
+    }
+}
 
 function updateAnalytics() {
     loadAnalytics();
