@@ -41,7 +41,12 @@ USER appuser
 # Expose port
 EXPOSE 5000
 
-# Health check
+# Correction: Health check should include Authorization header if backend has protected health endpoint (add env for token if needed).
+# If your /health endpoint requires a token:
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+#     CMD curl -f -H "Authorization: Bearer $BACKEND_HEALTH_TOKEN" http://localhost:5000/health || exit 1
+
+# If not, keep as is:
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 

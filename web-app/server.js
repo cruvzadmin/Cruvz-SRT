@@ -8,7 +8,7 @@ const { promisify } = require('util');
 const readFile = promisify(fs.readFile);
 const stat = promisify(fs.stat);
 
-const PORT = process.env.WEB_PORT || 8080;
+const PORT = process.env.WEB_PORT || 8085;
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 const WEB_ROOT = __dirname;
 

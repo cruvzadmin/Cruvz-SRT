@@ -42,7 +42,7 @@
 		<!-- Enable this configuration if you want to use API Server -->
 		<Managers>
 			<API>
-				<Port>8081</Port>
+				<Port>8080</Port> <!-- Corrected port from 8081 to 8080 -->
 				<TLSPort>8082</TLSPort>
 				<WorkerCount>1</WorkerCount>
 			</API>
