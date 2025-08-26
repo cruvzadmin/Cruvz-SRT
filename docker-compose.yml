@@ -145,8 +145,6 @@ services:
     networks:
       - cruvz-network
     depends_on:
-      migrate:
-        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -180,13 +178,18 @@ services:
     container_name: cruvz-origin
     restart: unless-stopped
     ports:
-      - "8080:8080"
-      - "1935:1935"
-      - "9999:9999/udp"
-      - "3333:3333"
-      - "8088:8088"
-      - "8089:8089"
-      - "10000-10100:10000-10100/udp"
+      - "8080:8080"   # API Server
+      - "1935:1935"   # RTMP Provider
+      - "9999:9999/udp"  # SRT Provider
+      - "9998:9998/udp"  # SRT Publisher
+      - "3333:3333"   # WebRTC Signalling
+      - "3334:3334"   # WebRTC Signalling TLS
+      - "8088:8088"   # LLHLS Stream
+      - "8089:8089"   # LLHLS Stream TLS
+      - "8081:8081"   # Thumbnail Publisher
+      - "8082:8082"   # Thumbnail Publisher TLS
+      - "4000-4005:4000-4005/udp"  # MPEGTS Provider
+      - "10000-10100:10000-10100/udp"  # WebRTC ICE candidates
     volumes:
       - ./configs:/opt/ovenmediaengine/bin/origin_conf:ro
       - ./data/recordings:/opt/ovenmediaengine/recordings
@@ -195,10 +198,15 @@ services:
       - OME_HOST_IP=0.0.0.0
       - OME_RTMP_PROV_PORT=1935
       - OME_SRT_PROV_PORT=9999
+      - OME_SRT_PUB_PORT=9998
       - OME_WEBRTC_SIGNALLING_PORT=3333
+      - OME_WEBRTC_SIGNALLING_TLS_PORT=3334
       - OME_LLHLS_STREAM_PORT=8088
       - OME_LLHLS_STREAM_TLS_PORT=8089
       - OME_API_PORT=8080
+      - OME_THUMBNAIL_PORT=8081
+      - OME_THUMBNAIL_TLS_PORT=8082
+      - OME_MPEGTS_PROV_PORT=4000-4005
       - OME_ACCESS_TOKEN=cruvz-production-api-token-2025
       - MAX_CONCURRENT_STREAMS=1000
       - OME_WEBRTC_CANDIDATE_PORT=10000-10100

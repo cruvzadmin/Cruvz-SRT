@@ -18,8 +18,8 @@ else
     echo "SSL certificates already exist in $SSL_DIR"
 fi
 
-# Start health check server in background
-/opt/ovenmediaengine/bin/simple-health-server.sh &
+# Health monitoring is handled by OvenMediaEngine API server on port 8080
+# No additional health check server needed - prevents port conflicts
 
 # Execute the main command
 exec "$@"

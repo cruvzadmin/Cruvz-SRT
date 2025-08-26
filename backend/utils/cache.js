@@ -35,8 +35,7 @@ class CacheManager {
         maxLoadingTimeout: 5000, // Shorter timeout
         db: 0,
         // Disable auto-reconnect to prevent spam when Redis is unavailable
-        enableOfflineQueue: false,
-        maxRetriesPerRequest: 1
+        enableOfflineQueue: false
       };
 
       this.redis = new Redis(redisConfig);

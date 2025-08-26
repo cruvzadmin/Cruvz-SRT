@@ -589,4 +589,283 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/streams/:id/url
+// @desc    Get stream URL
+// @access  Private
+router.get('/:id/url', auth, async (req, res) => {
+  try {
+    const streamId = req.params.id;
+
+    try {
+      await db.raw('SELECT 1');
+      
+      const stream = await db('streams')
+        .where({ id: streamId, user_id: req.user.id })
+        .first();
+
+      if (!stream) {
+        return res.status(404).json({
+          success: false,
+          error: 'Stream not found'
+        });
+      }
+
+      // Generate stream URLs based on protocol
+      const baseUrl = process.env.STREAMING_BASE_URL || 'http://localhost:8080';
+      const streamKey = stream.stream_key;
+      
+      let urls = {};
+      
+      switch (stream.protocol) {
+      case 'rtmp':
+        urls = {
+          ingest: `rtmp://${baseUrl.replace('http://', '').replace('https://', '')}/live/${streamKey}`,
+          watch: `${baseUrl}/live/${streamKey}/playlist.m3u8`
+        };
+        break;
+      case 'webrtc':
+        urls = {
+          ingest: `ws://${baseUrl.replace('http://', '').replace('https://', '')}/webrtc/${streamKey}`,
+          watch: `${baseUrl}/webrtc/${streamKey}`
+        };
+        break;
+      case 'srt':
+        urls = {
+          ingest: `srt://${baseUrl.replace('http://', '').replace('https://', '')}:9999?streamid=${streamKey}`,
+          watch: `${baseUrl}/srt/${streamKey}/playlist.m3u8`
+        };
+        break;
+      case 'hls':
+        urls = {
+          ingest: `rtmp://${baseUrl.replace('http://', '').replace('https://', '')}/live/${streamKey}`,
+          watch: `${baseUrl}/hls/${streamKey}/playlist.m3u8`
+        };
+        break;
+      default:
+        urls = {
+          ingest: `rtmp://${baseUrl.replace('http://', '').replace('https://', '')}/live/${streamKey}`,
+          watch: `${baseUrl}/live/${streamKey}/playlist.m3u8`
+        };
+      }
+
+      res.json({
+        success: true,
+        data: {
+          stream_id: streamId,
+          protocol: stream.protocol,
+          stream_key: streamKey,
+          url: urls.watch,
+          ingest_url: urls.ingest,
+          watch_url: urls.watch
+        }
+      });
+
+    } catch (dbError) {
+      logger.warn('Database not available for stream URL');
+      return res.status(503).json({
+        success: false,
+        error: 'Service temporarily unavailable'
+      });
+    }
+
+  } catch (error) {
+    logger.error('Get stream URL error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get stream URL'
+    });
+  }
+});
+
+// @route   PUT /api/streams/:id
+// @desc    Update stream
+// @access  Private
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const { error, value } = updateStreamSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: error.details[0].message
+      });
+    }
+
+    const streamId = req.params.id;
+    
+    try {
+      await db.raw('SELECT 1');
+      
+      // Check if stream exists and belongs to user
+      const stream = await db('streams')
+        .where({ id: streamId, user_id: req.user.id })
+        .first();
+
+      if (!stream) {
+        return res.status(404).json({
+          success: false,
+          error: 'Stream not found'
+        });
+      }
+
+      // Update stream
+      const [updatedStream] = await db('streams')
+        .where({ id: streamId })
+        .update({
+          ...value,
+          updated_at: new Date()
+        })
+        .returning('*');
+
+      res.json({
+        success: true,
+        data: updatedStream,
+        message: 'Stream updated successfully'
+      });
+
+    } catch (dbError) {
+      logger.warn('Database not available for stream update');
+      return res.status(503).json({
+        success: false,
+        error: 'Service temporarily unavailable'
+      });
+    }
+
+  } catch (error) {
+    logger.error('Update stream error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update stream'
+    });
+  }
+});
+
+// @route   POST /api/streams/:id/start
+// @desc    Start stream
+// @access  Private
+router.post('/:id/start', auth, async (req, res) => {
+  try {
+    const streamId = req.params.id;
+
+    try {
+      await db.raw('SELECT 1');
+      
+      const stream = await db('streams')
+        .where({ id: streamId, user_id: req.user.id })
+        .first();
+
+      if (!stream) {
+        return res.status(404).json({
+          success: false,
+          error: 'Stream not found'
+        });
+      }
+
+      if (stream.status === 'active') {
+        return res.status(400).json({
+          success: false,
+          error: 'Stream is already active'
+        });
+      }
+
+      // Update stream status
+      await db('streams')
+        .where({ id: streamId })
+        .update({
+          status: 'active',
+          started_at: new Date(),
+          updated_at: new Date()
+        });
+
+      // In production, this would interface with OvenMediaEngine to actually start the stream
+      logger.info(`Stream ${streamId} started by user ${req.user.id}`);
+
+      res.json({
+        success: true,
+        message: 'Stream started successfully'
+      });
+
+    } catch (dbError) {
+      logger.warn('Database not available for stream start');
+      return res.status(503).json({
+        success: false,
+        error: 'Service temporarily unavailable'
+      });
+    }
+
+  } catch (error) {
+    logger.error('Start stream error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start stream'
+    });
+  }
+});
+
+// @route   POST /api/streams/:id/stop
+// @desc    Stop stream
+// @access  Private
+router.post('/:id/stop', auth, async (req, res) => {
+  try {
+    const streamId = req.params.id;
+
+    try {
+      await db.raw('SELECT 1');
+      
+      const stream = await db('streams')
+        .where({ id: streamId, user_id: req.user.id })
+        .first();
+
+      if (!stream) {
+        return res.status(404).json({
+          success: false,
+          error: 'Stream not found'
+        });
+      }
+
+      if (stream.status !== 'active') {
+        return res.status(400).json({
+          success: false,
+          error: 'Stream is not active'
+        });
+      }
+
+      // Calculate duration
+      const duration = stream.started_at ? 
+        Math.floor((new Date() - new Date(stream.started_at)) / 1000) : 0;
+
+      // Update stream status
+      await db('streams')
+        .where({ id: streamId })
+        .update({
+          status: 'inactive',
+          stopped_at: new Date(),
+          duration,
+          updated_at: new Date()
+        });
+
+      // In production, this would interface with OvenMediaEngine to actually stop the stream
+      logger.info(`Stream ${streamId} stopped by user ${req.user.id}`);
+
+      res.json({
+        success: true,
+        message: 'Stream stopped successfully'
+      });
+
+    } catch (dbError) {
+      logger.warn('Database not available for stream stop');
+      return res.status(503).json({
+        success: false,
+        error: 'Service temporarily unavailable'
+      });
+    }
+
+  } catch (error) {
+    logger.error('Stop stream error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to stop stream'
+    });
+  }
+});
+
 module.exports = router;

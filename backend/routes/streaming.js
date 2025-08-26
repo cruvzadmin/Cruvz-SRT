@@ -601,7 +601,7 @@ router.post('/recording/start', auth, async (req, res) => {
       success: true,
       data: {
         recording_id: recordingId,
-        stream_id: stream_id,
+        stream_id,
         config: recordingConfig,
         started_at: new Date().toISOString(),
         estimated_file_size: '~2GB per hour',
@@ -656,8 +656,8 @@ router.post('/recording/stop', auth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        recording_id: recording_id,
-        stream_id: stream_id,
+        recording_id,
+        stream_id,
         stopped_at: new Date().toISOString(),
         final_location: stream.recording_url,
         status: 'processing'
@@ -739,7 +739,7 @@ router.post('/transcode/configure', auth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        stream_id: stream_id,
+        stream_id,
         config: transcodeConfig,
         profiles_count: transcodeConfig.profiles.length,
         estimated_cpu_usage: '40-60%',
@@ -819,7 +819,7 @@ router.post('/push/configure', auth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        stream_id: stream_id,
+        stream_id,
         config: pushConfig,
         targets_count: pushConfig.targets.length,
         status: 'configured',

@@ -41,7 +41,7 @@
 		<Managers>
 			<API>
 				<Port>${env:OME_API_PORT:8080}</Port>
-				<WorkerCount>1</WorkerCount>
+				<WorkerCount>2</WorkerCount>
 			</API>
 		</Managers>
 		<Providers>
@@ -61,14 +61,11 @@
 				<Port>${env:OME_SRT_PROV_PORT:9999}</Port>
 				<WorkerCount>1</WorkerCount>
 			</SRT>
-			<!--
 			<MPEGTS>
-					<- Listen on port 4000
-					This is just a demonstration to show that you can configure the port in several ways ->
-					<Port>${env:OME_MPEGTS_PROV_PORT:4000-4001,4004,4005/udp}</Port>
+				<!-- Enable MPEGTS Provider for production use -->
 				<Port>${env:OME_MPEGTS_PROV_PORT:4000-4005/udp}</Port>
+				<WorkerCount>2</WorkerCount>
 			</MPEGTS>
-			-->
 			<WebRTC>
 				<Signalling>
 					<Port>${env:OME_WEBRTC_SIGNALLING_PORT:3333}</Port>
@@ -113,6 +110,12 @@
 					<TcpRelayWorkerCount>1</TcpRelayWorkerCount>
 				</IceCandidates>
 			</WebRTC>
+			<!-- Enable ThumbnailPublisher for production -->
+			<Thumbnail>
+				<Port>${env:OME_THUMBNAIL_PORT:8081}</Port>
+				<TLSPort>${env:OME_THUMBNAIL_TLS_PORT:8082}</TLSPort>
+				<WorkerCount>2</WorkerCount>
+			</Thumbnail>
 		</Publishers>
 	</Bind>
 
@@ -190,28 +193,16 @@
 							<HardwareAcceleration>false</HardwareAcceleration>
 						-->
 
-						<!-- Enable this configuration if you want to hardware acceleration using GPU -->
+						<!-- Enable Hardware Acceleration for production -->
 						<HWAccels>
 							<Decoder>
-									<Enable>false</Enable>
-									<!-- 
-										Setting for Hardware Modules.
-										 - xma :Xilinx Media Accelerator
-										 - qsv :Intel Quick Sync Video
-										 - nv : Nvidia Video Codec SDK
-										 - nilogan: Netint VPU
-
-										You can use multiple modules by separating them with commas.
-										For example, if you want to use xma and nv, you can set it as follows.
-
-										<Modules>[ModuleName]:[DeviceId],[ModuleName]:[DeviceId],...</Modules>
-										<Modules>xma:0,nv:0</Modules>
-									-->
-									<!-- <Modules>nv</Modules> -->
+								<Enable>true</Enable>
+								<!-- Enable hardware acceleration modules as available -->
+								<Modules>nv,qsv</Modules>
 							</Decoder>
 							<Encoder>
-									<Enable>false</Enable>
-									<!-- <Modules>nv:0</Modules> -->
+								<Enable>true</Enable>
+								<Modules>nv,qsv</Modules>
 							</Encoder>
 						</HWAccels>
 
@@ -319,24 +310,16 @@
 							<MediaRootDir>/opt/ovenmediaengine/media</MediaRootDir>
 							<ScheduleFilesDir>/opt/ovenmediaengine/media</ScheduleFilesDir>
 						</Schedule>
-						<!-- <MPEGTS>
+						<MPEGTS>
 							<StreamMap>
-									<- Set the stream name of the client connected to the port to "stream_${Port}"
-									For example, if a client connets to port 4000, OME creates a "stream_4000" stream ->
-									<Stream>
-										<Name>stream_${Port}</Name>
-										<Port>4000,4001-4004</Port>
-									</Stream>
-									<Stream>
-										<Name>stream_4005</Name>
-										<Port>4005</Port>
-									</Stream>
+								<!-- Set the stream name of the client connected to the port to "stream_${Port}" -->
+								<!-- For example, if a client connects to port 4000, OME creates a "stream_4000" stream -->
 								<Stream>
 									<Name>stream_${Port}</Name>
 									<Port>${env:OME_MPEGTS_PROV_PORT:4000-4005/udp}</Port>
 								</Stream>
 							</StreamMap>
-						</MPEGTS> -->
+						</MPEGTS>
 					</Providers>
 					<Publishers>
 						<AppWorkerCount>1</AppWorkerCount>
@@ -371,14 +354,15 @@
 							<CreateDefaultPlaylist>true</CreateDefaultPlaylist> <!-- llhls.m3u8 -->
 						</LLHLS>
 						<HLS>
-							<SegmentCount>4</SegmentCount>
+							<SegmentCount>10</SegmentCount>
 							<SegmentDuration>4</SegmentDuration>
-							<!-- <DVR>
+							<!-- Enhanced HLS v3 with DVR support -->
+							<DVR>
 								<Enable>true</Enable>
 								<EventPlaylistType>false</EventPlaylistType>
 								<TempStoragePath>/tmp/ome_dvr/</TempStoragePath>
-								<MaxDuration>600</MaxDuration>
-							</DVR> -->
+								<MaxDuration>1800</MaxDuration>
+							</DVR>
 							<CrossDomains>
 								<Url>*</Url>
 							</CrossDomains>

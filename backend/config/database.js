@@ -34,14 +34,14 @@ const config = {
     idle_in_transaction_session_timeout: 30000
   },
   pool: {
-    min: 2,
-    max: 10,
-    acquireTimeoutMillis: 10000,
-    createTimeoutMillis: 10000,
+    min: 1,
+    max: 5,
+    acquireTimeoutMillis: 30000,
+    createTimeoutMillis: 30000,
     destroyTimeoutMillis: 5000,
-    idleTimeoutMillis: 30000,
+    idleTimeoutMillis: 300000,
     reapIntervalMillis: 1000,
-    createRetryIntervalMillis: 100,
+    createRetryIntervalMillis: 200,
     propagateCreateError: false
   },
   migrations: {
