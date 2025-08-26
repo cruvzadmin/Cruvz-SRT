@@ -169,8 +169,6 @@
 		</Host>
 		<API>
 			<AccessToken>cruvz-production-api-token-2025</AccessToken>
-			<!-- Replace with your actual secure token -->
-
 			<CrossDomains>
 				<Url>*.airensoft.com</Url>
 				<Url>http://*.sub-domain.airensoft.com</Url>
