@@ -1,6 +1,11 @@
 #!/bin/bash
 # Production Health Check Endpoint
-if pgrep -f OvenMediaEngine > /dev/null; then
+
+# Correction: Check OvenMediaEngine API endpoint with Authorization header for true health
+API_URL="http://localhost:8080/v1/stats/current"
+API_TOKEN="${OME_ACCESS_TOKEN:-cruvz-production-api-token-2025}"
+
+if curl -fs -H "Authorization: Bearer $API_TOKEN" "$API_URL" >/dev/null; then
     echo "HTTP/1.1 200 OK"
     echo "Content-Type: application/json"
     echo ""
