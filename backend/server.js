@@ -12,10 +12,10 @@ let db;
 
 // Try to initialize database with fallback
 try {
-  db = knex(knexConfig[process.env.NODE_ENV || 'development']);
+  db = knex(knexConfig[process.env.NODE_ENV || 'production']); // Always use production for deployment
 } catch (error) {
-  console.warn('Database configuration failed, using mock database for development');
-  db = require('./config/database-mock');
+  console.error('❌ Database configuration failed:', error);
+  process.exit(1); // No mock fallback
 }
 
 const cache = require('./utils/cache');
@@ -70,7 +70,7 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   process.exit(1);
 }
 
-// Database and Redis are required for production deployment - but allow fallback for development
+// Database and Redis are required for production deployment - no fallback
 if (isProduction && !process.env.POSTGRES_HOST) {
   logger.error('💥 CONFIGURATION ERROR: POSTGRES_HOST must be set for production deployment');
   process.exit(1);
@@ -162,46 +162,30 @@ let cacheConnected = false;
 async function initializeDatabase() {
   try {
     logger.info('🔄 Initializing database connection...');
-    
-    // Check if we're using mock database
-    if (db.constructor.name === 'MockDatabase') {
-      logger.warn('⚠️  Using mock database - limited functionality available');
-      dbConnected = false; // Mark as disconnected but don't fail
-      return false;
-    }
-    
     logger.info(`Database config: ${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB} as ${process.env.POSTGRES_USER}`);
-    
+
     // Test database connection with timeout
     const testQuery = db.raw('SELECT 1 as test').timeout(5000);
     const result = await testQuery;
     logger.info('✅ Database test query successful');
-    
+
     // Run migrations in production if needed
     if (process.env.AUTO_MIGRATE === 'true') {
       logger.info('🔄 Running database migrations...');
       await db.migrate.latest();
       logger.info('✅ Database migrations completed');
     }
-    
+
     dbConnected = true;
     logger.info('✅ PostgreSQL database connected successfully');
     return true;
   } catch (error) {
     logger.error('❌ PostgreSQL database connection failed:', error.message);
     logger.error('Database error details:', error);
-    
-    // PostgreSQL is mandatory for production deployment, but allow fallback for development
-    if (isProduction) {
-      logger.error('💥 FATAL: PostgreSQL database connection required for production deployment');
-      throw error;
-    } else {
-      logger.warn('⚠️  Database not available - switching to mock database for development');
-      // Switch to mock database for development
-      db = require('./config/database-mock');
-      dbConnected = false;
-      return false;
-    }
+
+    // PostgreSQL is mandatory for production deployment
+    logger.error('💥 FATAL: PostgreSQL database connection required for production deployment');
+    throw error;
   }
 }
 
@@ -224,15 +208,7 @@ async function initializeCache() {
     cacheConnected = false;
     
     // Cache is important but not mandatory - use fallback
-    if (isProduction) {
-      logger.warn('⚠️  Redis cache not available - running without cache in production (performance may be affected)');
-    } else {
-      logger.warn('⚠️  Redis cache not available - switching to mock cache for development');
-      // Switch to mock cache for development
-      const mockCache = require('./utils/cache-mock');
-      Object.assign(cache, mockCache);
-      await cache.init();
-    }
+    logger.warn('⚠️  Redis cache not available - running without cache in production (performance may be affected)');
     return false;
   }
 }
@@ -245,7 +221,7 @@ app.get('/health', async (req, res) => {
     service: 'cruvz-streaming-api',
     timestamp: new Date().toISOString(),
     version: '2.0.0',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'production'
   };
 
   let overallStatus = 'healthy';
@@ -257,11 +233,11 @@ app.get('/health', async (req, res) => {
       healthData.database = { connected: true, type: 'postgresql' };
     } else {
       healthData.database = { connected: false, type: 'postgresql', error: 'No connection' };
-      overallStatus = 'degraded';
+      overallStatus = 'down';
     }
   } catch (error) {
     healthData.database = { connected: false, type: 'postgresql', error: error.message };
-    overallStatus = 'degraded';
+    overallStatus = 'down';
   }
 
   // Check Redis cache connectivity
@@ -274,17 +250,17 @@ app.get('/health', async (req, res) => {
       }
     } else {
       healthData.cache = { connected: false, type: 'redis', error: 'No connection' };
-      overallStatus = 'degraded';
+      overallStatus = (overallStatus === 'healthy') ? 'degraded' : overallStatus;
     }
   } catch (error) {
     healthData.cache = { connected: false, type: 'redis', error: error.message };
-    overallStatus = 'degraded';
+    overallStatus = (overallStatus === 'healthy') ? 'degraded' : overallStatus;
   }
 
   healthData.status = overallStatus;
-  
-  // Return 200 for degraded state in development, 503 in production
-  const statusCode = (overallStatus === 'degraded' && isProduction) ? 503 : 200;
+
+  // Corrected logic: Only return 503 if database is "down", otherwise 200
+  const statusCode = (overallStatus === 'down') ? 503 : 200;
   res.status(statusCode).json(healthData);
 });
 
@@ -354,7 +330,6 @@ function checkDatabaseConnection(req, res, next) {
       message: 'Database connection is not available. Please try again later.'
     });
   }
-  // Allow operation with mock database in development
   next();
 }
 
@@ -376,7 +351,7 @@ app.get('/api', (req, res) => {
   res.json({
     success: true,
     message: 'Cruvz Streaming API v2.0.0',
-    environment: process.env.NODE_ENV || 'development',
+    environment: process.env.NODE_ENV || 'production',
     endpoints: {
       auth: {
         'POST /api/auth/register': 'Register new user',
@@ -514,12 +489,8 @@ async function startServer() {
       await initializeDatabase();
       logger.info('✅ Database initialization completed');
     } catch (error) {
-      if (isProduction) {
-        logger.error('💥 FATAL: PostgreSQL database connection required for production deployment');
-        process.exit(1);
-      } else {
-        logger.warn('⚠️  Database initialization failed - continuing in degraded mode for development');
-      }
+      logger.error('💥 FATAL: PostgreSQL database connection required for production deployment');
+      process.exit(1);
     }
 
     // Initialize cache connection (important for production deployment)
@@ -527,17 +498,13 @@ async function startServer() {
       await initializeCache();
       logger.info('✅ Cache initialization completed');
     } catch (error) {
-      if (isProduction) {
-        logger.warn('⚠️  Redis cache connection failed - continuing without cache in production (performance may be affected)');
-      } else {
-        logger.warn('⚠️  Cache initialization failed - continuing without cache for development');
-      }
+      logger.warn('⚠️  Redis cache connection failed - continuing without cache in production (performance may be affected)');
     }
 
     // Start the server
     const server = app.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 Cruvz Streaming API v2.0.0 running on port ${PORT}`);
-      logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'production'}`);
       logger.info(`🗄️  Database: ${dbConnected ? 'Connected (PostgreSQL)' : 'Disconnected'}`);
       logger.info(`🔗 Cache: ${cacheConnected ? 'Connected (Redis)' : 'Disconnected'}`);
       logger.info(`📊 Health check: http://localhost:${PORT}/health`);
