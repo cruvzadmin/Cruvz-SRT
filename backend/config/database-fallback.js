@@ -29,19 +29,20 @@ const config = {
     database: process.env.POSTGRES_DB || 'cruvzdb',
     port: process.env.POSTGRES_PORT || 5432,
     ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 3000,
-    statement_timeout: 3000,
-    query_timeout: 3000,
-    idle_in_transaction_session_timeout: 5000
+    connectionTimeoutMillis: 10000,
+    statement_timeout: 10000,
+    query_timeout: 10000,
+    idle_in_transaction_session_timeout: 30000
   },
   pool: {
-    min: 0,
-    max: 2,
-    acquireTimeoutMillis: 3000,
-    createTimeoutMillis: 3000,
-    destroyTimeoutMillis: 2000,
-    idleTimeoutMillis: 10000,
-    createRetryIntervalMillis: 200,
+    min: 2,
+    max: 10,
+    acquireTimeoutMillis: 10000,
+    createTimeoutMillis: 10000,
+    destroyTimeoutMillis: 5000,
+    idleTimeoutMillis: 30000,
+    reapIntervalMillis: 1000,
+    createRetryIntervalMillis: 100,
     propagateCreateError: false
   },
   migrations: {
@@ -50,7 +51,7 @@ const config = {
   seeds: {
     directory: path.join(__dirname, '../scripts/seeds')
   },
-  acquireConnectionTimeout: 3000,
+  acquireConnectionTimeout: 60000,
   asyncStackTraces: false, // Disable for production performance
   debug: false
 };
