@@ -15,22 +15,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy package files and install dependencies first for better caching
-COPY package*.json ./
+# Copy application source and configuration first
+COPY . .
 
-# Clear npm cache and install dependencies including dev deps (needed for migrations)
-RUN npm cache clean --force && \
-    npm ci --timeout=300000 && \
+# Install dependencies without timeout issues
+RUN npm install --production=false && \
     npm ls dotenv && \
     npm ls knex
-
-# Copy application source and configuration
-COPY . .
 
 # Create a non-root user for security
 RUN useradd -r -u 1001 -m appuser
 
-# Create directories and fix permissions in simpler way
+# Create directories and fix permissions
 RUN mkdir -p /app/data /app/logs /app/uploads /tmp/nginx-logs \
  && chown -R appuser:appuser /app \
  && chmod -R 755 /app \
@@ -42,7 +38,7 @@ USER appuser
 # Expose port
 EXPOSE 5000
 
-# Health check without special headers for now
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 

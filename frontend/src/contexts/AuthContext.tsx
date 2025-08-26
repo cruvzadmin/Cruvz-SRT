@@ -109,7 +109,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       axios.interceptors.response.eject(interceptor);
     };
-  }, [token, logout]); // Added logout as dependency
+  }, [token]); // Removed logout dependency to fix order issue
+
+  const logout = (): void => {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem('cruvz_auth_token');
+    localStorage.removeItem('cruvz_user');
+  };
 
   const login = async (email: string, password: string): Promise<void> => {
     try {
@@ -170,22 +177,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const logout = (): void => {
-    // Clear state
-    setUser(null);
-    setToken(null);
-    
-    // Clear localStorage
-    localStorage.removeItem('cruvz_auth_token');
-    localStorage.removeItem('cruvz_user_data');
-    
-    // Clear axios authorization header
-    delete axios.defaults.headers.common['Authorization'];
-    
-    // Redirect to home page
-    window.location.href = '/';
   };
 
   const refreshToken = async (): Promise<void> => {
