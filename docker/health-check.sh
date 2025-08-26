@@ -6,8 +6,8 @@
 API_URL="http://localhost:8080/v1/stats/current"
 API_TOKEN="${OME_ACCESS_TOKEN:-cruvz-production-api-token-2025}"
 
-# OvenMediaEngine expects: Authorization: access-token <token>
-if curl -fs -H "Authorization: access-token $API_TOKEN" "$API_URL" >/dev/null; then
+# OvenMediaEngine expects: Authorization: <token> (no prefix!)
+if curl -fs -H "Authorization: $API_TOKEN" "$API_URL" >/dev/null; then
     echo "HTTP/1.1 200 OK"
     echo "Content-Type: application/json"
     echo ""
