@@ -40,7 +40,6 @@
 	<!-- Settings for the ports to bind -->
 	<Bind>
 		<!-- Enable this configuration if you want to use API Server -->
-		<!--
 		<Managers>
 			<API>
 				<Port>8081</Port>
@@ -48,7 +47,6 @@
 				<WorkerCount>1</WorkerCount>
 			</API>
 		</Managers>
-		-->
 
 		<Providers>
 			<!-- Pull providers -->
