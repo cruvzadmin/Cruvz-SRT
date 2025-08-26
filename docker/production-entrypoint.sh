@@ -18,8 +18,8 @@ else
     echo "SSL certificates already exist in $SSL_DIR"
 fi
 
-# Start health check server in background
-/opt/ovenmediaengine/bin/simple-health-server.sh &
+# Start health check server in background (disabled - conflicts with OME API port)
+# /opt/ovenmediaengine/bin/simple-health-server.sh &
 
 # Execute the main command
 exec "$@"
