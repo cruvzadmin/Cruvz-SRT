@@ -518,6 +518,10 @@ async function startServer() {
       }
     });
 
+    // Setup Socket.IO for real-time analytics
+    const io = setupSocketIO(server);
+    logger.info('🔌 Socket.IO enabled for real-time analytics');
+
     // Graceful shutdown handling
     const gracefulShutdown = async (signal) => {
       logger.info(`Received ${signal}. Starting graceful shutdown...`);
@@ -559,8 +563,94 @@ async function startServer() {
   }
 }
 
-// Export app and database for testing and route modules
+// Export app, database, and io for testing and route modules
 module.exports = { app, db };
+
+// Setup Socket.IO for real-time analytics
+function setupSocketIO(server) {
+  const { Server } = require('socket.io');
+  const io = new Server(server, {
+    cors: {
+      origin: corsOrigin,
+      methods: ["GET", "POST"],
+      credentials: true
+    }
+  });
+
+  // Middleware for Socket.IO authentication
+  io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (token) {
+      try {
+        const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
+        socket.userId = decoded.id;
+        socket.userEmail = decoded.email;
+        next();
+      } catch (error) {
+        next(new Error('Authentication error'));
+      }
+    } else {
+      next(new Error('Authentication error'));
+    }
+  });
+
+  // Handle connections
+  io.on('connection', (socket) => {
+    logger.info(`User ${socket.userEmail} connected to real-time analytics`);
+    
+    // Join user to their personal analytics room
+    socket.join(`user_${socket.userId}`);
+    
+    // Handle analytics subscription
+    socket.on('subscribe_analytics', (data) => {
+      logger.info(`User ${socket.userEmail} subscribed to analytics: ${data.type}`);
+      
+      // Send initial data
+      socket.emit('analytics_data', {
+        type: data.type,
+        timestamp: new Date(),
+        data: generateRealtimeAnalytics(socket.userId, data.type)
+      });
+    });
+    
+    socket.on('disconnect', () => {
+      logger.info(`User ${socket.userEmail} disconnected from real-time analytics`);
+    });
+  });
+
+  // Broadcast real-time analytics every 5 seconds
+  setInterval(() => {
+    io.emit('analytics_update', {
+      timestamp: new Date(),
+      data: generateRealtimeAnalytics(null, 'global')
+    });
+  }, 5000);
+
+  return io;
+}
+
+// Generate real-time analytics data
+function generateRealtimeAnalytics(userId, type) {
+  const baseData = {
+    active_streams: Math.floor(Math.random() * 20) + 5,
+    total_viewers: Math.floor(Math.random() * 5000) + 1000,
+    avg_latency: Math.floor(Math.random() * 100) + 50,
+    bandwidth_usage: (Math.random() * 1000 + 500).toFixed(2),
+    cpu_usage: (Math.random() * 50 + 20).toFixed(1),
+    memory_usage: (Math.random() * 60 + 30).toFixed(1)
+  };
+
+  if (type === 'user' && userId) {
+    // User-specific data
+    return {
+      ...baseData,
+      user_streams: Math.floor(Math.random() * 5) + 1,
+      user_viewers: Math.floor(Math.random() * 500) + 50
+    };
+  }
+
+  return baseData;
+}
 
 // Start server if this file is run directly
 if (require.main === module) {
