@@ -18,8 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy package files and install dependencies first for better caching
 COPY package*.json ./
 
-# Install dependencies (include dev deps for migrations) with verbose output
-RUN if [ -f package-lock.json ]; then npm ci --timeout=300000 --verbose; else npm install --timeout=300000 --verbose; fi
+# Clear npm cache and install dependencies including dev deps (needed for migrations)
+RUN npm cache clean --force && \
+    npm ci --timeout=300000 && \
+    npm ls dotenv && \
+    npm ls knex
 
 # Copy application source and configuration
 COPY . .
@@ -39,13 +42,8 @@ USER appuser
 # Expose port
 EXPOSE 5000
 
-# Correction: Health check should include Authorization header if backend has protected health endpoint (add env for token if needed).
-# If your /health endpoint requires a token:
-# HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-#     CMD curl -f -H "Authorization: Bearer $BACKEND_HEALTH_TOKEN" http://localhost:5000/health || exit 1
-
-# If not, keep as is:
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+# Health check without special headers for now
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Start application
