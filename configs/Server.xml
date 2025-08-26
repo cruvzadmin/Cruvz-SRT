@@ -389,4 +389,11 @@
 			</Applications>
 		</VirtualHost>
 	</VirtualHosts>
+
+	<!-- API Server Configuration -->
+	<Managers>
+		<API>
+			<AccessToken>cruvz-production-api-token-2025</AccessToken>
+		</API>
+	</Managers>
 </Server>
