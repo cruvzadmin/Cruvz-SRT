@@ -93,6 +93,20 @@ services:
       - no-new-privileges:true
 
   # ================================
+  # DATABASE MIGRATION INIT CONTAINER
+  # ================================
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["node", "run-migrations.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cruvz-network
+
+  # ================================
   # BACKEND API SERVER (SCALED)
   # ================================
   backend:
@@ -131,6 +145,8 @@ services:
     networks:
       - cruvz-network
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
