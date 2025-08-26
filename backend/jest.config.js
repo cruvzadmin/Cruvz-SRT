@@ -5,9 +5,7 @@ module.exports = {
     '**/*.js',
     '!**/node_modules/**',
     '!**/tests/**',
-    '!**/coverage/**',
-    '!server-minimal.js',
-    '!server-simple.js'
+    '!**/coverage/**'
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
