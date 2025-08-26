@@ -32,6 +32,9 @@ RUN mkdir -p /app/data /app/logs /app/uploads \
  && chown -R appuser:appuser /app/data /app/logs /app/uploads \
  && chmod 755 /app/data /app/logs /app/uploads
 
+# Correction: Make /tmp/nginx-logs writable for log volume mounts (for log aggregator)
+RUN mkdir -p /tmp/nginx-logs && chmod 777 /tmp/nginx-logs
+
 # Switch to non-root user
 USER appuser
 
