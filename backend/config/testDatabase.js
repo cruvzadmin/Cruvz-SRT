@@ -24,7 +24,7 @@ class TestDB {
   async _init() {
     try {
       await this.initializeTables();
-      console.log('[INFO] ✅ In-memory SQLite database initialized');
+      console.log('[INFO] ✅ PostgreSQL test database initialized');
     } catch (err) {
       console.error('[ERROR] Database initialization failed:', err);
     }
