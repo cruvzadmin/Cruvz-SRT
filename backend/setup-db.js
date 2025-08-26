@@ -3,7 +3,7 @@ const { Client } = require('pg');
 
 async function setupDatabase() {
   const client = new Client({
-    host: process.env.POSTGRES_HOST || 'localhost',
+    host: process.env.POSTGRES_HOST || 'postgres', // FIXED: use 'postgres' for Docker Compose internal networking
     user: process.env.POSTGRES_USER || 'cruvz',
     password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
     database: process.env.POSTGRES_DB || 'cruvzdb',
