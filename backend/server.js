@@ -44,6 +44,7 @@ const analyticsRoutes = require('./routes/analytics');
 const userRoutes = require('./routes/users');
 const sixSigmaRoutes = require('./routes/sixSigma');
 const apiRoutes = require('./routes/api');
+const healthRoutes = require('./routes/health');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -345,6 +346,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', checkDatabaseConnection, userRoutes);
 app.use('/api/six-sigma', checkDatabaseConnection, sixSigmaRoutes);
 app.use('/api/keys', checkDatabaseConnection, apiRoutes);
+app.use('/api/health', healthRoutes);
 
 // API Documentation endpoint
 app.get('/api', (req, res) => {
