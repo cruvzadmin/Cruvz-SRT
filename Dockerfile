@@ -18,7 +18,11 @@ COPY configs/Logger.xml /opt/ovenmediaengine/bin/origin_conf/Logger.xml
 # Set up directories for production
 RUN mkdir -p /opt/ovenmediaengine/logs \
              /opt/ovenmediaengine/metrics \
-             /opt/ovenmediaengine/health
+             /opt/ovenmediaengine/health \
+             /tmp/nginx-logs
+
+# Correction: Ensure /tmp/nginx-logs is writable for log volume mounts
+RUN chmod 777 /tmp/nginx-logs
 
 # Production Port Exposure
 EXPOSE 80/tcp 8080/tcp 1935/tcp 3333/tcp 3334/tcp 4000-4005/udp 10000-10010/udp 9000/tcp
