@@ -7,7 +7,7 @@ async function setupDatabase() {
     user: process.env.POSTGRES_USER || 'cruvz',
     password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
     database: process.env.POSTGRES_DB || 'cruvzdb',
-    port: process.env.POSTGRES_PORT || 5432,
+    port: process.env.POSTGRES_PORT ? parseInt(process.env.POSTGRES_PORT) : 5432,
   });
 
   try {
