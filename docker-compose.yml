@@ -208,8 +208,8 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      # Correction: Use OvenMediaEngine's required header format for API token
-      test: ["CMD", "curl", "-f", "-H", "Authorization: access-token cruvz-production-api-token-2025", "http://localhost:8080/v1/stats/current"]
+      # Correction: Use OvenMediaEngine's required header format for API token (NO prefix, just the token value)
+      test: ["CMD", "curl", "-f", "-H", "Authorization: cruvz-production-api-token-2025", "http://localhost:8080/v1/stats/current"]
       interval: 30s
       timeout: 10s
       retries: 5
