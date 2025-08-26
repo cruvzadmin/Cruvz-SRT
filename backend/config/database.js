@@ -26,7 +26,7 @@ const config = {
     user: process.env.POSTGRES_USER || 'cruvz',
     password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
     database: process.env.POSTGRES_DB || 'cruvzdb',
-    port: process.env.POSTGRES_PORT || 5432,
+    port: process.env.POSTGRES_PORT ? parseInt(process.env.POSTGRES_PORT) : 5432,
     ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : false,
     connectionTimeoutMillis: 10000,
     statement_timeout: 10000,
@@ -61,6 +61,7 @@ const config = {
  * This server will ONLY use PostgreSQL for any environment.
  */
 
+// Only export a real Postgres connection, never a mock
 const db = knex(config);
 
 module.exports = db;
