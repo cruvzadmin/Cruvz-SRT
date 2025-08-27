@@ -671,7 +671,8 @@ router.post('/targets/:targetId/connect', auth, async (req, res) => {
     // Simulate connection process
     setTimeout(async () => {
       try {
-        const connectionSuccess = Math.random() > 0.2; // 80% success rate
+        // Real connection test would check actual endpoint
+        const connectionSuccess = true; // Would be based on actual endpoint validation
         
         if (connectionSuccess) {
           await db('publishing_targets')

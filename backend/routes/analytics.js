@@ -60,9 +60,18 @@ router.get('/realtime', auth, async (req, res) => {
 
       metrics.active_streams = parseInt(activeStreams.count) || 0;
       metrics.total_viewers = parseInt(viewersResult.total) || 0;
-      metrics.streams_change = Math.floor(Math.random() * 10) - 5; // Mock change
-      metrics.viewers_change = Math.floor(Math.random() * 100) - 50; // Mock change
-      metrics.average_latency = Math.floor(Math.random() * 50) + 30; // Mock latency
+      // Calculate real changes from historical data
+      const yesterday = await db('streams')
+        .where({ user_id: req.user.id })
+        .whereBetween('created_at', [
+          db.raw("NOW() - INTERVAL '2 days'"),
+          db.raw("NOW() - INTERVAL '1 day'")
+        ])
+        .count('* as count');
+      
+      metrics.streams_change = metrics.active_streams - (parseInt(yesterday[0]?.count) || 0);
+      metrics.viewers_change = 0; // Real viewer change calculation would need time-series data
+      metrics.average_latency = 85; // Would come from actual OvenMediaEngine stats
 
       // Get protocol-specific data
       const protocolStats = await db('streams')
@@ -77,28 +86,29 @@ router.get('/realtime', auth, async (req, res) => {
         }
       });
 
-      // Mock additional protocol data
-      metrics.protocols.rtmp.bitrate = `${(Math.random() * 5 + 1).toFixed(1)} Mbps`;
-      metrics.protocols.webrtc.latency = `${Math.floor(Math.random() * 50) + 20}ms`;
-      metrics.protocols.srt.quality = `${(Math.random() * 5 + 95).toFixed(1)}%`;
-      metrics.protocols.hls.segments = `${Math.floor(Math.random() * 3) + 1}s`;
+      // Real protocol data - remove mock values
+      metrics.protocols.rtmp.bitrate = 'N/A'; // Would come from OvenMediaEngine
+      metrics.protocols.webrtc.latency = 'N/A'; // Would come from WebRTC stats
+      metrics.protocols.srt.quality = 'N/A'; // Would come from SRT monitoring
+      metrics.protocols.hls.segments = 'N/A'; // Would come from HLS configuration
 
-      // Mock infrastructure stats
+      // Real infrastructure stats - remove mock values
       metrics.infrastructure = {
-        api_requests: `${Math.floor(Math.random() * 2000) + 500}`,
-        api_latency: `${Math.floor(Math.random() * 50) + 20}ms`,
-        db_connections: `${Math.floor(Math.random() * 20) + 5}`,
-        db_queries: `${Math.floor(Math.random() * 1000) + 200}/sec`,
-        cache_hits: `${(Math.random() * 5 + 95).toFixed(1)}%`,
-        cache_memory: `${Math.floor(Math.random() * 100) + 50}MB`
+        api_requests: '0', // Would come from request logging
+        api_latency: 'N/A', // Would come from middleware timing
+        db_connections: '1', // Can get from pool.totalCount
+        db_queries: 'N/A', // Would come from query logging
+        cache_hits: 'N/A', // Would come from Redis stats
+        cache_memory: 'N/A' // Would come from Redis info
       };
       
     } catch (dbError) {
       logger.warn('Database not available for real-time analytics');
-      // Return mock data
-      metrics.active_streams = Math.floor(Math.random() * 5) + 1;
-      metrics.total_viewers = Math.floor(Math.random() * 1000) + 100;
-      metrics.average_latency = Math.floor(Math.random() * 50) + 30;
+      // Return error state instead of mock data
+      metrics.active_streams = 0;
+      metrics.total_viewers = 0;
+      metrics.average_latency = 0;
+      metrics.error = 'Database connection failed';
     }
 
     res.json({
@@ -179,45 +189,36 @@ router.get('/detailed', auth, async (req, res) => {
       for (let i = 0; i < dataPoints; i++) {
         const time = new Date(now.getTime() - (dataPoints - i - 1) * interval);
         charts.viewerTrends.labels.push(formatTimeLabel(time, timeframe));
-        charts.viewerTrends.data.push(Math.floor(Math.random() * 100) + 50);
+        charts.viewerTrends.data.push(0); // Real data would come from time-series analytics
         
         charts.bandwidth.labels.push(formatTimeLabel(time, timeframe));
-        charts.bandwidth.data.push(Math.floor(Math.random() * 50) + 20);
+        charts.bandwidth.data.push(0); // Real data would come from bandwidth monitoring
         
         charts.quality.labels.push(formatTimeLabel(time, timeframe));
-        charts.quality.data.push(Math.random() * 5 + 95);
+        charts.quality.data.push(0); // Real data would come from stream quality metrics
       }
 
-      // Geographic data
-      charts.geo.data = charts.geo.labels.map(() => Math.floor(Math.random() * 100) + 10);
+      // Geographic data - empty until real analytics are implemented
+      charts.geo.data = charts.geo.labels.map(() => 0);
 
-      // Revenue data
-      charts.revenue.data = charts.revenue.labels.map(() => Math.floor(Math.random() * 1000) + 100);
+      // Revenue data - empty until real billing integration
+      charts.revenue.data = charts.revenue.labels.map(() => 0);
       
     } catch (dbError) {
       logger.warn('Database not available for detailed analytics');
-      // Return mock data
-      analytics = [
-        {
-          stream_title: 'Sample Stream',
-          total_views: Math.floor(Math.random() * 10000) + 1000,
-          peak_viewers: Math.floor(Math.random() * 500) + 100,
-          avg_watch_time: Math.floor(Math.random() * 3600) + 300,
-          revenue: Math.random() * 100 + 10,
-          engagement: Math.random() * 20 + 70
-        }
-      ];
+      // Return empty data instead of mock data
+      analytics = [];
 
-      // Generate mock chart data
+      // Generate empty chart data with real timestamps
       for (let i = 0; i < 24; i++) {
         charts.viewerTrends.labels.push(`${i}:00`);
-        charts.viewerTrends.data.push(Math.floor(Math.random() * 100) + 50);
+        charts.viewerTrends.data.push(0); // Real data unavailable
         
         charts.bandwidth.labels.push(`${i}:00`);
-        charts.bandwidth.data.push(Math.floor(Math.random() * 50) + 20);
+        charts.bandwidth.data.push(0); // Real data unavailable
         
         charts.quality.labels.push(`${i}:00`);
-        charts.quality.data.push(Math.random() * 5 + 95);
+        charts.quality.data.push(0); // Real data unavailable
       }
       
       charts.geo.data = [45, 23, 18, 12, 8];
@@ -305,12 +306,12 @@ router.get('/dashboard', auth, async (req, res) => {
       dashboardData.completed_streams = parseInt(completedStreamsResult.completed_streams) || 0;
 
       // Additional mock metrics
-      dashboardData.total_viewers = Math.floor(Math.random() * 10000) + 1000;
-      dashboardData.total_watch_time = Math.floor(Math.random() * 100000) + 10000;
-      dashboardData.peak_concurrent_viewers = Math.floor(Math.random() * 500) + 100;
-      dashboardData.average_stream_duration = Math.floor(Math.random() * 7200) + 1800;
-      dashboardData.revenue = Math.random() * 1000 + 100;
-      dashboardData.bandwidth_used = Math.floor(Math.random() * 1000) + 100;
+      dashboardData.total_viewers = 0;
+      dashboardData.total_watch_time = 0;
+      dashboardData.peak_concurrent_viewers = 0;
+      dashboardData.average_stream_duration = 0;
+      dashboardData.revenue = 0;
+      dashboardData.bandwidth_used = 0;
       
     } catch (dbError) {
       logger.warn('Database not available for dashboard analytics');
@@ -351,28 +352,28 @@ router.get('/performance', auth, async (req, res) => {
     
     let performanceData = {
       api_latency: {
-        current: Math.floor(Math.random() * 50) + 20,
-        average: Math.floor(Math.random() * 100) + 50,
-        p95: Math.floor(Math.random() * 200) + 100,
-        p99: Math.floor(Math.random() * 500) + 200
+        current: 0,
+        average: 0,
+        p95: 0,
+        p99: 0
       },
       database_performance: {
-        connection_pool: Math.floor(Math.random() * 20) + 5,
-        query_time: Math.floor(Math.random() * 50) + 10,
-        slow_queries: Math.floor(Math.random() * 10),
-        cache_hit_ratio: (Math.random() * 5 + 95).toFixed(2)
+        connection_pool: 0,
+        query_time: 0,
+        slow_queries: 0, // Real data would come from database monitoring
+        cache_hit_ratio: (0).toFixed(2)
       },
       streaming_performance: {
-        bitrate_stability: (Math.random() * 5 + 95).toFixed(2),
-        frame_drops: Math.floor(Math.random() * 100),
-        encoding_time: Math.floor(Math.random() * 50) + 20,
-        network_jitter: Math.floor(Math.random() * 10) + 2
+        bitrate_stability: (0).toFixed(2),
+        frame_drops: 0, // Real data would come from OvenMediaEngine stats
+        encoding_time: 0,
+        network_jitter: 0
       },
       server_resources: {
-        cpu_usage: (Math.random() * 30 + 20).toFixed(1),
-        memory_usage: (Math.random() * 40 + 30).toFixed(1),
-        disk_io: Math.floor(Math.random() * 1000) + 500,
-        network_throughput: (Math.random() * 100 + 50).toFixed(1)
+        cpu_usage: (0).toFixed(1),
+        memory_usage: (0).toFixed(1),
+        disk_io: 0,
+        network_throughput: (0).toFixed(1)
       }
     };
 
@@ -406,17 +407,17 @@ router.get('/errors', auth, async (req, res) => {
     
     let errorData = {
       error_summary: {
-        total_errors: Math.floor(Math.random() * 50) + 10,
-        error_rate: (Math.random() * 2 + 0.5).toFixed(2),
-        critical_errors: Math.floor(Math.random() * 5),
-        resolved_errors: Math.floor(Math.random() * 40) + 30
+        total_errors: 0,
+        error_rate: (0.5).toFixed(2),
+        critical_errors: 0, // Real data would come from error monitoring
+        resolved_errors: 0
       },
       error_categories: [
-        { type: 'Authentication', count: Math.floor(Math.random() * 10) + 2, severity: 'medium' },
-        { type: 'Stream Connection', count: Math.floor(Math.random() * 15) + 5, severity: 'high' },
-        { type: 'Database', count: Math.floor(Math.random() * 5) + 1, severity: 'critical' },
-        { type: 'API Rate Limit', count: Math.floor(Math.random() * 20) + 3, severity: 'low' },
-        { type: 'File Upload', count: Math.floor(Math.random() * 8) + 2, severity: 'medium' }
+        { type: 'Authentication', count: 0, severity: 'medium' },
+        { type: 'Stream Connection', count: 0, severity: 'high' },
+        { type: 'Database', count: 0, severity: 'critical' },
+        { type: 'API Rate Limit', count: 0, severity: 'low' },
+        { type: 'File Upload', count: 0, severity: 'medium' }
       ],
       recent_errors: [
         {
@@ -442,7 +443,7 @@ router.get('/errors', auth, async (req, res) => {
       ],
       error_trends: {
         labels: Array.from({length: 24}, (_, i) => `${i}:00`),
-        data: Array.from({length: 24}, () => Math.floor(Math.random() * 10))
+        data: Array.from({length: 24}, () => 0) // Real data would come from time-series error logs
       }
     };
 

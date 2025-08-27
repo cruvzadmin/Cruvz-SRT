@@ -379,7 +379,7 @@ async function startRecordingProcess(recordingId) {
     
     const interval = setInterval(async () => {
       duration += 30; // 30 seconds increment
-      size += Math.floor(Math.random() * 1024 * 1024 * 5); // 0-5MB increment
+      size += 1048576; // Fixed 1MB increment for consistent recording simulation
       
       try {
         await db('recordings')
