@@ -629,27 +629,60 @@ function setupSocketIO(server) {
   return io;
 }
 
-// Generate real-time analytics data
-function generateRealtimeAnalytics(userId, type) {
-  const baseData = {
-    active_streams: Math.floor(Math.random() * 20) + 5,
-    total_viewers: Math.floor(Math.random() * 5000) + 1000,
-    avg_latency: Math.floor(Math.random() * 100) + 50,
-    bandwidth_usage: (Math.random() * 1000 + 500).toFixed(2),
-    cpu_usage: (Math.random() * 50 + 20).toFixed(1),
-    memory_usage: (Math.random() * 60 + 30).toFixed(1)
-  };
-
-  if (type === 'user' && userId) {
-    // User-specific data
-    return {
-      ...baseData,
-      user_streams: Math.floor(Math.random() * 5) + 1,
-      user_viewers: Math.floor(Math.random() * 500) + 50
+// Generate real-time analytics data from actual database
+async function generateRealtimeAnalytics(userId, type) {
+  try {
+    // Get real data from database
+    const streamCount = await db('streams').where('status', 'active').count('* as count');
+    const viewerCount = await db('stream_sessions').where('status', 'active').count('* as count');
+    
+    const baseData = {
+      active_streams: parseInt(streamCount[0]?.count) || 0,
+      total_viewers: parseInt(viewerCount[0]?.count) || 0,
+      avg_latency: 85, // Would come from OvenMediaEngine
+      bandwidth_usage: '0.00', // Would come from actual monitoring
+      cpu_usage: '0.0', // Would come from system monitoring
+      memory_usage: '0.0' // Would come from system monitoring
     };
-  }
 
-  return baseData;
+    if (type === 'user' && userId) {
+      // User-specific real data
+      const userStreams = await db('streams').where({ user_id: userId, status: 'active' }).count('* as count');
+      const userViewers = await db('stream_sessions')
+        .join('streams', 'stream_sessions.stream_id', 'streams.id')
+        .where({ 'streams.user_id': userId, 'stream_sessions.status': 'active' })
+        .count('* as count');
+      
+      return {
+        ...baseData,
+        user_streams: parseInt(userStreams[0]?.count) || 0,
+        user_viewers: parseInt(userViewers[0]?.count) || 0
+      };
+    }
+
+    return baseData;
+  } catch (error) {
+    // Return empty data if database not available
+    console.log('Database not available for analytics, returning empty data');
+    const baseData = {
+      active_streams: 0,
+      total_viewers: 0,
+      avg_latency: 0,
+      bandwidth_usage: '0.00',
+      cpu_usage: '0.0',
+      memory_usage: '0.0'
+    };
+
+    if (type === 'user' && userId) {
+      return {
+        ...baseData,
+        user_streams: 0,
+        user_viewers: 0
+      };
+    }
+
+    return baseData;
+  }
 }
 
 // Start server if this file is run directly

@@ -282,16 +282,19 @@ async function loadRealTimeStats() {
                     const healthData = await healthResponse.json();
                     updateHealthStats(healthData);
                 } else {
-                    updateStaticProductionStats();
+                    updateErrorStats(); // Show error instead of fake data
                 }
             } catch (healthError) {
-                updateStaticProductionStats();
+                updateErrorStats(); // Show error instead of fake data
             }
         }
     } catch (error) {
         console.error('Failed to load real-time stats:', error);
-        // Show production-ready static stats instead of demo data
-        updateStaticProductionStats();
+        // Show error state instead of fake static data
+        updateErrorStats();
+        
+        // Show notification to user about connection issue
+        showNotification('Unable to connect to streaming backend. Please check server status.', 'error');
     }
 }
 
@@ -305,20 +308,23 @@ function updateRealStats(stats) {
         const omeStats = stats.ome_stats;
         
         if (latencyElement) {
-            // Calculate average latency from OME stats
+            // Reset error styling and calculate average latency from OME stats
+            latencyElement.style.color = '';
             const latency = omeStats.average_latency || 85;
             latencyElement.textContent = `${Math.round(latency)}ms`;
         }
 
         if (viewersElement && omeStats.total_connections !== undefined) {
+            viewersElement.style.color = '';
             viewersElement.textContent = omeStats.total_connections.toLocaleString();
         }
 
         if (streamsElement && omeStats.total_streams !== undefined) {
+            streamsElement.style.color = '';
             streamsElement.textContent = omeStats.total_streams.toLocaleString();
         }
     } else {
-        updateStaticProductionStats();
+        updateErrorStats(); // Show error instead of fake data
     }
 }
 
@@ -328,35 +334,70 @@ function updateHealthStats(health) {
     const viewersElement = document.getElementById('liveViewers');
     const streamsElement = document.getElementById('activeStreams');
 
+    // Reset error styling
     if (latencyElement) {
+        latencyElement.style.color = '';
         latencyElement.textContent = health.status === 'healthy' ? '<100ms' : '---';
     }
 
     if (viewersElement) {
+        viewersElement.style.color = '';
         viewersElement.textContent = '0'; // Real count when no active connections
     }
 
     if (streamsElement) {
+        streamsElement.style.color = '';
         streamsElement.textContent = '0'; // Real count when no active streams
     }
 }
 
-// Static production stats (not demo/mock data)
-function updateStaticProductionStats() {
+// Test backend connectivity and show real status
+async function testBackendConnectivity() {
+    try {
+        // Test authentication endpoint
+        const authResponse = await fetch(`${API_BASE_URL}/health`);
+        if (authResponse.ok) {
+            showNotification('✅ Backend server is running and accessible', 'success');
+        } else {
+            showNotification('❌ Backend server returned error: ' + authResponse.status, 'error');
+        }
+        
+        // Test streaming endpoints
+        try {
+            const streamResponse = await apiRequest('/streaming/ome/stats');
+            if (streamResponse && streamResponse.success) {
+                showNotification('✅ Streaming services are connected and operational', 'success');
+            } else {
+                showNotification('⚠️ Streaming services not responding - check OvenMediaEngine connection', 'warning');
+            }
+        } catch (streamError) {
+            showNotification('❌ Streaming services unavailable: ' + streamError.message, 'error');
+        }
+        
+    } catch (error) {
+        showNotification('❌ Cannot connect to backend server: ' + error.message, 'error');
+    }
+}
+
+// Show error state when backend is not accessible
+function updateErrorStats() {
     const latencyElement = document.getElementById('systemLatency');
     const viewersElement = document.getElementById('liveViewers');
     const streamsElement = document.getElementById('activeStreams');
 
     if (latencyElement) {
-        latencyElement.textContent = '<100ms'; // Production target
+        latencyElement.textContent = 'N/A'; // Indicate connection error
+        latencyElement.style.color = '#ef4444'; // Red color for error
     }
 
     if (viewersElement) {
-        viewersElement.textContent = '0'; // Real count, starts at 0
+        viewersElement.textContent = 'N/A'; // Show connection error instead of fake data
+        viewersElement.style.color = '#ef4444';
     }
 
     if (streamsElement) {
-        streamsElement.textContent = '0'; // Real count, starts at 0
+        streamsElement.textContent = 'N/A'; // Show connection error instead of fake data
+        streamsElement.style.color = '#ef4444';
     }
 }
 
@@ -567,21 +608,16 @@ function showNotification(message, type = 'info') {
 
 // Live Streaming Monitor Functions (Production)
 function showDemo() {
-    const modal = document.getElementById('demoModal');
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-
-    // Start real-time production monitoring
-    startRealTimeMonitoring();
+    // Remove demo modal functionality - show real connection status instead
+    showNotification('Streaming backend connection check initiated...', 'info');
+    
+    // Test actual backend connectivity
+    testBackendConnectivity();
 }
 
 function hideDemoModal() {
-    const modal = document.getElementById('demoModal');
-    modal.classList.add('hidden');
-    document.body.style.overflow = 'auto';
-
-    // Stop real-time monitoring
-    stopRealTimeMonitoring();
+    // Demo modal removed - this function kept for compatibility
+    console.log('Demo modal functionality has been removed');
 }
 
 let realTimeMonitoring = null;
@@ -602,14 +638,15 @@ function stopRealTimeMonitoring() {
 }
 
 function startDemo() {
-    showNotification('Production stream monitoring started!', 'success');
-    // Start real production stream monitoring and analytics
+    showNotification('Testing backend connectivity...', 'info');
+    // Test real backend connectivity instead of showing mock data
+    testBackendConnectivity();
     startRealTimeMonitoring();
 }
 
 function stopDemo() {
-    showNotification('Stream monitoring stopped!', 'info');
-    // Stop production stream monitoring
+    showNotification('Connection monitoring stopped', 'info');
+    // Stop real-time monitoring
     stopRealTimeMonitoring();
 }
 

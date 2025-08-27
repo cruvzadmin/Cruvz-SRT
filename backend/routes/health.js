@@ -24,7 +24,7 @@ router.get('/system', auth, async (req, res) => {
     try {
       await db.raw('SELECT 1');
       healthStatus.db.status = 'healthy';
-      healthStatus.db.response_time = Math.floor(Math.random() * 20) + 5 + 'ms';
+      healthStatus.db.response_time = 0 + 'ms';
     } catch (dbError) {
       healthStatus.db.status = 'error';
       healthStatus.db.message = 'Database connection failed';
@@ -36,7 +36,7 @@ router.get('/system', auth, async (req, res) => {
       if (cache && cache.ping) {
         await cache.ping();
         healthStatus.redis.status = 'healthy';
-        healthStatus.redis.memory_usage = Math.floor(Math.random() * 100) + 50 + 'MB';
+        healthStatus.redis.memory_usage = 0 + 'MB';
       } else {
         healthStatus.redis.status = 'warning';
         healthStatus.redis.message = 'Redis not configured';
@@ -129,25 +129,25 @@ router.get('/metrics', auth, async (req, res) => {
   try {
     const metrics = {
       system: {
-        cpu_usage: Math.random() * 60 + 20, // Mock CPU usage
-        memory_usage: Math.random() * 70 + 20, // Mock memory usage
-        disk_usage: Math.random() * 50 + 30, // Mock disk usage
+        cpu_usage: 0, // Real CPU usage would come from OS monitoring
+        memory_usage: 0, // Real memory usage would come from OS monitoring
+        disk_usage: 0, // Real disk usage would come from filesystem monitoring
         network_io: {
-          bytes_in: Math.floor(Math.random() * 1000000) + 100000,
-          bytes_out: Math.floor(Math.random() * 5000000) + 500000
+          bytes_in: 0,
+          bytes_out: 0
         }
       },
       application: {
-        active_connections: Math.floor(Math.random() * 100) + 50,
-        requests_per_second: Math.floor(Math.random() * 200) + 100,
-        response_time: Math.random() * 100 + 50,
-        error_rate: Math.random() * 2
+        active_connections: 0,
+        requests_per_second: 0,
+        response_time: 0,
+        error_rate: 0 // Would come from error monitoring
       },
       streaming: {
         active_streams: await getActiveStreamsCount(),
         total_viewers: await getTotalViewersCount(),
-        bandwidth_usage: Math.floor(Math.random() * 1000) + 500,
-        transcoding_load: Math.random() * 80 + 10
+        bandwidth_usage: 0,
+        transcoding_load: 0
       }
     };
 
@@ -171,7 +171,8 @@ async function checkOvenMediaEngineHealth() {
   // In production, this would make HTTP requests to OME API endpoints
   return new Promise((resolve) => {
     setTimeout(() => {
-      const isHealthy = Math.random() > 0.1; // 90% chance of being healthy
+      // Real health check would test actual OME connectivity
+      const isHealthy = true; // Would be based on actual OME API response
       resolve({
         status: isHealthy ? 'healthy' : 'warning',
         message: isHealthy ? 'All streaming protocols operational' : 'Some protocols experiencing issues',
@@ -182,7 +183,7 @@ async function checkOvenMediaEngineHealth() {
           hls: { status: 'active', port: 8080 }
         },
         version: '0.15.0',
-        uptime: Math.floor(Math.random() * 1000000) + 100000
+        uptime: 0
       });
     }, 100);
   });
@@ -192,7 +193,8 @@ async function checkCDNHealth() {
   // Mock CDN health check
   return new Promise((resolve) => {
     setTimeout(() => {
-      const isHealthy = Math.random() > 0.05; // 95% chance of being healthy
+      // Real CDN health check would test actual endpoints
+      const isHealthy = true; // Would be based on actual CDN response times
       resolve({
         status: isHealthy ? 'healthy' : 'warning',
         message: isHealthy ? 'All CDN endpoints responding' : 'Some CDN endpoints slow',
@@ -250,8 +252,8 @@ async function getCacheHealth() {
     return {
       status: 'healthy',
       response_time: responseTime + 'ms',
-      memory_usage: Math.floor(Math.random() * 100) + 50 + 'MB',
-      hit_rate: (Math.random() * 5 + 95).toFixed(2) + '%'
+      memory_usage: 0 + 'MB',
+      hit_rate: (0).toFixed(2) + '%'
     };
   } catch (error) {
     return {
@@ -266,10 +268,10 @@ async function getStreamingEngineHealth() {
   // Mock streaming engine health
   return {
     status: 'healthy',
-    active_streams: Math.floor(Math.random() * 20) + 5,
-    total_bandwidth: Math.floor(Math.random() * 1000) + 500 + 'Mbps',
-    transcoding_jobs: Math.floor(Math.random() * 10),
-    recording_sessions: Math.floor(Math.random() * 5)
+    active_streams: 0,
+    total_bandwidth: 0 + 'Mbps',
+    transcoding_jobs: 0, // Real data would come from job queue
+    recording_sessions: 0 // Real data would come from active recording count
   };
 }
 
@@ -278,9 +280,9 @@ async function getFileStorageHealth() {
   return {
     status: 'healthy',
     total_space: '1TB',
-    used_space: Math.floor(Math.random() * 500) + 200 + 'GB',
-    available_space: Math.floor(Math.random() * 300) + 200 + 'GB',
-    iops: Math.floor(Math.random() * 1000) + 500
+    used_space: 0 + 'GB',
+    available_space: 0 + 'GB',
+    iops: 0
   };
 }
 
@@ -292,7 +294,7 @@ async function getActiveStreamsCount() {
       .first();
     return parseInt(result.count) || 0;
   } catch (error) {
-    return Math.floor(Math.random() * 20) + 5; // Mock data
+    return 0; // Mock data
   }
 }
 
@@ -304,7 +306,7 @@ async function getTotalViewersCount() {
       .first();
     return parseInt(result.total) || 0;
   } catch (error) {
-    return Math.floor(Math.random() * 1000) + 100; // Mock data
+    return 0; // Mock data
   }
 }
 

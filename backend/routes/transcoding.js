@@ -48,7 +48,7 @@ router.get('/jobs', auth, async (req, res) => {
 
       metrics.active_jobs = parseInt(activeJobs.count);
       metrics.queue_length = parseInt(queuedJobs.count);
-      metrics.cpu_usage = Math.floor(Math.random() * 60) + 20; // Simulated CPU usage
+      metrics.cpu_usage = 0; // Simulated CPU usage
       
     } catch (dbError) {
       logger.warn('Database not available for transcoding jobs');
@@ -222,7 +222,7 @@ async function processTranscodingJob(jobId) {
     // Simulate job processing with progress updates
     let progress = 0;
     const interval = setInterval(async () => {
-      progress += Math.floor(Math.random() * 20) + 5;
+      progress += 0;
       
       if (progress >= 100) {
         progress = 100;
