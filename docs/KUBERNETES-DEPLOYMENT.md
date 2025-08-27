@@ -21,7 +21,21 @@ This guide provides comprehensive instructions for deploying the Cruvz-SRT enter
 
 ## Quick Deployment
 
-### 1. Single-Command Deployment
+### 1. Validate Configuration (Recommended)
+
+```bash
+./validate-deployment.sh
+```
+
+This validation script checks:
+- ✅ YAML syntax and Kubernetes manifest structure
+- ✅ Docker configurations and shell script syntax  
+- ✅ Backend Node.js code and database migrations
+- ✅ Image reference consistency across all files
+- ✅ Health check endpoint configurations
+- ✅ All required files and dependencies
+
+### 2. Single-Command Deployment
 
 ```bash
 ./deploy-kubernetes.sh
