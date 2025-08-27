@@ -25,6 +25,17 @@ spec:
             sleep 2
           done
           echo "PostgreSQL is ready!"
+      - name: wait-for-redis
+        image: redis:7.2-alpine
+        command:
+        - sh
+        - -c
+        - |
+          until redis-cli -h redis-service -p 6379 ping > /dev/null 2>&1; do
+            echo "Waiting for Redis..."
+            sleep 2
+          done
+          echo "Redis is ready!"
       - name: run-migrations
         image: cruvz-srt-backend:latest
         imagePullPolicy: IfNotPresent
@@ -105,6 +116,7 @@ metadata:
 spec:
   accessModes:
   - ReadWriteOnce
+  storageClassName: cruvz-srt-storage
   resources:
     requests:
       storage: 5Gi

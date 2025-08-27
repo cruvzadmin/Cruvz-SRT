@@ -116,6 +116,7 @@ spec:
       name: postgres-storage
     spec:
       accessModes: ["ReadWriteOnce"]
+      storageClassName: cruvz-srt-storage
       resources:
         requests:
           storage: 10Gi

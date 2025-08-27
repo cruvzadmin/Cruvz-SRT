@@ -13,6 +13,18 @@ spec:
       labels:
         app: ovenmediaengine
     spec:
+      initContainers:
+      - name: wait-for-redis
+        image: redis:7.2-alpine
+        command:
+        - sh
+        - -c
+        - |
+          until redis-cli -h redis-service -p 6379 ping > /dev/null 2>&1; do
+            echo "Waiting for Redis..."
+            sleep 2
+          done
+          echo "Redis is ready!"
       containers:
       - name: ovenmediaengine
         image: cruvz-srt-origin:latest
@@ -178,6 +190,7 @@ metadata:
 spec:
   accessModes:
   - ReadWriteOnce
+  storageClassName: cruvz-srt-storage
   resources:
     requests:
       storage: 20Gi
