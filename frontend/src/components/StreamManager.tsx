@@ -86,7 +86,9 @@ const StreamManager: React.FC = () => {
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
-  const [error, setError] = useState<string | null>(null); // <-- Correction: add error state
+
+  // Correction: Add error state for setError usage
+  const [error, setError] = useState<string | null>(null);
 
   // Form state for creating/editing streams
   const [formData, setFormData] = useState({
@@ -174,7 +176,7 @@ const StreamManager: React.FC = () => {
     } catch (error) {
       console.error('Failed to create stream:', error);
       setSnackbar({ open: true, message: 'Failed to create stream', severity: 'error' });
-      setError(error instanceof Error ? error.message : 'Failed to create stream'); // <-- Correction: set error
+      setError(error instanceof Error ? error.message : 'Failed to create stream');
     }
   };
 
@@ -215,7 +217,7 @@ const StreamManager: React.FC = () => {
 
   const deleteStream = async (streamId: string) => {
     if (!window.confirm('Are you sure you want to delete this stream?')) return;
-    
+
     try {
       await api.deleteStream(streamId);
       setStreams(streams.filter(s => s.id !== streamId));
@@ -266,7 +268,7 @@ const StreamManager: React.FC = () => {
 
   const getStreamEndpoints = (stream: Stream) => {
     if (!protocols || !protocols.protocols) return {};
-    
+
     const baseEndpoints: any = {};
     Object.entries(protocols.protocols).forEach(([key, protocol]: [string, any]) => {
       if (protocol.endpoint) {
@@ -456,8 +458,8 @@ const StreamManager: React.FC = () => {
                         <Box sx={{ display: 'flex', gap: 1 }}>
                           {stream.status === 'offline' ? (
                             <Tooltip title="Start Stream">
-                              <IconButton 
-                                size="small" 
+                              <IconButton
+                                size="small"
                                 color="success"
                                 onClick={() => startStream(stream.id)}
                               >
@@ -466,8 +468,8 @@ const StreamManager: React.FC = () => {
                             </Tooltip>
                           ) : (
                             <Tooltip title="Stop Stream">
-                              <IconButton 
-                                size="small" 
+                              <IconButton
+                                size="small"
                                 color="error"
                                 onClick={() => stopStream(stream.id)}
                               >
@@ -476,8 +478,8 @@ const StreamManager: React.FC = () => {
                             </Tooltip>
                           )}
                           <Tooltip title="View Details">
-                            <IconButton 
-                              size="small" 
+                            <IconButton
+                              size="small"
                               color="primary"
                               onClick={() => {
                                 // Navigate to stream details page
@@ -488,7 +490,7 @@ const StreamManager: React.FC = () => {
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Copy Stream URL">
-                            <IconButton 
+                            <IconButton
                               size="small"
                               onClick={() => copyToClipboard(stream.input_url)}
                             >
@@ -496,8 +498,8 @@ const StreamManager: React.FC = () => {
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Delete Stream">
-                            <IconButton 
-                              size="small" 
+                            <IconButton
+                              size="small"
                               color="error"
                               onClick={() => deleteStream(stream.id)}
                             >
