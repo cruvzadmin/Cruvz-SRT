@@ -140,19 +140,18 @@ async function validateCompleteStreamingPlatform() {
   
   // Test stream creation in database
   try {
-    const insertQuery = `INSERT INTO streams (name, protocol, stream_key, status, rtmp_url, hls_url) 
-                        VALUES ('Production Test Stream', 'rtmp', '${streamKey}', 'created', 
-                        '${streamingUrls.rtmp}', '${streamingUrls.hls}') RETURNING id;`;
+    const insertQuery = `INSERT INTO streams (title, protocol, stream_key, status) 
+                        VALUES ('Production Test Stream', 'rtmp', '${streamKey}', 'created') RETURNING id;`;
     const result = execSync(`docker exec cruvz-postgres-prod psql -U cruvz -d cruvzdb -c "${insertQuery}" -t`, 
-      { encoding: 'utf8' });
-    const streamId = result.trim();
+      { encoding: 'utf8', timeout: 10000 });
+    const streamId = result.trim().split('\n')[0].trim(); // Get just the ID number
     test('Database Stream Creation', 'pass', `Stream ID: ${streamId}`);
     
     // Test stream retrieval
-    const selectQuery = `SELECT name, stream_key, status FROM streams WHERE id = ${streamId};`;
+    const selectQuery = `SELECT title, stream_key, status FROM streams WHERE id = ${streamId};`;
     const streamData = execSync(`docker exec cruvz-postgres-prod psql -U cruvz -d cruvzdb -c "${selectQuery}" -t`, 
-      { encoding: 'utf8' });
-    test('Database Stream Retrieval', 'pass', 'Stream data retrieved successfully');
+      { encoding: 'utf8', timeout: 10000 });
+    test('Database Stream Operations', 'pass', 'Stream data retrieved successfully');
     
   } catch (error) {
     test('Database Stream Operations', 'fail', error.message);
