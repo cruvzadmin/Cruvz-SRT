@@ -111,16 +111,25 @@ const StreamManager: React.FC = () => {
     streamKey: ''
   });
 
+  // Real-time update toggle
+  const [realTimeEnabled, setRealTimeEnabled] = useState(true);
+
   useEffect(() => {
     fetchStreams();
     fetchProtocols();
-    // Setup real-time updates
-    const interval = setInterval(() => {
-      fetchStreams();
-      fetchOMEStreams();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    fetchOMEStreams();
+    let interval: NodeJS.Timeout;
+    if (realTimeEnabled) {
+      interval = setInterval(() => {
+        fetchStreams();
+        fetchOMEStreams();
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [realTimeEnabled]);
 
   const fetchStreams = async () => {
     try {
@@ -179,8 +188,6 @@ const StreamManager: React.FC = () => {
       resolution: '1920x1080'
     });
   };
-    }
-  };
 
   const startStream = async (streamId: string) => {
     try {
@@ -234,6 +241,11 @@ const StreamManager: React.FC = () => {
     }
   };
 
+  const stopRecording = async () => {
+    // Implementation for stopping recording can go here
+    setRecordingDialogOpen(false);
+  };
+
   const startPush = async () => {
     if (!selectedStream || !pushData.rtmpUrl || !pushData.streamKey) return;
 
@@ -245,6 +257,11 @@ const StreamManager: React.FC = () => {
       console.error('Failed to start push:', error);
       setSnackbar({ open: true, message: 'Failed to start push', severity: 'error' });
     }
+  };
+
+  const stopPush = async () => {
+    // Implementation for stopping push can go here
+    setPushDialogOpen(false);
   };
 
   const getStreamEndpoints = (stream: Stream) => {
@@ -297,14 +314,25 @@ const StreamManager: React.FC = () => {
         <Typography variant="h4" component="h1" fontWeight="bold">
           Stream Manager
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setCreateDialogOpen(true)}
-          size="large"
-        >
-          Create Stream
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={realTimeEnabled}
+                onChange={(e) => setRealTimeEnabled(e.target.checked)}
+              />
+            }
+            label="Real-time"
+          />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setCreateDialogOpen(true)}
+            size="large"
+          >
+            Create Stream
+          </Button>
+        </Box>
       </Box>
 
       {/* Stats Cards */}
@@ -566,6 +594,67 @@ const StreamManager: React.FC = () => {
           <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={createStream} disabled={!formData.name}>
             Create Stream
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Recording Dialog */}
+      <Dialog open={recordingDialogOpen} onClose={() => setRecordingDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Start Recording</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="File Path"
+            value={recordingData.filePath}
+            onChange={(e) => setRecordingData({ ...recordingData, filePath: e.target.value })}
+            placeholder="e.g. /recordings/stream.mp4"
+            sx={{ mb: 2 }}
+          />
+          <FormControl fullWidth>
+            <InputLabel>Format</InputLabel>
+            <Select
+              value={recordingData.format}
+              label="Format"
+              onChange={(e) => setRecordingData({ ...recordingData, format: e.target.value })}
+            >
+              <MenuItem value="mp4">MP4</MenuItem>
+              <MenuItem value="mkv">MKV</MenuItem>
+              <MenuItem value="flv">FLV</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRecordingDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={startRecording}>
+            Start
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Push Dialog */}
+      <Dialog open={pushDialogOpen} onClose={() => setPushDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Start Push</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="RTMP URL"
+            value={pushData.rtmpUrl}
+            onChange={(e) => setPushData({ ...pushData, rtmpUrl: e.target.value })}
+            placeholder="e.g. rtmp://example.com/live"
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            label="Stream Key"
+            value={pushData.streamKey}
+            onChange={(e) => setPushData({ ...pushData, streamKey: e.target.value })}
+            placeholder="Stream Key"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPushDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={startPush}>
+            Start Push
           </Button>
         </DialogActions>
       </Dialog>
