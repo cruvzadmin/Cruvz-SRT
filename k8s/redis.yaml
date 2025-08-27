@@ -25,20 +25,35 @@ spec:
               name: cruvz-secrets
               key: REDIS_PASSWORD
               optional: true
+        # Redis doesn't need password if REDIS_PASSWORD is empty
+        command: ["/bin/sh"]
         args:
-        - redis-server
-        - --save
-        - "900 1"
-        - --save
-        - "300 10"
-        - --save
-        - "60 10000"
-        - --loglevel
-        - warning
-        - --maxmemory
-        - 256mb
-        - --maxmemory-policy
-        - allkeys-lru
+        - -c
+        - |
+          if [ -z "$REDIS_PASSWORD" ]; then
+            exec redis-server \
+              --save "900 1" \
+              --save "300 10" \
+              --save "60 10000" \
+              --loglevel warning \
+              --maxmemory 256mb \
+              --maxmemory-policy allkeys-lru \
+              --tcp-keepalive 300 \
+              --timeout 0 \
+              --databases 16
+          else
+            exec redis-server \
+              --save "900 1" \
+              --save "300 10" \
+              --save "60 10000" \
+              --loglevel warning \
+              --maxmemory 256mb \
+              --maxmemory-policy allkeys-lru \
+              --requirepass "$REDIS_PASSWORD" \
+              --tcp-keepalive 300 \
+              --timeout 0 \
+              --databases 16
+          fi
         volumeMounts:
         - name: redis-storage
           mountPath: /data
@@ -52,19 +67,33 @@ spec:
         livenessProbe:
           exec:
             command:
-            - redis-cli
-            - ping
-          initialDelaySeconds: 15
+            - /bin/sh
+            - -c
+            - |
+              if [ -z "$REDIS_PASSWORD" ]; then
+                redis-cli ping
+              else
+                redis-cli -a "$REDIS_PASSWORD" ping
+              fi
+          initialDelaySeconds: 30
           periodSeconds: 30
           timeoutSeconds: 10
+          failureThreshold: 3
         readinessProbe:
           exec:
             command:
-            - redis-cli
-            - ping
-          initialDelaySeconds: 5
+            - /bin/sh
+            - -c
+            - |
+              if [ -z "$REDIS_PASSWORD" ]; then
+                redis-cli ping
+              else
+                redis-cli -a "$REDIS_PASSWORD" ping
+              fi
+          initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 5
+          failureThreshold: 3
       volumes:
       - name: redis-storage
         persistentVolumeClaim:
@@ -93,6 +122,7 @@ metadata:
 spec:
   accessModes:
   - ReadWriteOnce
+  storageClassName: cruvz-srt-storage
   resources:
     requests:
       storage: 2Gi

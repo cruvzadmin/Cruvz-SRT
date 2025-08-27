@@ -1,0 +1,89 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: cruvz-srt-storage
+  namespace: cruvz-srt
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+
+---
+# Local PersistentVolume for Redis (for testing/development)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-pv
+  labels:
+    type: local
+    app: redis
+spec:
+  storageClassName: cruvz-srt-storage
+  capacity:
+    storage: 2Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /tmp/cruvz-srt/redis
+    type: DirectoryOrCreate
+
+---
+# Local PersistentVolume for PostgreSQL (for testing/development)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-pv
+  labels:
+    type: local
+    app: postgres
+spec:
+  storageClassName: cruvz-srt-storage
+  capacity:
+    storage: 10Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /tmp/cruvz-srt/postgres
+    type: DirectoryOrCreate
+
+---
+# Local PersistentVolume for Backend uploads (for testing/development)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backend-uploads-pv
+  labels:
+    type: local
+    app: backend
+spec:
+  storageClassName: cruvz-srt-storage
+  capacity:
+    storage: 5Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /tmp/cruvz-srt/uploads
+    type: DirectoryOrCreate
+
+---
+# Local PersistentVolume for OvenMediaEngine recordings (for testing/development)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ome-recordings-pv
+  labels:
+    type: local
+    app: ovenmediaengine
+spec:
+  storageClassName: cruvz-srt-storage
+  capacity:
+    storage: 20Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /tmp/cruvz-srt/recordings
+    type: DirectoryOrCreate

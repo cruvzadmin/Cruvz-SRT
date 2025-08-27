@@ -88,6 +88,9 @@ deploy_kubernetes() {
     log "INFO" "Creating namespace..."
     kubectl apply -f k8s/namespace.yaml
     
+    log "INFO" "Setting up storage..."
+    kubectl apply -f k8s/storage.yaml
+    
     log "INFO" "Creating secrets and configmaps..."
     kubectl apply -f k8s/secrets.yaml
     kubectl apply -f k8s/configmap.yaml
@@ -100,7 +103,18 @@ deploy_kubernetes() {
     
     log "INFO" "Waiting for database to be ready..."
     kubectl wait --for=condition=ready pod -l app=postgres -n $NAMESPACE --timeout=300s
+    
+    log "INFO" "Verifying Redis connectivity..."
+    # Wait for Redis pod to be ready with better validation
     kubectl wait --for=condition=ready pod -l app=redis -n $NAMESPACE --timeout=300s
+    
+    # Additional Redis health validation
+    log "INFO" "Validating Redis health..."
+    until kubectl exec -n $NAMESPACE deployment/redis -- redis-cli ping > /dev/null 2>&1; do
+        log "INFO" "Redis not yet responding to ping, waiting..."
+        sleep 5
+    done
+    log "SUCCESS" "Redis is healthy and responding"
     
     log "INFO" "Deploying backend services..."
     kubectl apply -f k8s/backend.yaml
@@ -205,7 +219,7 @@ show_service_info() {
 
 # Run health checks
 run_health_checks() {
-    log "INFO" "Running health checks..."
+    log "INFO" "Running comprehensive health checks..."
     
     # Check if all pods are running
     FAILED_PODS=$(kubectl get pods -n $NAMESPACE --field-selector=status.phase!=Running --no-headers 2>/dev/null | wc -l)
@@ -216,7 +230,48 @@ run_health_checks() {
         log "SUCCESS" "All pods are running successfully"
     fi
     
+    # Detailed Redis health check
+    log "INFO" "Testing Redis connectivity..."
+    if kubectl exec -n $NAMESPACE deployment/redis -- redis-cli ping > /dev/null 2>&1; then
+        log "SUCCESS" "Redis is responding to ping"
+    else
+        log "ERROR" "Redis health check failed"
+        kubectl logs -n $NAMESPACE deployment/redis --tail=10
+    fi
+    
+    # PostgreSQL health check
+    log "INFO" "Testing PostgreSQL connectivity..."
+    if kubectl exec -n $NAMESPACE statefulset/postgres -- pg_isready -U cruvz -d cruvzdb > /dev/null 2>&1; then
+        log "SUCCESS" "PostgreSQL is ready"
+    else
+        log "ERROR" "PostgreSQL health check failed"
+        kubectl logs -n $NAMESPACE statefulset/postgres --tail=10
+    fi
+    
+    # Backend health check (if available)
+    log "INFO" "Testing backend service health..."
+    BACKEND_POD=$(kubectl get pods -n $NAMESPACE -l app=backend -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [[ -n "$BACKEND_POD" ]]; then
+        if kubectl exec -n $NAMESPACE $BACKEND_POD -- curl -s http://localhost:5000/health > /dev/null 2>&1; then
+            log "SUCCESS" "Backend health endpoint is responding"
+        else
+            log "WARNING" "Backend health endpoint not ready yet (this is normal during startup)"
+        fi
+    fi
+    
+    # OvenMediaEngine health check
+    log "INFO" "Testing OvenMediaEngine health..."
+    OME_POD=$(kubectl get pods -n $NAMESPACE -l app=ovenmediaengine -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [[ -n "$OME_POD" ]]; then
+        if kubectl exec -n $NAMESPACE $OME_POD -- curl -s http://localhost:8090/ > /dev/null 2>&1; then
+            log "SUCCESS" "OvenMediaEngine health endpoint is responding"
+        else
+            log "WARNING" "OvenMediaEngine health endpoint not ready yet (this is normal during startup)"
+        fi
+    fi
+    
     # Check services
+    log "INFO" "Service status:"
     kubectl get services -n $NAMESPACE
     
     log "SUCCESS" "Health checks completed"
