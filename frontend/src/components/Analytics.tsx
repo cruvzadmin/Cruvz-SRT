@@ -163,13 +163,12 @@ const Analytics: React.FC = () => {
         console.warn('Failed to fetch OME stats:', omeStatsRes.reason);
       }
 
-      // ---- CORRECTION: Use setProtocols(protocolsRes.value) instead of setProtocols(protocolsRes.value.data)
+      // --------- FIX: setProtocols(protocolsRes.value) instead of protocolsRes.value.data
       if (protocolsRes.status === 'fulfilled') {
         setProtocols(protocolsRes.value);
       } else {
         console.warn('Failed to fetch protocols:', protocolsRes.reason);
       }
-      // ---- END CORRECTION
 
       if (sixSigmaRes.status === 'fulfilled') {
         setSixSigmaMetrics(sixSigmaRes.value);
