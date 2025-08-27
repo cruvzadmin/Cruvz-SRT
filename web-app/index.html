@@ -230,10 +230,24 @@
                     document.getElementById('liveViewers').textContent = data.data.total_viewers;
                     document.getElementById('activeStreams').textContent = data.data.active_streams;
                     document.getElementById('systemLatency').textContent = data.data.average_latency + 'ms';
+                } else {
+                    // Show connection error instead of fake data
+                    document.getElementById('liveViewers').textContent = 'N/A';
+                    document.getElementById('activeStreams').textContent = 'N/A';
+                    document.getElementById('systemLatency').textContent = 'N/A';
+                    document.getElementById('liveViewers').style.color = '#ef4444';
+                    document.getElementById('activeStreams').style.color = '#ef4444';
+                    document.getElementById('systemLatency').style.color = '#ef4444';
                 }
             } catch (error) {
                 console.log('Could not load real-time stats:', error.message);
-                // Keep default values on error
+                // Show connection error instead of keeping default fake values
+                document.getElementById('liveViewers').textContent = 'Offline';
+                document.getElementById('activeStreams').textContent = 'Offline';
+                document.getElementById('systemLatency').textContent = 'Offline';
+                document.getElementById('liveViewers').style.color = '#ef4444';
+                document.getElementById('activeStreams').style.color = '#ef4444';
+                document.getElementById('systemLatency').style.color = '#ef4444';
             }
         }
         
