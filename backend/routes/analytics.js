@@ -60,16 +60,9 @@ router.get('/realtime', auth, async (req, res) => {
 
       metrics.active_streams = parseInt(activeStreams.count) || 0;
       metrics.total_viewers = parseInt(viewersResult.total) || 0;
-      // Calculate real changes from historical data
-      const yesterday = await db('streams')
-        .where({ user_id: req.user.id })
-        .whereBetween('created_at', [
-          db.raw("NOW() - INTERVAL '2 days'"),
-          db.raw("NOW() - INTERVAL '1 day'")
-        ])
-        .count('* as count');
       
-      metrics.streams_change = metrics.active_streams - (parseInt(yesterday[0]?.count) || 0);
+      // Calculate real changes from historical data
+      metrics.streams_change = metrics.active_streams - (parseInt(yesterdayStreams?.count) || 0);
       metrics.viewers_change = 0; // Real viewer change calculation would need time-series data
       metrics.average_latency = 85; // Would come from actual OvenMediaEngine stats
 

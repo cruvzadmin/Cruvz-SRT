@@ -4,11 +4,12 @@ import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import theme from './theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import MainLayout from './components/MainLayout';
-import LandingPage from './pages/LandingPage';
-import Dashboard from './pages/Dashboard';
+import MainLayout from './components/layout/MainLayout';
+import EnhancedLandingPage from './pages/EnhancedLandingPage';
+import EnhancedDashboard from './pages/EnhancedDashboard';
 import StreamManager from './components/StreamManager';
 import Analytics from './components/Analytics';
+import CreateStreamWizard from './components/streams/CreateStreamWizard';
 import Profile from './components/Profile';
 import LoadingSpinner from './components/LoadingSpinner';
 
@@ -40,7 +41,7 @@ const AppRoutes: React.FC = () => {
       {/* Public Routes */}
       <Route 
         path="/" 
-        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />} 
+        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <EnhancedLandingPage />} 
       />
       
       {/* Protected Routes */}
@@ -49,7 +50,7 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <MainLayout>
-              <Dashboard />
+              <EnhancedDashboard />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -72,6 +73,17 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <MainLayout>
               <Analytics />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/streams/create"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <CreateStreamWizard />
             </MainLayout>
           </ProtectedRoute>
         }

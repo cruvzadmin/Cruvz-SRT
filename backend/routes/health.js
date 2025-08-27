@@ -129,9 +129,9 @@ router.get('/metrics', auth, async (req, res) => {
   try {
     const metrics = {
       system: {
-        cpu_usage: 0 // Real CPU usage would come from OS monitoring usage
-        memory_usage: 0 // Real memory usage would come from OS monitoring usage
-        disk_usage: 0 // Real disk usage would come from filesystem monitoring usage
+        cpu_usage: 0, // Real CPU usage would come from OS monitoring
+        memory_usage: 0, // Real memory usage would come from OS monitoring
+        disk_usage: 0, // Real disk usage would come from filesystem monitoring
         network_io: {
           bytes_in: 0,
           bytes_out: 0
