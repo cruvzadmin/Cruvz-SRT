@@ -43,7 +43,6 @@ import {
   Delete as DeleteIcon
 } from '@mui/icons-material';
 import { api } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
 
 interface UserProfile {
   id: string;
@@ -82,7 +81,6 @@ interface SecurityLog {
 }
 
 const Profile: React.FC = () => {
-  const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);

@@ -109,7 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       axios.interceptors.response.eject(interceptor);
     };
-  }, [token]); // Keep original dependency array
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const logout = (): void => {
     setToken(null);

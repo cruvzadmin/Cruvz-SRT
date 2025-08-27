@@ -24,8 +24,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
