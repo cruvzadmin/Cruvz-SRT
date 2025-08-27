@@ -144,16 +144,7 @@ const CreateStreamWizard: React.FC = () => {
       }
     } catch (error) {
       console.error('Error creating stream:', error);
-      // For demo, generate mock URLs
-      const streamKey = `production_stream_${Date.now()}`;
-      setStreamUrls({
-        rtmp: `rtmp://localhost:1935/app/${streamKey}`,
-        srt: `srt://localhost:9999?streamid=input/app/${streamKey}`,
-        webrtc: `ws://localhost:3333/app/${streamKey}`,
-        hls: `http://localhost:8088/app/${streamKey}/playlist.m3u8`,
-        llhls: `http://localhost:8088/app/${streamKey}/llhls.m3u8`,
-      });
-      setActiveStep(steps.length);
+      setError(error instanceof Error ? error.message : 'Failed to create stream');
     } finally {
       setLoading(false);
     }

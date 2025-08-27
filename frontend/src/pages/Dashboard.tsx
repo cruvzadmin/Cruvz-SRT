@@ -104,58 +104,33 @@ const Dashboard: React.FC = () => {
         }
       }
 
-      // Generate mock chart data for demo
-      const mockChartData = Array.from({ length: 24 }, (_, i) => ({
-        time: `${i}:00`,
-        viewers: Math.floor(Math.random() * 500) + 100,
-        streams: Math.floor(Math.random() * 10) + 2,
-        bandwidth: Math.floor(Math.random() * 1000) + 200,
-      }));
-      setChartData(mockChartData);
+      // Load analytics chart data
+      const analyticsResponse = await fetch('/api/analytics/data?range=24h', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('cruvz_auth_token')}`,
+        },
+      });
+      
+      if (analyticsResponse.ok) {
+        const analyticsData = await analyticsResponse.json();
+        if (analyticsData.success) {
+          setChartData(analyticsData.data);
+        }
+      }
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      // Use mock data for demo
+      // Reset to empty state on error
       setStats({
-        total_streams: 15,
-        active_streams: 3,
-        total_viewers: 1247,
-        total_watch_time: 45680,
-        revenue: 892.50,
-        bandwidth_used: 2.4,
+        total_streams: 0,
+        active_streams: 0,
+        total_viewers: 0,
+        total_watch_time: 0,
+        revenue: 0,
+        bandwidth_used: 0,
       });
-      
-      setStreams([
-        {
-          id: '1',
-          title: 'Live Product Demo',
-          status: 'active',
-          viewers: 234,
-          duration: '1:23:45',
-          quality: '1080p',
-          protocol: 'WebRTC',
-        },
-        {
-          id: '2',
-          title: 'Weekly Webinar',
-          status: 'active',
-          viewers: 156,
-          duration: '0:45:12',
-          quality: '720p',
-          protocol: 'RTMP',
-        },
-        {
-          id: '3',
-          title: 'Gaming Stream',
-          status: 'inactive',
-          viewers: 0,
-          duration: '0:00:00',
-          quality: '1080p',
-          protocol: 'SRT',
-        },
-      ]);
-    } finally {
-      // Removed loading state
+      setStreams([]);
+      setChartData([]);
     }
   };
 

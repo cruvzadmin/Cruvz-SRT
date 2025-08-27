@@ -428,51 +428,6 @@ const Analytics: React.FC = () => {
         </Grid>
       </Grid>
         </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="h6" color="text.secondary">
-                    Avg Bitrate
-                  </Typography>
-                  <Typography variant="h3" component="div">
-                    {metrics?.avgBitrate || 0}
-                    <Typography variant="caption"> kbps</Typography>
-                  </Typography>
-                  <Typography variant="body2" color="error.main">
-                    <TrendingDownIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    -3% from yesterday
-                  </Typography>
-                </Box>
-                <BitrateIcon sx={{ fontSize: 40, color: 'warning.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="h6" color="text.secondary">
-                    Bandwidth
-                  </Typography>
-                  <Typography variant="h3" component="div">
-                    {formatBytes(metrics?.totalBandwidth || 0)}
-                  </Typography>
-                  <Typography variant="body2" color="success.main">
-                    <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    +15% from yesterday
-                  </Typography>
-                </Box>
-                <AnalyticsIcon sx={{ fontSize: 40, color: 'info.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
       </Grid>
 
       {/* Charts Row */}

@@ -167,87 +167,41 @@ const Dashboard: React.FC = () => {
         }
       }
 
-      // Generate realistic chart data
-      const hours = timeRange === '24h' ? 24 : timeRange === '7d' ? 7 : 30;
-      const mockChartData = Array.from({ length: hours }, (_, i) => ({
-        time: timeRange === '24h' ? `${i}:00` : `Day ${i + 1}`,
-        viewers: Math.floor(Math.random() * 800) + 200,
-        streams: Math.floor(Math.random() * 15) + 3,
-        bandwidth: Math.floor(Math.random() * 1200) + 300,
-        latency: Math.floor(Math.random() * 50) + 45,
-      }));
-      setChartData(mockChartData);
+      // Load real analytics chart data
+      const analyticsResponse = await fetch('/api/analytics/data?range=' + (timeRange === '24h' ? '24h' : timeRange === '7d' ? '7d' : '30d'), {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('cruvz_auth_token')}`,
+        },
+      });
+      
+      if (analyticsResponse.ok) {
+        const analyticsData = await analyticsResponse.json();
+        if (analyticsData.success) {
+          setChartData(analyticsData.data);
+        }
+      }
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      // Use realistic demo data
+      // Reset to empty state on error
       setStats({
-        total_streams: 24,
-        active_streams: 7,
-        total_viewers: 2847,
-        total_watch_time: 156780,
-        revenue: 1284.50,
-        bandwidth_used: 4.7,
+        total_streams: 0,
+        active_streams: 0,
+        total_viewers: 0,
+        total_watch_time: 0,
+        revenue: 0,
+        bandwidth_used: 0,
       });
       
-      setStreams([
-        {
-          id: '1',
-          title: 'Product Launch Event',
-          status: 'active',
-          viewers: 1247,
-          duration: '2:14:32',
-          quality: '1080p',
-          protocol: 'WebRTC',
-          started_at: '2024-01-15T10:30:00Z',
-        },
-        {
-          id: '2',
-          title: 'Weekly Tech Talk',
-          status: 'active',
-          viewers: 356,
-          duration: '1:05:18',
-          quality: '720p',
-          protocol: 'RTMP',
-          started_at: '2024-01-15T14:00:00Z',
-        },
-        {
-          id: '3',
-          title: 'Gaming Tournament',
-          status: 'active',
-          viewers: 892,
-          duration: '3:22:45',
-          quality: '1080p',
-          protocol: 'SRT',
-          started_at: '2024-01-15T09:15:00Z',
-        },
-        {
-          id: '4',
-          title: 'Music Performance',
-          status: 'scheduled',
-          viewers: 0,
-          duration: '0:00:00',
-          quality: '4K',
-          protocol: 'WebRTC',
-        },
-        {
-          id: '5',
-          title: 'Educational Webinar',
-          status: 'inactive',
-          viewers: 0,
-          duration: '1:30:22',
-          quality: '720p',
-          protocol: 'RTMP',
-        },
-      ]);
-
+      setStreams([]);
       setSystemHealth({
-        cpu: 45,
-        memory: 67,
-        disk: 23,
-        network: 89,
-        status: 'healthy',
+        cpu: 0,
+        memory: 0,
+        disk: 0,
+        network: 0,
+        status: 'error',
       });
+      setChartData([]);
     } finally {
       setLoading(false);
     }
