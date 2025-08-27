@@ -240,7 +240,7 @@ const Analytics: React.FC = () => {
   };
 
   const calculateSigmaLevel = (metrics: any[]) => {
-    if (!metrics || metrics.length === 0) return 0;
+    if (!metrics || metrics.length === 0) return "0";
     const avgSigma = metrics.reduce((sum, m) => sum + (m.sigma_level || 0), 0) / metrics.length;
     return avgSigma.toFixed(2);
   };
@@ -487,7 +487,7 @@ const Analytics: React.FC = () => {
                       </Typography>
                       <Typography variant="body2" color="warning.main">
                         <AnalyticsIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                        Quality: {parseFloat(currentSigmaLevel) >= 3.4 ? 'Excellent' : 'Needs Improvement'}
+                        Quality: {parseFloat(String(currentSigmaLevel)) >= 3.4 ? 'Excellent' : 'Needs Improvement'}
                       </Typography>
                     </Box>
                     <AnalyticsIcon sx={{ fontSize: 40, color: 'warning.main' }} />
