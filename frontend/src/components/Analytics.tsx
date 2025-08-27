@@ -163,7 +163,7 @@ const Analytics: React.FC = () => {
         console.warn('Failed to fetch OME stats:', omeStatsRes.reason);
       }
 
-      // --------- FIX: setProtocols(protocolsRes.value) instead of protocolsRes.value.data
+      // CORRECTION: assign protocolsRes.value directly (NOT response.data)
       if (protocolsRes.status === 'fulfilled') {
         setProtocols(protocolsRes.value);
       } else {
