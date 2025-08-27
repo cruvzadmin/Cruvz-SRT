@@ -15,7 +15,11 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider
+  Divider,
+  Tabs,
+  Tab,
+  Tooltip,
+  IconButton
 } from '@mui/material';
 import {
   LineChart,
@@ -29,7 +33,9 @@ import {
   Cell,
   ResponsiveContainer,
   AreaChart,
-  Area
+  Area,
+  BarChart,
+  Bar
 } from 'recharts';
 import {
   TrendingUp as TrendingUpIcon,
@@ -42,7 +48,8 @@ import {
   GetApp as ExportIcon,
   Warning as WarningIcon,
   CheckCircle as SuccessIcon,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  Info as InfoIcon
 } from '@mui/icons-material';
 import { api } from '../services/api';
 
@@ -81,22 +88,41 @@ interface SystemHealth {
   };
 }
 
+interface SixSigmaMetric {
+  metric_name: string;
+  metric_value: number;
+  target_value?: number;
+  tolerance?: number;
+  sigma_level?: number;
+  timestamp: string;
+  category: string;
+}
+
+const tabLabels = [
+  'Overview',
+  'Performance',
+  'System',
+  'Six Sigma',
+  'Errors & Warnings'
+];
+
 const Analytics: React.FC = () => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData[]>([]);
   const [metrics, setMetrics] = useState<StreamMetrics | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [omeStats, setOMEStats] = useState<any>(null);
   const [protocols, setProtocols] = useState<any>(null);
-  const [sixSigmaMetrics, setSixSigmaMetrics] = useState<any[]>([]);
+  const [sixSigmaMetrics, setSixSigmaMetrics] = useState<SixSigmaMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   const fetchAnalyticsData = async () => {
     try {
       setError(null);
-      
-      // Fetch real data from multiple sources
+
       const [
         analyticsRes,
         metricsRes,
@@ -113,48 +139,41 @@ const Analytics: React.FC = () => {
         api.getSixSigmaMetrics('performance', '1h')
       ]);
 
-      // Handle analytics data
       if (analyticsRes.status === 'fulfilled') {
         setAnalyticsData(analyticsRes.value);
       } else {
         console.warn('Failed to fetch analytics data:', analyticsRes.reason);
       }
 
-      // Handle metrics
       if (metricsRes.status === 'fulfilled') {
         setMetrics(metricsRes.value);
       } else {
         console.warn('Failed to fetch metrics:', metricsRes.reason);
       }
 
-      // Handle system health
       if (healthRes.status === 'fulfilled') {
         setSystemHealth(healthRes.value);
       } else {
         console.warn('Failed to fetch system health:', healthRes.reason);
       }
 
-      // Handle OME stats
       if (omeStatsRes.status === 'fulfilled') {
         setOMEStats(omeStatsRes.value);
       } else {
         console.warn('Failed to fetch OME stats:', omeStatsRes.reason);
       }
 
-      // Handle protocols
       if (protocolsRes.status === 'fulfilled') {
         setProtocols(protocolsRes.value);
       } else {
         console.warn('Failed to fetch protocols:', protocolsRes.reason);
       }
 
-      // Handle Six Sigma metrics
       if (sixSigmaRes.status === 'fulfilled') {
         setSixSigmaMetrics(sixSigmaRes.value);
       } else {
         console.warn('Failed to fetch Six Sigma metrics:', sixSigmaRes.reason);
       }
-      
       setLoading(false);
     } catch (error) {
       console.error('Failed to fetch analytics data:', error);
@@ -165,12 +184,11 @@ const Analytics: React.FC = () => {
 
   useEffect(() => {
     fetchAnalyticsData();
-    
+
     let interval: NodeJS.Timeout;
     if (realTimeEnabled) {
       interval = setInterval(fetchAnalyticsData, 5000);
     }
-    
     return () => {
       if (interval) clearInterval(interval);
     };
@@ -212,29 +230,12 @@ const Analytics: React.FC = () => {
         { name: 'HLS', value: 0, color: '#ff7c7c' }
       ];
     }
-
     const protocolData = protocols.protocols;
     return [
-      { 
-        name: 'RTMP', 
-        value: protocolData.rtmp?.connections || 0, 
-        color: '#8884d8' 
-      },
-      { 
-        name: 'WebRTC', 
-        value: protocolData.webrtc?.connections || 0, 
-        color: '#82ca9d' 
-      },
-      { 
-        name: 'SRT', 
-        value: protocolData.srt?.connections || 0, 
-        color: '#ffc658' 
-      },
-      { 
-        name: 'LLHLS', 
-        value: protocolData.llhls?.connections || 0, 
-        color: '#ff7c7c' 
-      }
+      { name: 'RTMP', value: protocolData.rtmp?.connections || 0, color: '#8884d8' },
+      { name: 'WebRTC', value: protocolData.webrtc?.connections || 0, color: '#82ca9d' },
+      { name: 'SRT', value: protocolData.srt?.connections || 0, color: '#ffc658' },
+      { name: 'LLHLS', value: protocolData.llhls?.connections || 0, color: '#ff7c7c' }
     ].filter(item => item.value > 0);
   };
 
@@ -246,13 +247,49 @@ const Analytics: React.FC = () => {
 
   const getOMEConnectionStats = () => {
     if (!omeStats || !omeStats.data) return { input: 0, output: 0, total: 0 };
-    
     const stats = omeStats.data;
     return {
       input: stats.inputConnections || 0,
       output: stats.outputConnections || 0,
       total: stats.totalConnections || 0
     };
+  };
+
+  const handleExport = () => {
+    setExporting(true);
+    const csvRows: string[] = [];
+    const headers = [
+      'Timestamp',
+      'Viewers',
+      'Bitrate',
+      'FPS',
+      'CPU Usage',
+      'Memory Usage',
+      'Network In',
+      'Network Out'
+    ];
+    csvRows.push(headers.join(','));
+    analyticsData.forEach(row => {
+      csvRows.push([
+        row.timestamp,
+        row.viewers,
+        row.bitrate,
+        row.fps,
+        row.cpuUsage,
+        row.memoryUsage,
+        row.networkIn,
+        row.networkOut
+      ].join(','));
+    });
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'analytics_export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setExporting(false);
   };
 
   if (loading) {
@@ -298,14 +335,37 @@ const Analytics: React.FC = () => {
             }
             label="Real-time"
           />
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchAnalyticsData}>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={fetchAnalyticsData}
+            disabled={loading}
+          >
             Refresh
           </Button>
-          <Button variant="outlined" startIcon={<ExportIcon />}>
+          <Button
+            variant="outlined"
+            startIcon={<ExportIcon />}
+            onClick={handleExport}
+            disabled={exporting}
+          >
             Export
           </Button>
         </Box>
       </Box>
+
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onChange={(_, val) => setActiveTab(val)}
+        sx={{ mb: 3 }}
+        variant="scrollable"
+        scrollButtons="auto"
+      >
+        {tabLabels.map((label, idx) => (
+          <Tab key={label} label={label} id={`analytics-tab-${idx}`} />
+        ))}
+      </Tabs>
 
       {/* Error Alert */}
       {error && (
@@ -319,8 +379,14 @@ const Analytics: React.FC = () => {
         <Alert 
           severity={systemHealth.status === 'warning' ? 'warning' : 'error'}
           sx={{ mb: 3 }}
+          iconMapping={{
+            warning: <WarningIcon fontSize="inherit" />,
+            error: <ErrorIcon fontSize="inherit" />
+          }}
         >
-          System health status: {systemHealth.status.toUpperCase()}
+          <Typography variant="body2">
+            System health status: {systemHealth.status.toUpperCase()}
+          </Typography>
           {systemHealth.services && (
             <Box sx={{ mt: 1 }}>
               Services: {Object.entries(systemHealth.services).map(([service, status]) => (
@@ -337,278 +403,399 @@ const Analytics: React.FC = () => {
         </Alert>
       )}
 
-      {/* Metrics Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="h6" color="text.secondary">
-                    Live Streams
-                  </Typography>
-                  <Typography variant="h3" component="div">
-                    {metrics?.liveStreams || connectionStats.total || 0}
-                  </Typography>
-                  <Typography variant="body2" color="success.main">
-                    <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    OME Connections: {connectionStats.total}
-                  </Typography>
-                </Box>
-                <StreamsIcon sx={{ fontSize: 40, color: 'primary.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="h6" color="text.secondary">
-                    Total Viewers
-                  </Typography>
-                  <Typography variant="h3" component="div">
-                    {metrics?.totalViewers?.toLocaleString() || connectionStats.output?.toLocaleString() || 0}
-                  </Typography>
-                  <Typography variant="body2" color="success.main">
-                    <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    Output: {connectionStats.output} | Input: {connectionStats.input}
-                  </Typography>
-                </Box>
-                <ViewersIcon sx={{ fontSize: 40, color: 'success.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* Tab Panels */}
+      {activeTab === 0 && (
+        <>
+          {/* Metrics Cards */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="h6" color="text.secondary">
+                        Live Streams
+                      </Typography>
+                      <Typography variant="h3" component="div">
+                        {metrics?.liveStreams || connectionStats.total || 0}
+                      </Typography>
+                      <Typography variant="body2" color="success.main">
+                        <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                        OME Connections: {connectionStats.total}
+                      </Typography>
+                    </Box>
+                    <StreamsIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="h6" color="text.secondary">
+                        Total Viewers
+                      </Typography>
+                      <Typography variant="h3" component="div">
+                        {metrics?.totalViewers?.toLocaleString() || connectionStats.output?.toLocaleString() || 0}
+                      </Typography>
+                      <Typography variant="body2" color="success.main">
+                        <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                        Output: {connectionStats.output} | Input: {connectionStats.input}
+                      </Typography>
+                    </Box>
+                    <ViewersIcon sx={{ fontSize: 40, color: 'success.main' }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="h6" color="text.secondary">
-                    Average Bitrate
-                  </Typography>
-                  <Typography variant="h3" component="div">
-                    {metrics?.avgBitrate ? `${(metrics.avgBitrate / 1000).toFixed(1)}M` : '0M'}
-                  </Typography>
-                  <Typography variant="body2" color="info.main">
-                    <BitrateIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    Bandwidth: {formatBytes(omeStats?.data?.networkSentBytes || 0)}/s
-                  </Typography>
-                </Box>
-                <BitrateIcon sx={{ fontSize: 40, color: 'info.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="h6" color="text.secondary">
+                        Average Bitrate
+                      </Typography>
+                      <Typography variant="h3" component="div">
+                        {metrics?.avgBitrate ? `${(metrics.avgBitrate / 1000).toFixed(1)}M` : '0M'}
+                      </Typography>
+                      <Typography variant="body2" color="info.main">
+                        <BitrateIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                        Bandwidth: {formatBytes(omeStats?.data?.networkSentBytes || 0)}/s
+                      </Typography>
+                    </Box>
+                    <BitrateIcon sx={{ fontSize: 40, color: 'info.main' }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="h6" color="text.secondary">
-                    Six Sigma Level
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="h6" color="text.secondary">
+                        Six Sigma Level
+                      </Typography>
+                      <Typography variant="h3" component="div">
+                        {currentSigmaLevel}σ
+                      </Typography>
+                      <Typography variant="body2" color="warning.main">
+                        <AnalyticsIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                        Quality: {parseFloat(currentSigmaLevel) >= 3.4 ? 'Excellent' : 'Needs Improvement'}
+                      </Typography>
+                    </Box>
+                    <AnalyticsIcon sx={{ fontSize: 40, color: 'warning.main' }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Charts Row */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            {/* Viewers Over Time */}
+            <Grid item xs={12} lg={8}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Viewers Over Time
                   </Typography>
-                  <Typography variant="h3" component="div">
-                    {currentSigmaLevel}σ
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={analyticsData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="timestamp" />
+                      <YAxis />
+                      <RechartsTooltip />
+                      <Area 
+                        type="monotone" 
+                        dataKey="viewers" 
+                        stroke="#8884d8" 
+                        fillOpacity={0.3}
+                        fill="#8884d8"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Protocol Distribution */}
+            <Grid item xs={12} lg={4}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Protocol Distribution
                   </Typography>
-                  <Typography variant="body2" color="warning.main">
-                    <AnalyticsIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    Quality: {parseFloat(currentSigmaLevel) >= 3.4 ? 'Excellent' : 'Needs Improvement'}
-                  </Typography>
-                </Box>
-                <AnalyticsIcon sx={{ fontSize: 40, color: 'warning.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-        </Grid>
-      </Grid>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="value"
+                        label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </>
+      )}
 
-      {/* Charts Row */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        {/* Viewers Over Time */}
-        <Grid item xs={12} lg={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Viewers Over Time
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={analyticsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="timestamp" />
-                  <YAxis />
-                  <RechartsTooltip />
-                  <Area 
-                    type="monotone" 
-                    dataKey="viewers" 
-                    stroke="#8884d8" 
-                    fillOpacity={0.3}
-                    fill="#8884d8"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+      {/* Performance Tab */}
+      {activeTab === 1 && (
+        <Grid container spacing={3}>
+          {/* Bitrate and FPS */}
+          <Grid item xs={12} lg={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Bitrate & FPS Over Time
+                </Typography>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={analyticsData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="timestamp" />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
+                    <RechartsTooltip />
+                    <Line 
+                      yAxisId="left"
+                      type="monotone" 
+                      dataKey="bitrate" 
+                      stroke="#8884d8" 
+                      name="Bitrate (kbps)"
+                    />
+                    <Line 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="fps" 
+                      stroke="#82ca9d" 
+                      name="FPS"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+          {/* CPU & Memory */}
+          <Grid item xs={12} lg={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  CPU & Memory Usage
+                </Typography>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={analyticsData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="timestamp" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Bar dataKey="cpuUsage" fill="#8884d8" name="CPU (%)" />
+                    <Bar dataKey="memoryUsage" fill="#82ca9d" name="Memory (%)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
+      )}
 
-        {/* Protocol Distribution */}
-        <Grid item xs={12} lg={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Protocol Distribution
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    dataKey="value"
-                    label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Performance and System Health */}
-      <Grid container spacing={3}>
-        {/* Bitrate and FPS */}
-        <Grid item xs={12} lg={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Performance Metrics
-              </Typography>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={analyticsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="timestamp" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <RechartsTooltip />
-                  <Line 
-                    yAxisId="left"
-                    type="monotone" 
-                    dataKey="bitrate" 
-                    stroke="#8884d8" 
-                    name="Bitrate (kbps)"
-                  />
-                  <Line 
-                    yAxisId="right"
-                    type="monotone" 
-                    dataKey="fps" 
-                    stroke="#82ca9d" 
-                    name="FPS"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* System Health */}
-        <Grid item xs={12} lg={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                System Health
-              </Typography>
-              {systemHealth && (
-                <Box>
-                  <Grid container spacing={2} sx={{ mb: 2 }}>
-                    <Grid item xs={6}>
-                      <Typography variant="body2" color="text.secondary">CPU Usage</Typography>
-                      <Typography variant="h6">{systemHealth.cpu}%</Typography>
+      {/* System Tab */}
+      {activeTab === 2 && (
+        <Grid container spacing={3}>
+          {/* System Health */}
+          <Grid item xs={12} lg={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  System Health
+                </Typography>
+                {systemHealth && (
+                  <Box>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">CPU Usage</Typography>
+                        <Typography variant="h6">{systemHealth.cpu}%</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Memory Usage</Typography>
+                        <Typography variant="h6">{systemHealth.memory}%</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Disk Usage</Typography>
+                        <Typography variant="h6">{systemHealth.disk}%</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Network</Typography>
+                        <Typography variant="h6">{systemHealth.network}%</Typography>
+                      </Grid>
                     </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="body2" color="text.secondary">Memory Usage</Typography>
-                      <Typography variant="h6">{systemHealth.memory}%</Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="body2" color="text.secondary">Disk Usage</Typography>
-                      <Typography variant="h6">{systemHealth.disk}%</Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="body2" color="text.secondary">Network</Typography>
-                      <Typography variant="h6">{systemHealth.network}%</Typography>
-                    </Grid>
-                  </Grid>
-                  
-                  <Divider sx={{ my: 2 }} />
-                  
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    Services Status
-                  </Typography>
-                  <List dense>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Services Status
+                    </Typography>
+                    <List dense>
+                      <ListItem>
+                        <ListItemIcon>
+                          {getHealthIcon(systemHealth.services.ovenmediaengine)}
+                        </ListItemIcon>
+                        <ListItemText 
+                          primary="OvenMediaEngine"
+                          secondary={
+                            <Chip 
+                              label={systemHealth.services.ovenmediaengine} 
+                              size="small"
+                              color={getHealthColor(systemHealth.services.ovenmediaengine)}
+                            />
+                          }
+                        />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon>
+                          {getHealthIcon(systemHealth.services.database)}
+                        </ListItemIcon>
+                        <ListItemText 
+                          primary="Database"
+                          secondary={
+                            <Chip 
+                              label={systemHealth.services.database} 
+                              size="small"
+                              color={getHealthColor(systemHealth.services.database)}
+                            />
+                          }
+                        />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon>
+                          {getHealthIcon(systemHealth.services.redis)}
+                        </ListItemIcon>
+                        <ListItemText 
+                          primary="Redis Cache"
+                          secondary={
+                            <Chip 
+                              label={systemHealth.services.redis} 
+                              size="small"
+                              color={getHealthColor(systemHealth.services.redis)}
+                            />
+                          }
+                        />
+                      </ListItem>
+                    </List>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+          {/* OME Connections */}
+          <Grid item xs={12} lg={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  OME Connection Stats
+                </Typography>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Input Connections</Typography>
+                  <Typography variant="h6">{connectionStats.input}</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Output Connections</Typography>
+                  <Typography variant="h6">{connectionStats.output}</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Total Connections</Typography>
+                  <Typography variant="h6">{connectionStats.total}</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* Six Sigma Tab */}
+      {activeTab === 3 && (
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Six Sigma Metrics
+                  <Tooltip title="Sigma level is a measure of quality. 3.4 or higher is considered excellent.">
+                    <IconButton size="small"><InfoIcon /></IconButton>
+                  </Tooltip>
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={sixSigmaMetrics}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="metric_name" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Bar dataKey="sigma_level" fill="#ffc658" name="Sigma Level" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* Errors & Warnings Tab */}
+      {activeTab === 4 && (
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Errors & Warnings (Last 1h)
+                </Typography>
+                <List>
+                  {metrics && (metrics.errors > 0 || metrics.warnings > 0) ? (
+                    <>
+                      <ListItem>
+                        <ListItemIcon>
+                          <ErrorIcon color="error" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={`${metrics.errors} Errors`}
+                          secondary="Check system logs for more details."
+                        />
+                      </ListItem>
+                      <ListItem>
+                        <ListItemIcon>
+                          <WarningIcon color="warning" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={`${metrics.warnings} Warnings`}
+                          secondary="Review warnings to improve system reliability."
+                        />
+                      </ListItem>
+                    </>
+                  ) : (
                     <ListItem>
                       <ListItemIcon>
-                        {getHealthIcon(systemHealth.services.ovenmediaengine)}
+                        <SuccessIcon color="success" />
                       </ListItemIcon>
-                      <ListItemText 
-                        primary="OvenMediaEngine"
-                        secondary={
-                          <Chip 
-                            label={systemHealth.services.ovenmediaengine} 
-                            size="small"
-                            color={getHealthColor(systemHealth.services.ovenmediaengine)}
-                          />
-                        }
+                      <ListItemText
+                        primary="No errors or warnings in the last hour."
                       />
                     </ListItem>
-                    <ListItem>
-                      <ListItemIcon>
-                        {getHealthIcon(systemHealth.services.database)}
-                      </ListItemIcon>
-                      <ListItemText 
-                        primary="Database"
-                        secondary={
-                          <Chip 
-                            label={systemHealth.services.database} 
-                            size="small"
-                            color={getHealthColor(systemHealth.services.database)}
-                          />
-                        }
-                      />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemIcon>
-                        {getHealthIcon(systemHealth.services.redis)}
-                      </ListItemIcon>
-                      <ListItemText 
-                        primary="Redis Cache"
-                        secondary={
-                          <Chip 
-                            label={systemHealth.services.redis} 
-                            size="small"
-                            color={getHealthColor(systemHealth.services.redis)}
-                          />
-                        }
-                      />
-                    </ListItem>
-                  </List>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
+                  )}
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
-      </Grid>
+      )}
     </Box>
   );
 };
