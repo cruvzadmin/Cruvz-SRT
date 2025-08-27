@@ -86,8 +86,7 @@ const StreamManager: React.FC = () => {
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
-  // ADD THIS ERROR STATE
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // <-- Correction: add error state
 
   // Form state for creating/editing streams
   const [formData, setFormData] = useState({
@@ -175,7 +174,7 @@ const StreamManager: React.FC = () => {
     } catch (error) {
       console.error('Failed to create stream:', error);
       setSnackbar({ open: true, message: 'Failed to create stream', severity: 'error' });
-      setError(error instanceof Error ? error.message : 'Failed to create stream');
+      setError(error instanceof Error ? error.message : 'Failed to create stream'); // <-- Correction: set error
     }
   };
 
