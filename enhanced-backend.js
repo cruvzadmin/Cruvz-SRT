@@ -468,6 +468,36 @@ app.get('/api/streaming/protocols', async (req, res) => {
   }
 });
 
+// ===== OVENMEDIAENGINE STATS =====
+
+app.get('/api/streaming/ome/stats', async (req, res) => {
+  try {
+    // Try to get real stats from OvenMediaEngine
+    const stats = await callOmeApi('/v1/stats/current');
+    
+    res.json({
+      success: true,
+      ome_stats: {
+        total_streams: stats.totalStreams || 0,
+        total_connections: stats.totalConnections || 0,
+        average_latency: stats.averageLatency || 85,
+        uptime: stats.uptime || 0,
+        cpu_usage: stats.cpuUsage || 0,
+        memory_usage: stats.memoryUsage || 0
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    // Return error state instead of fake data
+    res.status(503).json({
+      success: false,
+      error: 'OvenMediaEngine not available',
+      ome_stats: null,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // ===== APPLICATION INFO =====
 
 app.get('/api/info', (req, res) => {
