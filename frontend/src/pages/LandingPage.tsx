@@ -57,11 +57,11 @@ const LandingPage: React.FC = () => {
         }
       } catch (error) {
         console.log('Could not load real-time stats');
-        // Use mock data for demo
+        // Reset to empty state on error
         setStats({
-          live_viewers: 1247,
-          active_streams: 23,
-          system_latency: '45ms',
+          live_viewers: 0,
+          active_streams: 0,
+          system_latency: '--',
         });
       }
     };

@@ -56,6 +56,10 @@ interface Stream {
   created_at: string;
   updated_at: string;
   input_url: string;
+  stream_key: string;
+  user_id: string;
+  resolution: string;
+  settings: any;
   output_urls: {
     rtmp?: string;
     srt?: string;
@@ -65,10 +69,22 @@ interface Stream {
   };
 }
 
+interface OMEStream {
+  name: string;
+  tracks: any[];
+  connections: any[];
+  createdTime: string;
+}
+
 const StreamManager: React.FC = () => {
   const [streams, setStreams] = useState<Stream[]>([]);
+  const [omeStreams, setOMEStreams] = useState<OMEStream[]>([]);
+  const [protocols, setProtocols] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [recordingDialogOpen, setRecordingDialogOpen] = useState(false);
+  const [pushDialogOpen, setPushDialogOpen] = useState(false);
+  const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
   // Form state for creating/editing streams
@@ -79,20 +95,37 @@ const StreamManager: React.FC = () => {
     enableRecording: false,
     enableTranscoding: true,
     maxBitrate: 4000,
-    targetFps: 30
+    targetFps: 30,
+    resolution: '1920x1080'
+  });
+
+  // Recording form state
+  const [recordingData, setRecordingData] = useState({
+    filePath: '',
+    format: 'mp4'
+  });
+
+  // Push form state
+  const [pushData, setPushData] = useState({
+    rtmpUrl: '',
+    streamKey: ''
   });
 
   useEffect(() => {
     fetchStreams();
+    fetchProtocols();
     // Setup real-time updates
-    const interval = setInterval(fetchStreams, 5000);
+    const interval = setInterval(() => {
+      fetchStreams();
+      fetchOMEStreams();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchStreams = async () => {
     try {
-      const response = await api.get('/api/streams');
-      setStreams(response.data);
+      const response = await api.getStreams();
+      setStreams(response);
       setLoading(false);
     } catch (error) {
       console.error('Failed to fetch streams:', error);
@@ -101,20 +134,32 @@ const StreamManager: React.FC = () => {
     }
   };
 
+  const fetchOMEStreams = async () => {
+    try {
+      const response = await api.getOMEStreams();
+      if (response.success && response.data?.response) {
+        setOMEStreams(response.data.response);
+      }
+    } catch (error) {
+      console.error('Failed to fetch OME streams:', error);
+    }
+  };
+
+  const fetchProtocols = async () => {
+    try {
+      const response = await api.getOMEProtocols();
+      setProtocols(response.data);
+    } catch (error) {
+      console.error('Failed to fetch protocols:', error);
+    }
+  };
+
   const createStream = async () => {
     try {
-      const response = await api.post('/api/streams', formData);
-      setStreams([...streams, response.data]);
+      const response = await api.createStream(formData);
+      setStreams([...streams, response]);
       setCreateDialogOpen(false);
-      setFormData({
-        name: '',
-        application: 'app',
-        protocol: 'RTMP',
-        enableRecording: false,
-        enableTranscoding: true,
-        maxBitrate: 4000,
-        targetFps: 30
-      });
+      resetFormData();
       setSnackbar({ open: true, message: 'Stream created successfully', severity: 'success' });
     } catch (error) {
       console.error('Failed to create stream:', error);
@@ -122,9 +167,24 @@ const StreamManager: React.FC = () => {
     }
   };
 
+  const resetFormData = () => {
+    setFormData({
+      name: '',
+      application: 'app',
+      protocol: 'RTMP',
+      enableRecording: false,
+      enableTranscoding: true,
+      maxBitrate: 4000,
+      targetFps: 30,
+      resolution: '1920x1080'
+    });
+  };
+    }
+  };
+
   const startStream = async (streamId: string) => {
     try {
-      await api.post(`/api/streams/${streamId}/start`);
+      await api.startStream(streamId);
       await fetchStreams();
       setSnackbar({ open: true, message: 'Stream started successfully', severity: 'success' });
     } catch (error) {
@@ -135,7 +195,7 @@ const StreamManager: React.FC = () => {
 
   const stopStream = async (streamId: string) => {
     try {
-      await api.post(`/api/streams/${streamId}/stop`);
+      await api.stopStream(streamId);
       await fetchStreams();
       setSnackbar({ open: true, message: 'Stream stopped successfully', severity: 'success' });
     } catch (error) {
@@ -148,13 +208,62 @@ const StreamManager: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this stream?')) return;
     
     try {
-      await api.delete(`/api/streams/${streamId}`);
+      await api.deleteStream(streamId);
       setStreams(streams.filter(s => s.id !== streamId));
       setSnackbar({ open: true, message: 'Stream deleted successfully', severity: 'success' });
     } catch (error) {
       console.error('Failed to delete stream:', error);
       setSnackbar({ open: true, message: 'Failed to delete stream', severity: 'error' });
     }
+  };
+
+  const startRecording = async () => {
+    if (!selectedStream) return;
+
+    try {
+      const filePath = recordingData.filePath || `/recordings/${selectedStream.stream_key}_${Date.now()}.${recordingData.format}`;
+      await api.startOMERecording('default', selectedStream.application, selectedStream.stream_key, {
+        filePath,
+        info: { format: recordingData.format }
+      });
+      setRecordingDialogOpen(false);
+      setSnackbar({ open: true, message: 'Recording started successfully', severity: 'success' });
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      setSnackbar({ open: true, message: 'Failed to start recording', severity: 'error' });
+    }
+  };
+
+  const startPush = async () => {
+    if (!selectedStream || !pushData.rtmpUrl || !pushData.streamKey) return;
+
+    try {
+      await api.startOMEPush('default', selectedStream.application, selectedStream.stream_key, pushData.rtmpUrl, pushData.streamKey);
+      setPushDialogOpen(false);
+      setSnackbar({ open: true, message: 'Push started successfully', severity: 'success' });
+    } catch (error) {
+      console.error('Failed to start push:', error);
+      setSnackbar({ open: true, message: 'Failed to start push', severity: 'error' });
+    }
+  };
+
+  const getStreamEndpoints = (stream: Stream) => {
+    if (!protocols || !protocols.protocols) return {};
+    
+    const baseEndpoints: any = {};
+    Object.entries(protocols.protocols).forEach(([key, protocol]: [string, any]) => {
+      if (protocol.endpoint) {
+        baseEndpoints[key] = protocol.endpoint.replace('{stream_key}', stream.stream_key);
+      } else if (protocol.input_endpoint || protocol.output_endpoint) {
+        if (protocol.input_endpoint) {
+          baseEndpoints[`${key}_input`] = protocol.input_endpoint.replace('{stream_key}', stream.stream_key);
+        }
+        if (protocol.output_endpoint) {
+          baseEndpoints[`${key}_output`] = protocol.output_endpoint.replace('{stream_key}', stream.stream_key);
+        }
+      }
+    });
+    return baseEndpoints;
   };
 
   const copyToClipboard = (text: string) => {

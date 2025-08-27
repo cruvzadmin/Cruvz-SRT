@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # ===============================================================================
-# CRUVZ STREAMING - SINGLE PRODUCTION DEPLOYMENT SCRIPT
-# Zero-error deployment for real-world usage with Six Sigma standards
+# CRUVZ-SRT UNIFIED PRODUCTION DEPLOYMENT
+# Single-command deployment for complete enterprise streaming platform
+# Zero mock data, 100% real API integration, production-ready
 # ===============================================================================
 
-set -euo pipefail
+set -e  # Exit on any error
 
 # Colors for output
 RED='\033[0;31m'

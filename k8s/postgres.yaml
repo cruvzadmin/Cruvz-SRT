@@ -1,0 +1,225 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: cruvz-srt
+spec:
+  serviceName: postgres-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: cruvz-config
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: cruvz-config
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_INITDB_ARGS
+          value: "--auth-host=md5 --auth-local=trust"
+        args:
+        - postgres
+        - -c
+        - max_connections=200
+        - -c
+        - shared_buffers=256MB
+        - -c
+        - effective_cache_size=1GB
+        - -c
+        - maintenance_work_mem=64MB
+        - -c
+        - checkpoint_completion_target=0.9
+        - -c
+        - wal_buffers=16MB
+        - -c
+        - default_statistics_target=100
+        - -c
+        - random_page_cost=1.1
+        - -c
+        - effective_io_concurrency=200
+        - -c
+        - work_mem=4MB
+        - -c
+        - min_wal_size=1GB
+        - -c
+        - max_wal_size=4GB
+        - -c
+        - max_worker_processes=8
+        - -c
+        - max_parallel_workers_per_gather=4
+        - -c
+        - max_parallel_workers=8
+        - -c
+        - max_parallel_maintenance_workers=4
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1"
+          limits:
+            memory: "2Gi"
+            cpu: "2"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - cruvz
+            - -d
+            - cruvzdb
+          initialDelaySeconds: 90
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - cruvz
+            - -d
+            - cruvzdb
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: init-script
+        configMap:
+          name: postgres-init-script
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: cruvz-srt
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-script
+  namespace: cruvz-srt
+data:
+  init-db.sql: |
+    -- Initialize Cruvz-SRT Database Schema
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    
+    -- Users table
+    CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        username VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'user',
+        profile_data JSONB DEFAULT '{}',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Streams table
+    CREATE TABLE IF NOT EXISTS streams (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        application VARCHAR(255) NOT NULL DEFAULT 'app',
+        stream_key VARCHAR(255) UNIQUE NOT NULL,
+        status VARCHAR(50) DEFAULT 'offline',
+        protocol VARCHAR(50) DEFAULT 'rtmp',
+        bitrate INTEGER DEFAULT 1000,
+        resolution VARCHAR(50) DEFAULT '1920x1080',
+        fps INTEGER DEFAULT 30,
+        settings JSONB DEFAULT '{}',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Analytics table
+    CREATE TABLE IF NOT EXISTS analytics (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        stream_id UUID REFERENCES streams(id) ON DELETE CASCADE,
+        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        viewers INTEGER DEFAULT 0,
+        bitrate_kbps INTEGER DEFAULT 0,
+        fps DECIMAL(5,2) DEFAULT 0,
+        cpu_usage DECIMAL(5,2) DEFAULT 0,
+        memory_usage DECIMAL(5,2) DEFAULT 0,
+        bandwidth_mbps DECIMAL(10,2) DEFAULT 0,
+        quality_score DECIMAL(5,2) DEFAULT 0,
+        metrics JSONB DEFAULT '{}'
+    );
+    
+    -- System logs table
+    CREATE TABLE IF NOT EXISTS system_logs (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        level VARCHAR(20) NOT NULL,
+        message TEXT NOT NULL,
+        error_type VARCHAR(100),
+        component VARCHAR(100),
+        stream_id UUID REFERENCES streams(id) ON DELETE SET NULL,
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Six Sigma metrics table
+    CREATE TABLE IF NOT EXISTS six_sigma_metrics (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        metric_name VARCHAR(100) NOT NULL,
+        metric_value DECIMAL(15,6) NOT NULL,
+        target_value DECIMAL(15,6),
+        tolerance DECIMAL(15,6),
+        sigma_level DECIMAL(5,2),
+        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        stream_id UUID REFERENCES streams(id) ON DELETE SET NULL,
+        category VARCHAR(50) DEFAULT 'performance'
+    );
+    
+    -- Indexes for performance
+    CREATE INDEX IF NOT EXISTS idx_streams_user_id ON streams(user_id);
+    CREATE INDEX IF NOT EXISTS idx_streams_status ON streams(status);
+    CREATE INDEX IF NOT EXISTS idx_analytics_stream_id ON analytics(stream_id);
+    CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_system_logs_level ON system_logs(level);
+    CREATE INDEX IF NOT EXISTS idx_system_logs_created_at ON system_logs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_six_sigma_metrics_timestamp ON six_sigma_metrics(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_six_sigma_metrics_name ON six_sigma_metrics(metric_name);

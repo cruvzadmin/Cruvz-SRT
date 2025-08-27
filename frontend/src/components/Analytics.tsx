@@ -85,23 +85,80 @@ const Analytics: React.FC = () => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData[]>([]);
   const [metrics, setMetrics] = useState<StreamMetrics | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [omeStats, setOMEStats] = useState<any>(null);
+  const [protocols, setProtocols] = useState<any>(null);
+  const [sixSigmaMetrics, setSixSigmaMetrics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAnalyticsData = async () => {
     try {
-      const [analyticsRes, metricsRes, healthRes] = await Promise.all([
-        api.get(`/api/analytics/data?range=1h`),
-        api.get('/api/analytics/metrics'),
-        api.get('/api/system/health')
+      setError(null);
+      
+      // Fetch real data from multiple sources
+      const [
+        analyticsRes,
+        metricsRes,
+        healthRes,
+        omeStatsRes,
+        protocolsRes,
+        sixSigmaRes
+      ] = await Promise.allSettled([
+        api.getAnalyticsData('1h'),
+        api.getStreamMetrics(),
+        api.getSystemHealth(),
+        api.getOMEStats(),
+        api.getOMEProtocols(),
+        api.getSixSigmaMetrics('performance', '1h')
       ]);
 
-      setAnalyticsData(analyticsRes.data);
-      setMetrics(metricsRes.data);
-      setSystemHealth(healthRes.data);
+      // Handle analytics data
+      if (analyticsRes.status === 'fulfilled') {
+        setAnalyticsData(analyticsRes.value);
+      } else {
+        console.warn('Failed to fetch analytics data:', analyticsRes.reason);
+      }
+
+      // Handle metrics
+      if (metricsRes.status === 'fulfilled') {
+        setMetrics(metricsRes.value);
+      } else {
+        console.warn('Failed to fetch metrics:', metricsRes.reason);
+      }
+
+      // Handle system health
+      if (healthRes.status === 'fulfilled') {
+        setSystemHealth(healthRes.value);
+      } else {
+        console.warn('Failed to fetch system health:', healthRes.reason);
+      }
+
+      // Handle OME stats
+      if (omeStatsRes.status === 'fulfilled') {
+        setOMEStats(omeStatsRes.value);
+      } else {
+        console.warn('Failed to fetch OME stats:', omeStatsRes.reason);
+      }
+
+      // Handle protocols
+      if (protocolsRes.status === 'fulfilled') {
+        setProtocols(protocolsRes.value);
+      } else {
+        console.warn('Failed to fetch protocols:', protocolsRes.reason);
+      }
+
+      // Handle Six Sigma metrics
+      if (sixSigmaRes.status === 'fulfilled') {
+        setSixSigmaMetrics(sixSigmaRes.value);
+      } else {
+        console.warn('Failed to fetch Six Sigma metrics:', sixSigmaRes.reason);
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error('Failed to fetch analytics data:', error);
+      setError('Failed to load analytics data. Please check your connection.');
       setLoading(false);
     }
   };
@@ -146,20 +203,83 @@ const Analytics: React.FC = () => {
     }
   };
 
-  const pieData = [
-    { name: 'RTMP', value: 45, color: '#8884d8' },
-    { name: 'WebRTC', value: 30, color: '#82ca9d' },
-    { name: 'SRT', value: 15, color: '#ffc658' },
-    { name: 'HLS', value: 10, color: '#ff7c7c' }
-  ];
+  const getPieData = () => {
+    if (!protocols || !protocols.protocols) {
+      return [
+        { name: 'RTMP', value: 0, color: '#8884d8' },
+        { name: 'WebRTC', value: 0, color: '#82ca9d' },
+        { name: 'SRT', value: 0, color: '#ffc658' },
+        { name: 'HLS', value: 0, color: '#ff7c7c' }
+      ];
+    }
+
+    const protocolData = protocols.protocols;
+    return [
+      { 
+        name: 'RTMP', 
+        value: protocolData.rtmp?.connections || 0, 
+        color: '#8884d8' 
+      },
+      { 
+        name: 'WebRTC', 
+        value: protocolData.webrtc?.connections || 0, 
+        color: '#82ca9d' 
+      },
+      { 
+        name: 'SRT', 
+        value: protocolData.srt?.connections || 0, 
+        color: '#ffc658' 
+      },
+      { 
+        name: 'LLHLS', 
+        value: protocolData.llhls?.connections || 0, 
+        color: '#ff7c7c' 
+      }
+    ].filter(item => item.value > 0);
+  };
+
+  const calculateSigmaLevel = (metrics: any[]) => {
+    if (!metrics || metrics.length === 0) return 0;
+    const avgSigma = metrics.reduce((sum, m) => sum + (m.sigma_level || 0), 0) / metrics.length;
+    return avgSigma.toFixed(2);
+  };
+
+  const getOMEConnectionStats = () => {
+    if (!omeStats || !omeStats.data) return { input: 0, output: 0, total: 0 };
+    
+    const stats = omeStats.data;
+    return {
+      input: stats.inputConnections || 0,
+      output: stats.outputConnections || 0,
+      total: stats.totalConnections || 0
+    };
+  };
 
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
         <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Loading analytics data...</Typography>
       </Box>
     );
   }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={fetchAnalyticsData}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
+
+  const connectionStats = getOMEConnectionStats();
+  const pieData = getPieData();
+  const currentSigmaLevel = calculateSigmaLevel(sixSigmaMetrics);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -187,6 +307,13 @@ const Analytics: React.FC = () => {
         </Box>
       </Box>
 
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
       {/* System Health Alert */}
       {systemHealth && systemHealth.status !== 'healthy' && (
         <Alert 
@@ -194,6 +321,19 @@ const Analytics: React.FC = () => {
           sx={{ mb: 3 }}
         >
           System health status: {systemHealth.status.toUpperCase()}
+          {systemHealth.services && (
+            <Box sx={{ mt: 1 }}>
+              Services: {Object.entries(systemHealth.services).map(([service, status]) => (
+                <Chip 
+                  key={service}
+                  label={`${service}: ${status}`}
+                  color={getHealthColor(status as string)}
+                  size="small"
+                  sx={{ mr: 1 }}
+                />
+              ))}
+            </Box>
+          )}
         </Alert>
       )}
 
@@ -208,11 +348,11 @@ const Analytics: React.FC = () => {
                     Live Streams
                   </Typography>
                   <Typography variant="h3" component="div">
-                    {metrics?.liveStreams || 0}
+                    {metrics?.liveStreams || connectionStats.total || 0}
                   </Typography>
                   <Typography variant="body2" color="success.main">
                     <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    +12% from yesterday
+                    OME Connections: {connectionStats.total}
                   </Typography>
                 </Box>
                 <StreamsIcon sx={{ fontSize: 40, color: 'primary.main' }} />
@@ -230,11 +370,11 @@ const Analytics: React.FC = () => {
                     Total Viewers
                   </Typography>
                   <Typography variant="h3" component="div">
-                    {metrics?.totalViewers?.toLocaleString() || 0}
+                    {metrics?.totalViewers?.toLocaleString() || connectionStats.output?.toLocaleString() || 0}
                   </Typography>
                   <Typography variant="body2" color="success.main">
                     <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    +8% from yesterday
+                    Output: {connectionStats.output} | Input: {connectionStats.input}
                   </Typography>
                 </Box>
                 <ViewersIcon sx={{ fontSize: 40, color: 'success.main' }} />
@@ -242,50 +382,51 @@ const Analytics: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        
+
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography variant="h6" color="text.secondary">
-                    Avg Bitrate
+                    Average Bitrate
                   </Typography>
                   <Typography variant="h3" component="div">
-                    {metrics?.avgBitrate || 0}
-                    <Typography variant="caption"> kbps</Typography>
+                    {metrics?.avgBitrate ? `${(metrics.avgBitrate / 1000).toFixed(1)}M` : '0M'}
                   </Typography>
-                  <Typography variant="body2" color="error.main">
-                    <TrendingDownIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    -3% from yesterday
+                  <Typography variant="body2" color="info.main">
+                    <BitrateIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                    Bandwidth: {formatBytes(omeStats?.data?.networkSentBytes || 0)}/s
                   </Typography>
                 </Box>
-                <BitrateIcon sx={{ fontSize: 40, color: 'warning.main' }} />
+                <BitrateIcon sx={{ fontSize: 40, color: 'info.main' }} />
               </Box>
             </CardContent>
           </Card>
         </Grid>
-        
+
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography variant="h6" color="text.secondary">
-                    Bandwidth
+                    Six Sigma Level
                   </Typography>
                   <Typography variant="h3" component="div">
-                    {formatBytes(metrics?.totalBandwidth || 0)}
+                    {currentSigmaLevel}σ
                   </Typography>
-                  <Typography variant="body2" color="success.main">
-                    <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    +15% from yesterday
+                  <Typography variant="body2" color="warning.main">
+                    <AnalyticsIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                    Quality: {parseFloat(currentSigmaLevel) >= 3.4 ? 'Excellent' : 'Needs Improvement'}
                   </Typography>
                 </Box>
-                <AnalyticsIcon sx={{ fontSize: 40, color: 'info.main' }} />
+                <AnalyticsIcon sx={{ fontSize: 40, color: 'warning.main' }} />
               </Box>
             </CardContent>
           </Card>
+        </Grid>
+      </Grid>
         </Grid>
       </Grid>
 
