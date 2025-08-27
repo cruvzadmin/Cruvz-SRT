@@ -20,6 +20,8 @@ spec:
         ports:
         - containerPort: 8080
           name: api
+        - containerPort: 8090
+          name: health
         - containerPort: 1935
           name: rtmp
         - containerPort: 9999
@@ -58,24 +60,18 @@ spec:
             cpu: "2"
         livenessProbe:
           httpGet:
-            path: /v1/stats/current
-            port: 8080
-            httpHeaders:
-            - name: Authorization
-              value: "cruvz-production-api-token-2025"
-          initialDelaySeconds: 75
+            path: /
+            port: 8090
+          initialDelaySeconds: 30
           periodSeconds: 30
-          timeoutSeconds: 10
-          failureThreshold: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /v1/stats/current
-            port: 8080
-            httpHeaders:
-            - name: Authorization
-              value: "cruvz-production-api-token-2025"
-          initialDelaySeconds: 30
-          periodSeconds: 15
+            path: /
+            port: 8090
+          initialDelaySeconds: 15
+          periodSeconds: 10
           timeoutSeconds: 5
         volumeMounts:
         - name: recordings

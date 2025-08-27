@@ -28,26 +28,37 @@ A comprehensive, enterprise-grade streaming platform with full OvenMediaEngine i
 - **Docker Architecture**: Complete containerized deployment
 - **Monitoring**: Prometheus & Grafana integration
 
-## 🚀 Quick Start
+## 🚀 Production Deployment
 
-### Prerequisites
-- Docker & Docker Compose
-- Node.js 18+ (for development)
-- 8GB RAM minimum, 16GB recommended
+### Kubernetes (Recommended for Production)
 
-### Single-Command Production Deployment
+**Single-command Kubernetes deployment:**
 
 ```bash
-./deploy.sh
+./deploy-kubernetes.sh
 ```
 
-This unified deployment script will:
-1. 🔧 Validate system prerequisites
-2. 🧹 Clean up any existing deployments
-3. 🚀 Build and start all production services
-4. 🏥 Run comprehensive health checks
-5. 🧪 Execute complete validation testing
-6. 📊 Generate Six Sigma quality metrics
+This production-ready deployment includes:
+- 🏗️ **Kubernetes-native architecture** with auto-scaling
+- 🔧 **Zero-configuration deployment** with health checks
+- 📊 **Comprehensive monitoring** with Prometheus & Grafana
+- 🔒 **Production security** hardening and secrets management
+- 🚀 **High availability** with persistent storage
+- 📈 **Real-time metrics** and alerting
+
+### Development (Docker Compose)
+
+**For development and testing only:**
+
+```bash
+./deploy-production.sh  # Now deprecated for production use
+```
+
+### Prerequisites
+- **Production**: Kubernetes cluster with kubectl configured
+- **Development**: Docker & Docker Compose
+- Node.js 18+ (for development)
+- 8GB RAM minimum, 16GB recommended
 7. 🌐 Provide access URLs and streaming endpoints
 
 **Zero mock data - 100% real API integration**

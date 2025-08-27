@@ -18,8 +18,9 @@ else
     echo "SSL certificates already exist in $SSL_DIR"
 fi
 
-# Health monitoring is handled by OvenMediaEngine API server on port 8080
-# No additional health check server needed - prevents port conflicts
+# Start health endpoint in background (unauthenticated endpoint for k8s health checks)
+echo "Starting health endpoint on port 8090..."
+/opt/ovenmediaengine/bin/health-endpoint.sh &
 
 # Execute the main command
 exec "$@"

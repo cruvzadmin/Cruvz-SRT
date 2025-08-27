@@ -138,147 +138,145 @@ data:
           
   cruvz-srt-overview.json: |
     {
-      "dashboard": {
-        "id": null,
-        "title": "Cruvz-SRT Streaming Platform Overview",
-        "tags": ["cruvz-srt", "streaming"],
-        "style": "dark",
-        "timezone": "browser",
-        "panels": [
-          {
-            "id": 1,
-            "title": "Active Streams",
-            "type": "stat",
-            "targets": [
-              {
-                "expr": "sum(streams_active)",
-                "refId": "A"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "thresholds": {
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "red",
-                      "value": 1000
-                    }
-                  ]
-                }
-              }
-            },
-            "gridPos": {
-              "h": 8,
-              "w": 6,
-              "x": 0,
-              "y": 0
+      "id": null,
+      "title": "Cruvz-SRT Streaming Platform Overview",
+      "tags": ["cruvz-srt", "streaming"],
+      "style": "dark",
+      "timezone": "browser",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Active Streams",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(streams_active)",
+              "refId": "A"
             }
-          },
-          {
-            "id": 2,
-            "title": "Total Viewers",
-            "type": "stat",
-            "targets": [
-              {
-                "expr": "sum(viewers_total)",
-                "refId": "A"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "thresholds": {
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "red",
-                      "value": 10000
-                    }
-                  ]
-                }
-              }
-            },
-            "gridPos": {
-              "h": 8,
-              "w": 6,
-              "x": 6,
-              "y": 0
-            }
-          },
-          {
-            "id": 3,
-            "title": "System CPU Usage",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
-                "refId": "A"
-              }
-            ],
-            "gridPos": {
-              "h": 8,
-              "w": 12,
-              "x": 12,
-              "y": 0
-            }
-          },
-          {
-            "id": 4,
-            "title": "Memory Usage",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100",
-                "refId": "A"
-              }
-            ],
-            "gridPos": {
-              "h": 8,
-              "w": 12,
-              "x": 0,
-              "y": 8
-            }
-          },
-          {
-            "id": 5,
-            "title": "Network I/O",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "rate(node_network_receive_bytes_total[5m])",
-                "refId": "A",
-                "legendFormat": "Receive"
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
               },
-              {
-                "expr": "rate(node_network_transmit_bytes_total[5m])",
-                "refId": "B",
-                "legendFormat": "Transmit"
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1000
+                  }
+                ]
               }
-            ],
-            "gridPos": {
-              "h": 8,
-              "w": 12,
-              "x": 12,
-              "y": 8
             }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 0
           }
-        ],
-        "time": {
-          "from": "now-1h",
-          "to": "now"
         },
-        "refresh": "5s"
-      }
+        {
+          "id": 2,
+          "title": "Total Viewers",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(viewers_total)",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 10000
+                  }
+                ]
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "title": "System CPU Usage",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          }
+        },
+        {
+          "id": 4,
+          "title": "Memory Usage",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          }
+        },
+        {
+          "id": 5,
+          "title": "Network I/O",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(node_network_receive_bytes_total[5m])",
+              "refId": "A",
+              "legendFormat": "Receive"
+            },
+            {
+              "expr": "rate(node_network_transmit_bytes_total[5m])",
+              "refId": "B",
+              "legendFormat": "Transmit"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          }
+        }
+      ],
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "refresh": "5s"
     }

@@ -181,6 +181,26 @@ async function migrate() {
       logger.info('User Sessions table already exists');
     }
 
+    // Stream Sessions table (for tracking viewer sessions)
+    if (!(await tableExists('stream_sessions'))) {
+      await db.schema.createTable('stream_sessions', (table) => {
+        table.increments('id').primary();
+        table.integer('stream_id').unsigned().references('id').inTable('streams').onDelete('CASCADE');
+        table.integer('user_id').unsigned().nullable().references('id').inTable('users').onDelete('CASCADE');
+        table.string('session_id').unique().notNullable();
+        table.string('ip_address').nullable();
+        table.string('user_agent').nullable();
+        table.string('status').defaultTo('active'); // active, disconnected, ended
+        table.timestamp('connected_at').defaultTo(db.fn.now());
+        table.timestamp('disconnected_at').nullable();
+        table.decimal('watch_duration_seconds', 10, 2).defaultTo(0);
+        table.timestamps(true, true);
+      });
+      logger.info('Stream Sessions table created');
+    } else {
+      logger.info('Stream Sessions table already exists');
+    }
+
     // Create default admin user
     const adminExists = await db('users').where({ email: 'admin@cruvzstreaming.com' }).first();
     if (!adminExists) {
