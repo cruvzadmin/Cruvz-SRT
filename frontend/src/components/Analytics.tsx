@@ -154,10 +154,11 @@ const Analytics: React.FC = () => {
       } else {
         console.warn('Failed to fetch Six Sigma metrics:', sixSigmaRes.reason);
       }
-      setSystemHealth(healthRes.data);
+      
       setLoading(false);
     } catch (error) {
       console.error('Failed to fetch analytics data:', error);
+      setError('Failed to load analytics data. Please check your connection.');
       setLoading(false);
     }
   };
@@ -202,20 +203,83 @@ const Analytics: React.FC = () => {
     }
   };
 
-  const pieData = [
-    { name: 'RTMP', value: 45, color: '#8884d8' },
-    { name: 'WebRTC', value: 30, color: '#82ca9d' },
-    { name: 'SRT', value: 15, color: '#ffc658' },
-    { name: 'HLS', value: 10, color: '#ff7c7c' }
-  ];
+  const getPieData = () => {
+    if (!protocols || !protocols.protocols) {
+      return [
+        { name: 'RTMP', value: 0, color: '#8884d8' },
+        { name: 'WebRTC', value: 0, color: '#82ca9d' },
+        { name: 'SRT', value: 0, color: '#ffc658' },
+        { name: 'HLS', value: 0, color: '#ff7c7c' }
+      ];
+    }
+
+    const protocolData = protocols.protocols;
+    return [
+      { 
+        name: 'RTMP', 
+        value: protocolData.rtmp?.connections || 0, 
+        color: '#8884d8' 
+      },
+      { 
+        name: 'WebRTC', 
+        value: protocolData.webrtc?.connections || 0, 
+        color: '#82ca9d' 
+      },
+      { 
+        name: 'SRT', 
+        value: protocolData.srt?.connections || 0, 
+        color: '#ffc658' 
+      },
+      { 
+        name: 'LLHLS', 
+        value: protocolData.llhls?.connections || 0, 
+        color: '#ff7c7c' 
+      }
+    ].filter(item => item.value > 0);
+  };
+
+  const calculateSigmaLevel = (metrics: any[]) => {
+    if (!metrics || metrics.length === 0) return 0;
+    const avgSigma = metrics.reduce((sum, m) => sum + (m.sigma_level || 0), 0) / metrics.length;
+    return avgSigma.toFixed(2);
+  };
+
+  const getOMEConnectionStats = () => {
+    if (!omeStats || !omeStats.data) return { input: 0, output: 0, total: 0 };
+    
+    const stats = omeStats.data;
+    return {
+      input: stats.inputConnections || 0,
+      output: stats.outputConnections || 0,
+      total: stats.totalConnections || 0
+    };
+  };
 
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
         <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Loading analytics data...</Typography>
       </Box>
     );
   }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={fetchAnalyticsData}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
+
+  const connectionStats = getOMEConnectionStats();
+  const pieData = getPieData();
+  const currentSigmaLevel = calculateSigmaLevel(sixSigmaMetrics);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -243,6 +307,13 @@ const Analytics: React.FC = () => {
         </Box>
       </Box>
 
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
       {/* System Health Alert */}
       {systemHealth && systemHealth.status !== 'healthy' && (
         <Alert 
@@ -250,6 +321,19 @@ const Analytics: React.FC = () => {
           sx={{ mb: 3 }}
         >
           System health status: {systemHealth.status.toUpperCase()}
+          {systemHealth.services && (
+            <Box sx={{ mt: 1 }}>
+              Services: {Object.entries(systemHealth.services).map(([service, status]) => (
+                <Chip 
+                  key={service}
+                  label={`${service}: ${status}`}
+                  color={getHealthColor(status as string)}
+                  size="small"
+                  sx={{ mr: 1 }}
+                />
+              ))}
+            </Box>
+          )}
         </Alert>
       )}
 
@@ -264,11 +348,11 @@ const Analytics: React.FC = () => {
                     Live Streams
                   </Typography>
                   <Typography variant="h3" component="div">
-                    {metrics?.liveStreams || 0}
+                    {metrics?.liveStreams || connectionStats.total || 0}
                   </Typography>
                   <Typography variant="body2" color="success.main">
                     <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    +12% from yesterday
+                    OME Connections: {connectionStats.total}
                   </Typography>
                 </Box>
                 <StreamsIcon sx={{ fontSize: 40, color: 'primary.main' }} />
@@ -286,17 +370,63 @@ const Analytics: React.FC = () => {
                     Total Viewers
                   </Typography>
                   <Typography variant="h3" component="div">
-                    {metrics?.totalViewers?.toLocaleString() || 0}
+                    {metrics?.totalViewers?.toLocaleString() || connectionStats.output?.toLocaleString() || 0}
                   </Typography>
                   <Typography variant="body2" color="success.main">
                     <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                    +8% from yesterday
+                    Output: {connectionStats.output} | Input: {connectionStats.input}
                   </Typography>
                 </Box>
                 <ViewersIcon sx={{ fontSize: 40, color: 'success.main' }} />
               </Box>
             </CardContent>
           </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography variant="h6" color="text.secondary">
+                    Average Bitrate
+                  </Typography>
+                  <Typography variant="h3" component="div">
+                    {metrics?.avgBitrate ? `${(metrics.avgBitrate / 1000).toFixed(1)}M` : '0M'}
+                  </Typography>
+                  <Typography variant="body2" color="info.main">
+                    <BitrateIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                    Bandwidth: {formatBytes(omeStats?.data?.networkSentBytes || 0)}/s
+                  </Typography>
+                </Box>
+                <BitrateIcon sx={{ fontSize: 40, color: 'info.main' }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography variant="h6" color="text.secondary">
+                    Six Sigma Level
+                  </Typography>
+                  <Typography variant="h3" component="div">
+                    {currentSigmaLevel}σ
+                  </Typography>
+                  <Typography variant="body2" color="warning.main">
+                    <AnalyticsIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                    Quality: {parseFloat(currentSigmaLevel) >= 3.4 ? 'Excellent' : 'Needs Improvement'}
+                  </Typography>
+                </Box>
+                <AnalyticsIcon sx={{ fontSize: 40, color: 'warning.main' }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
         </Grid>
         
         <Grid item xs={12} sm={6} md={3}>
