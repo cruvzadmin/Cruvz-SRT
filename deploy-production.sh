@@ -2,11 +2,22 @@
 
 # ===============================================================================
 # CRUVZ-SRT PRODUCTION DEPLOYMENT SCRIPT
-# One-command deployment for complete streaming platform
+# ⚠️  DEPRECATED: Use Kubernetes deployment instead for production
 # ===============================================================================
 
-echo "🚀 CRUVZ-SRT PRODUCTION DEPLOYMENT"
-echo "======================================"
+echo "⚠️  DEPRECATED: Docker Compose deployment is deprecated for production"
+echo "======================================================================"
+echo ""
+echo "For production deployments, please use the Kubernetes deployment:"
+echo "  ./deploy-kubernetes.sh"
+echo ""
+echo "This Docker Compose deployment is intended for development only."
+echo "Continuing with Docker Compose in 10 seconds... (Press Ctrl+C to cancel)"
+echo ""
+sleep 10
+
+echo "🚀 CRUVZ-SRT DEVELOPMENT DEPLOYMENT (Docker Compose)"
+echo "====================================================="
 
 # Check if Docker is running
 if ! docker info >/dev/null 2>&1; then

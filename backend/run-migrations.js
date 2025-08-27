@@ -9,7 +9,7 @@ const knex = require('knex');
 const config = {
   client: 'pg',
   connection: {
-    host: process.env.POSTGRES_HOST || 'postgres', // FIXED: use 'postgres' for Docker Compose internal networking
+    host: process.env.POSTGRES_HOST || 'postgres-service', // Use Kubernetes service name
     user: process.env.POSTGRES_USER || 'cruvz',
     password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
     database: process.env.POSTGRES_DB || 'cruvzdb',
@@ -38,17 +38,13 @@ async function runMigrations() {
     await db.raw('SELECT 1');
     console.log('✅ Database connection successful');
 
-    console.log('🔄 Running migrations...');
-    const [batchNo, migrations] = await db.migrate.latest();
-
-    if (migrations.length === 0) {
-      console.log('✅ No new migrations to run');
-    } else {
-      console.log(`✅ Batch ${batchNo} run: ${migrations.length} migration(s)`);
-      migrations.forEach(migration => {
-        console.log(`  - ${migration}`);
-      });
-    }
+    console.log('🔄 Running custom migration...');
+    
+    // Use our custom migration script
+    const migrate = require('./scripts/migrate');
+    await migrate();
+    
+    console.log('✅ Custom migration completed successfully');
 
     // Table summary
     console.log('🔄 Checking table structure...');
