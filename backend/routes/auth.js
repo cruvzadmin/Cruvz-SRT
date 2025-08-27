@@ -261,4 +261,43 @@ router.post('/logout', auth, async (req, res) => {
   }
 });
 
+// @route   POST /api/auth/refresh
+// @desc    Refresh JWT token
+// @access  Private
+router.post('/refresh', auth, async (req, res) => {
+  try {
+    // Get the current user from the token
+    const user = await db('users')
+      .select('id', 'email', 'first_name', 'last_name', 'role', 'is_active', 'created_at')
+      .where('id', req.user.id)
+      .where('is_active', true)
+      .first();
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not found or inactive'
+      });
+    }
+
+    // Generate new token
+    const newToken = generateToken(user);
+
+    res.json({
+      success: true,
+      data: {
+        user,
+        token: newToken
+      },
+      message: 'Token refreshed successfully'
+    });
+  } catch (error) {
+    logger.error('Token refresh error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error during token refresh'
+    });
+  }
+});
+
 module.exports = router;
