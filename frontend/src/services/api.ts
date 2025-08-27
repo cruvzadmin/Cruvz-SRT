@@ -87,7 +87,6 @@ export interface ProtocolInfo {
   output_endpoint?: string;
   connections: number;
 }
-}
 
 class ApiService {
   private instance: AxiosInstance;
