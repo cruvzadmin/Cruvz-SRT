@@ -157,7 +157,8 @@ const StreamManager: React.FC = () => {
   const fetchProtocols = async () => {
     try {
       const response = await api.getOMEProtocols();
-      setProtocols(response.data);
+      // CORRECTION: assign response directly, not response.data
+      setProtocols(response);
     } catch (error) {
       console.error('Failed to fetch protocols:', error);
     }
