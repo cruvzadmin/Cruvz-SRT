@@ -86,6 +86,8 @@ const StreamManager: React.FC = () => {
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  // ADD THIS ERROR STATE
+  const [error, setError] = useState<string | null>(null);
 
   // Form state for creating/editing streams
   const [formData, setFormData] = useState({
@@ -157,7 +159,6 @@ const StreamManager: React.FC = () => {
   const fetchProtocols = async () => {
     try {
       const response = await api.getOMEProtocols();
-      // CORRECTION: assign response directly, not response.data
       setProtocols(response);
     } catch (error) {
       console.error('Failed to fetch protocols:', error);
@@ -174,6 +175,7 @@ const StreamManager: React.FC = () => {
     } catch (error) {
       console.error('Failed to create stream:', error);
       setSnackbar({ open: true, message: 'Failed to create stream', severity: 'error' });
+      setError(error instanceof Error ? error.message : 'Failed to create stream');
     }
   };
 
@@ -243,7 +245,6 @@ const StreamManager: React.FC = () => {
   };
 
   const stopRecording = async () => {
-    // Implementation for stopping recording can go here
     setRecordingDialogOpen(false);
   };
 
@@ -261,7 +262,6 @@ const StreamManager: React.FC = () => {
   };
 
   const stopPush = async () => {
-    // Implementation for stopping push can go here
     setPushDialogOpen(false);
   };
 
@@ -310,6 +310,13 @@ const StreamManager: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Error Alert if error exists */}
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" fontWeight="bold">
