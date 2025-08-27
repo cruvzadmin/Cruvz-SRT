@@ -9,7 +9,7 @@ const knex = require('knex');
 const config = {
   client: 'pg',
   connection: {
-    host: process.env.POSTGRES_HOST || 'postgres-service', // Use Kubernetes service name
+    host: process.env.POSTGRES_HOST || 'postgres', // Use Docker Compose service name
     user: process.env.POSTGRES_USER || 'cruvz',
     password: process.env.POSTGRES_PASSWORD || 'cruvzSRT91',
     database: process.env.POSTGRES_DB || 'cruvzdb',
