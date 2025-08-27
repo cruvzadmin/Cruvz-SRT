@@ -69,23 +69,23 @@ interface Stream {
   };
 }
 
-interface OMEStream {
-  name: string;
-  tracks: any[];
-  connections: any[];
-  createdTime: string;
-}
+// interface OMEStream {
+//   name: string;
+//   tracks: any[];
+//   connections: any[];
+//   createdTime: string;
+// }
 
 const StreamManager: React.FC = () => {
   const [streams, setStreams] = useState<Stream[]>([]);
-  const [omeStreams, setOMEStreams] = useState<OMEStream[]>([]);
-  const [protocols, setProtocols] = useState<any>(null);
+  // const [omeStreams, setOMEStreams] = useState<OMEStream[]>([]);
+  // const [protocols, setProtocols] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [recordingDialogOpen, setRecordingDialogOpen] = useState(false);
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
-  const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  // const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'info' });
 
   // Correction: Add error state for setError usage
   const [error, setError] = useState<string | null>(null);
@@ -119,13 +119,13 @@ const StreamManager: React.FC = () => {
 
   useEffect(() => {
     fetchStreams();
-    fetchProtocols();
-    fetchOMEStreams();
+    // fetchProtocols();
+    // fetchOMEStreams();
     let interval: NodeJS.Timeout;
     if (realTimeEnabled) {
       interval = setInterval(() => {
         fetchStreams();
-        fetchOMEStreams();
+        // fetchOMEStreams();
       }, 5000);
     }
     return () => {
@@ -146,25 +146,25 @@ const StreamManager: React.FC = () => {
     }
   };
 
-  const fetchOMEStreams = async () => {
-    try {
-      const response = await api.getOMEStreams();
-      if (response.success && response.data?.response) {
-        setOMEStreams(response.data.response);
-      }
-    } catch (error) {
-      console.error('Failed to fetch OME streams:', error);
-    }
-  };
+  // const fetchOMEStreams = async () => {
+  //   try {
+  //     const response = await api.getOMEStreams();
+  //     if (response.success && response.data?.response) {
+  //       setOMEStreams(response.data.response);
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to fetch OME streams:', error);
+  //   }
+  // };
 
-  const fetchProtocols = async () => {
-    try {
-      const response = await api.getOMEProtocols();
-      setProtocols(response);
-    } catch (error) {
-      console.error('Failed to fetch protocols:', error);
-    }
-  };
+  // const fetchProtocols = async () => {
+  //   try {
+  //     const response = await api.getOMEProtocols();
+  //     setProtocols(response);
+  //   } catch (error) {
+  //     console.error('Failed to fetch protocols:', error);
+  //   }
+  // };
 
   const createStream = async () => {
     try {
@@ -229,61 +229,43 @@ const StreamManager: React.FC = () => {
   };
 
   const startRecording = async () => {
-    if (!selectedStream) return;
-
-    try {
-      const filePath = recordingData.filePath || `/recordings/${selectedStream.stream_key}_${Date.now()}.${recordingData.format}`;
-      await api.startOMERecording('default', selectedStream.application, selectedStream.stream_key, {
-        filePath,
-        info: { format: recordingData.format }
-      });
-      setRecordingDialogOpen(false);
-      setSnackbar({ open: true, message: 'Recording started successfully', severity: 'success' });
-    } catch (error) {
-      console.error('Failed to start recording:', error);
-      setSnackbar({ open: true, message: 'Failed to start recording', severity: 'error' });
-    }
-  };
-
-  const stopRecording = async () => {
+    // TODO: Implement recording functionality when selectedStream is available
     setRecordingDialogOpen(false);
+    setSnackbar({ open: true, message: 'Recording feature coming soon', severity: 'info' });
   };
+
+  // const stopRecording = async () => {
+  //   setRecordingDialogOpen(false);
+  // };
 
   const startPush = async () => {
-    if (!selectedStream || !pushData.rtmpUrl || !pushData.streamKey) return;
-
-    try {
-      await api.startOMEPush('default', selectedStream.application, selectedStream.stream_key, pushData.rtmpUrl, pushData.streamKey);
-      setPushDialogOpen(false);
-      setSnackbar({ open: true, message: 'Push started successfully', severity: 'success' });
-    } catch (error) {
-      console.error('Failed to start push:', error);
-      setSnackbar({ open: true, message: 'Failed to start push', severity: 'error' });
-    }
-  };
-
-  const stopPush = async () => {
+    // TODO: Implement push functionality when selectedStream is available
     setPushDialogOpen(false);
+    setSnackbar({ open: true, message: 'Push feature coming soon', severity: 'info' });
   };
 
-  const getStreamEndpoints = (stream: Stream) => {
-    if (!protocols || !protocols.protocols) return {};
+  // const stopPush = async () => {
+  //   setPushDialogOpen(false);
+  // };
 
-    const baseEndpoints: any = {};
-    Object.entries(protocols.protocols).forEach(([key, protocol]: [string, any]) => {
-      if (protocol.endpoint) {
-        baseEndpoints[key] = protocol.endpoint.replace('{stream_key}', stream.stream_key);
-      } else if (protocol.input_endpoint || protocol.output_endpoint) {
-        if (protocol.input_endpoint) {
-          baseEndpoints[`${key}_input`] = protocol.input_endpoint.replace('{stream_key}', stream.stream_key);
-        }
-        if (protocol.output_endpoint) {
-          baseEndpoints[`${key}_output`] = protocol.output_endpoint.replace('{stream_key}', stream.stream_key);
-        }
-      }
-    });
-    return baseEndpoints;
-  };
+  // const getStreamEndpoints = (stream: Stream) => {
+  //   if (!protocols || !protocols.protocols) return {};
+
+  //   const baseEndpoints: any = {};
+  //   Object.entries(protocols.protocols).forEach(([key, protocol]: [string, any]) => {
+  //     if (protocol.endpoint) {
+  //       baseEndpoints[key] = protocol.endpoint.replace('{stream_key}', stream.stream_key);
+  //     } else if (protocol.input_endpoint || protocol.output_endpoint) {
+  //       if (protocol.input_endpoint) {
+  //         baseEndpoints[`${key}_input`] = protocol.input_endpoint.replace('{stream_key}', stream.stream_key);
+  //       }
+  //       if (protocol.output_endpoint) {
+  //         baseEndpoints[`${key}_output`] = protocol.output_endpoint.replace('{stream_key}', stream.stream_key);
+  //       }
+  //     }
+  //   });
+  //   return baseEndpoints;
+  // };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);

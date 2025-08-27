@@ -39,7 +39,6 @@ import {
 } from 'recharts';
 import {
   TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
   Visibility as ViewersIcon,
   Speed as BitrateIcon,
   VideoLibrary as StreamsIcon,

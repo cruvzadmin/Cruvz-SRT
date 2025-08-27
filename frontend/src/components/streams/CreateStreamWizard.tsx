@@ -90,6 +90,7 @@ const CreateStreamWizard: React.FC = () => {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [streamUrls, setStreamUrls] = useState<Record<string, string>>({});
   const [config, setConfig] = useState<StreamConfig>({
     title: '',
@@ -642,6 +643,12 @@ const CreateStreamWizard: React.FC = () => {
                 Creating your stream...
               </Typography>
             </Box>
+          )}
+
+          {error && (
+            <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+              {error}
+            </Alert>
           )}
 
           <Box sx={{ minHeight: 400 }}>
