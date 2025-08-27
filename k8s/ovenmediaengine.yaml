@@ -1,0 +1,413 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ovenmediaengine
+  namespace: cruvz-srt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ovenmediaengine
+  template:
+    metadata:
+      labels:
+        app: ovenmediaengine
+    spec:
+      containers:
+      - name: ovenmediaengine
+        image: cruvz-srt-origin:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: api
+        - containerPort: 1935
+          name: rtmp
+        - containerPort: 9999
+          name: srt-input
+          protocol: UDP
+        - containerPort: 9998
+          name: srt-output
+          protocol: UDP
+        - containerPort: 3333
+          name: webrtc-signal
+        - containerPort: 3334
+          name: webrtc-tls
+        - containerPort: 8088
+          name: llhls
+        - containerPort: 8089
+          name: llhls-tls
+        - containerPort: 8081
+          name: thumbnail
+        - containerPort: 8082
+          name: thumb-tls
+        envFrom:
+        - configMapRef:
+            name: ovenmediaengine-config
+        env:
+        - name: OME_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: cruvz-secrets
+              key: OME_ACCESS_TOKEN
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+        livenessProbe:
+          httpGet:
+            path: /v1/stats/current
+            port: 8080
+            httpHeaders:
+            - name: Authorization
+              value: "cruvz-production-api-token-2025"
+          initialDelaySeconds: 75
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /v1/stats/current
+            port: 8080
+            httpHeaders:
+            - name: Authorization
+              value: "cruvz-production-api-token-2025"
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: recordings
+          mountPath: /opt/ovenmediaengine/recordings
+        - name: logs
+          mountPath: /opt/ovenmediaengine/logs
+        - name: config
+          mountPath: /opt/ovenmediaengine/bin/origin_conf
+          readOnly: true
+      volumes:
+      - name: recordings
+        persistentVolumeClaim:
+          claimName: ome-recordings-pvc
+      - name: logs
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: ovenmediaengine-server-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ovenmediaengine-service
+  namespace: cruvz-srt
+spec:
+  selector:
+    app: ovenmediaengine
+  ports:
+  - name: api
+    port: 8080
+    targetPort: 8080
+  - name: rtmp
+    port: 1935
+    targetPort: 1935
+  - name: srt-input
+    port: 9999
+    targetPort: 9999
+    protocol: UDP
+  - name: srt-output
+    port: 9998
+    targetPort: 9998
+    protocol: UDP
+  - name: webrtc-signal
+    port: 3333
+    targetPort: 3333
+  - name: webrtc-tls
+    port: 3334
+    targetPort: 3334
+  - name: llhls
+    port: 8088
+    targetPort: 8088
+  - name: llhls-tls
+    port: 8089
+    targetPort: 8089
+  - name: thumbnail
+    port: 8081
+    targetPort: 8081
+  - name: thumb-tls
+    port: 8082
+    targetPort: 8082
+  type: LoadBalancer
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ovenmediaengine-nodeport
+  namespace: cruvz-srt
+spec:
+  selector:
+    app: ovenmediaengine
+  type: NodePort
+  ports:
+  - name: rtmp
+    port: 1935
+    targetPort: 1935
+    nodePort: 31935
+  - name: srt-input
+    port: 9999
+    targetPort: 9999
+    nodePort: 31999
+    protocol: UDP
+  - name: srt-output
+    port: 9998
+    targetPort: 9998
+    nodePort: 31998
+    protocol: UDP
+  - name: webrtc-signal
+    port: 3333
+    targetPort: 3333
+    nodePort: 33333
+  - name: llhls
+    port: 8088
+    targetPort: 8088
+    nodePort: 38088
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ome-recordings-pvc
+  namespace: cruvz-srt
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ovenmediaengine-server-config
+  namespace: cruvz-srt
+data:
+  Server.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <Server version="8">
+        <Name>Cruvz-SRT-Origin</Name>
+        <Type>origin</Type>
+        <IP>*</IP>
+        <PrivacyProtection>false</PrivacyProtection>
+        
+        <Bind>
+            <Providers>
+                <RTMP>
+                    <Port>1935</Port>
+                    <WorkerCount>1</WorkerCount>
+                </RTMP>
+                <SRT>
+                    <Port>9999</Port>
+                    <WorkerCount>1</WorkerCount>
+                </SRT>
+                <MPEGTS>
+                    <Port>4000-4005</Port>
+                </MPEGTS>
+                <WebRTC>
+                    <Signalling>
+                        <Port>3333</Port>
+                        <TLSPort>3334</TLSPort>
+                        <WorkerCount>1</WorkerCount>
+                    </Signalling>
+                    <IceCandidates>
+                        <IceCandidate>*:10000-10100/udp</IceCandidate>
+                    </IceCandidates>
+                </WebRTC>
+            </Providers>
+            
+            <Publishers>
+                <AppWorkerCount>1</AppWorkerCount>
+                <StreamWorkerCount>4</StreamWorkerCount>
+                <LLHLS>
+                    <Port>8088</Port>
+                    <TLSPort>8089</TLSPort>
+                    <WorkerCount>1</WorkerCount>
+                </LLHLS>
+                <WebRTC>
+                    <Signalling>
+                        <Port>3333</Port>
+                        <TLSPort>3334</TLSPort>
+                        <WorkerCount>1</WorkerCount>
+                    </Signalling>
+                    <IceCandidates>
+                        <IceCandidate>*:10000-10100/udp</IceCandidate>
+                    </IceCandidates>
+                </WebRTC>
+                <SRT>
+                    <Port>9998</Port>
+                    <WorkerCount>1</WorkerCount>
+                </SRT>
+                <Thumbnail>
+                    <Port>8081</Port>
+                    <TLSPort>8082</TLSPort>
+                    <WorkerCount>1</WorkerCount>
+                </Thumbnail>
+            </Publishers>
+            
+            <Managers>
+                <Host>
+                    <Names>
+                        <Name>*</Name>
+                    </Names>
+                </Host>
+                <API>
+                    <Port>8080</Port>
+                    <WorkerCount>1</WorkerCount>
+                </API>
+            </Managers>
+        </Bind>
+        
+        <VirtualHosts>
+            <VirtualHost include="VHost.xml" />
+        </VirtualHosts>
+    </Server>
+    
+  VHost.xml: |
+    <VirtualHost>
+        <Name>default</Name>
+        <Host>
+            <Names>
+                <Name>*</Name>
+            </Names>
+        </Host>
+        
+        <Applications>
+            <Application>
+                <Name>app</Name>
+                <Type>live</Type>
+                <OutputProfiles>
+                    <OutputProfile>
+                        <Name>bypass_stream</Name>
+                        <OutputStreamName>${OriginStreamName}</OutputStreamName>
+                        <Encodes>
+                            <Audio>
+                                <Bypass>true</Bypass>
+                            </Audio>
+                            <Video>
+                                <Bypass>true</Bypass>
+                            </Video>
+                        </Encodes>
+                    </OutputProfile>
+                    <OutputProfile>
+                        <Name>720p</Name>
+                        <OutputStreamName>${OriginStreamName}_720p</OutputStreamName>
+                        <Encodes>
+                            <Audio>
+                                <Codec>opus</Codec>
+                                <Bitrate>128000</Bitrate>
+                                <Samplerate>48000</Samplerate>
+                                <Channel>2</Channel>
+                            </Audio>
+                            <Video>
+                                <Codec>h264</Codec>
+                                <Bitrate>2000000</Bitrate>
+                                <Framerate>30</Framerate>
+                                <Width>1280</Width>
+                                <Height>720</Height>
+                                <Preset>medium</Preset>
+                                <Profile>main</Profile>
+                            </Video>
+                        </Encodes>
+                    </OutputProfile>
+                    <OutputProfile>
+                        <Name>480p</Name>
+                        <OutputStreamName>${OriginStreamName}_480p</OutputStreamName>
+                        <Encodes>
+                            <Audio>
+                                <Codec>opus</Codec>
+                                <Bitrate>96000</Bitrate>
+                                <Samplerate>48000</Samplerate>
+                                <Channel>2</Channel>
+                            </Audio>
+                            <Video>
+                                <Codec>h264</Codec>
+                                <Bitrate>1000000</Bitrate>
+                                <Framerate>30</Framerate>
+                                <Width>854</Width>
+                                <Height>480</Height>
+                                <Preset>medium</Preset>
+                                <Profile>baseline</Profile>
+                            </Video>
+                        </Encodes>
+                    </OutputProfile>
+                </OutputProfiles>
+                
+                <Providers>
+                    <RTMP />
+                    <SRT />
+                    <MPEGTS />
+                    <WebRTC />
+                </Providers>
+                
+                <Publishers>
+                    <AppWorkerCount>1</AppWorkerCount>
+                    <StreamWorkerCount>4</StreamWorkerCount>
+                    <LLHLS>
+                        <SegmentDuration>2</SegmentDuration>
+                        <SegmentCount>3</SegmentCount>
+                        <CrossDomains>
+                            <Url>*</Url>
+                        </CrossDomains>
+                    </LLHLS>
+                    <WebRTC>
+                        <Timeout>30000</Timeout>
+                        <Rtx>false</Rtx>
+                        <Ulpfec>false</Ulpfec>
+                        <JitterBuffer>false</JitterBuffer>
+                    </WebRTC>
+                    <SRT>
+                        <Port>9998</Port>
+                        <SRTMode>listener</SRTMode>
+                    </SRT>
+                    <Thumbnail>
+                        <Interval>5</Interval>
+                        <Scale>
+                            <Width>1280</Width>
+                            <Height>720</Height>
+                        </Scale>
+                        <CrossDomains>
+                            <Url>*</Url>
+                        </CrossDomains>
+                    </Thumbnail>
+                </Publishers>
+            </Application>
+        </Applications>
+        
+        <AccessControl>
+            <PublisherSignedPolicy>
+                <PolicyQueryKeyName>policy</PolicyQueryKeyName>
+                <SignatureQueryKeyName>signature</SignatureQueryKeyName>
+                <SecretKey>aKq#1kj</SecretKey>
+            </PublisherSignedPolicy>
+            <PlaybackSignedPolicy>
+                <PolicyQueryKeyName>policy</PolicyQueryKeyName>
+                <SignatureQueryKeyName>signature</SignatureQueryKeyName>
+                <SecretKey>aKq#1kj</SecretKey>
+            </PlaybackSignedPolicy>
+        </AccessControl>
+    </VirtualHost>
+    
+  Logger.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <Logger version="2">
+        <Loggers>
+            <Logger>
+                <Name>default</Name>
+                <Level>info</Level>
+                <Pattern>%D{%Y-%m-%d %H:%M:%S.%L} %T [%L] %t | %m%n</Pattern>
+                <Appender>file</Appender>
+                <FileName>/opt/ovenmediaengine/logs/ovenmediaengine.log</FileName>
+            </Logger>
+        </Loggers>
+    </Logger>

@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cruvz-config
+  namespace: cruvz-srt
+data:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "cruvzdb"
+  POSTGRES_USER: "cruvz"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  OME_API_URL: "http://ovenmediaengine-service:8080"
+  ENABLE_CORS: "true"
+  ENABLE_HELMET: "true"
+  ENABLE_RATE_LIMITING: "true"
+  MAX_CONCURRENT_STREAMS: "1000"
+  MAX_VIEWERS_PER_STREAM: "10000"
+  
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ovenmediaengine-config
+  namespace: cruvz-srt
+data:
+  OME_HOST_IP: "0.0.0.0"
+  OME_RTMP_PROV_PORT: "1935"
+  OME_SRT_PROV_PORT: "9999"
+  OME_SRT_PUB_PORT: "9998"
+  OME_WEBRTC_SIGNALLING_PORT: "3333"
+  OME_WEBRTC_SIGNALLING_TLS_PORT: "3334"
+  OME_LLHLS_STREAM_PORT: "8088"
+  OME_LLHLS_STREAM_TLS_PORT: "8089"
+  OME_API_PORT: "8080"
+  OME_THUMBNAIL_PORT: "8081"
+  OME_THUMBNAIL_TLS_PORT: "8082"
+  OME_MPEGTS_PROV_PORT: "4000-4005"
+  MAX_CONCURRENT_STREAMS: "1000"
+  OME_WEBRTC_CANDIDATE_PORT: "10000-10100"

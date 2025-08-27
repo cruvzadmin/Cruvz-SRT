@@ -85,19 +85,75 @@ const Analytics: React.FC = () => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData[]>([]);
   const [metrics, setMetrics] = useState<StreamMetrics | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [omeStats, setOMEStats] = useState<any>(null);
+  const [protocols, setProtocols] = useState<any>(null);
+  const [sixSigmaMetrics, setSixSigmaMetrics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAnalyticsData = async () => {
     try {
-      const [analyticsRes, metricsRes, healthRes] = await Promise.all([
-        api.get(`/api/analytics/data?range=1h`),
-        api.get('/api/analytics/metrics'),
-        api.get('/api/system/health')
+      setError(null);
+      
+      // Fetch real data from multiple sources
+      const [
+        analyticsRes,
+        metricsRes,
+        healthRes,
+        omeStatsRes,
+        protocolsRes,
+        sixSigmaRes
+      ] = await Promise.allSettled([
+        api.getAnalyticsData('1h'),
+        api.getStreamMetrics(),
+        api.getSystemHealth(),
+        api.getOMEStats(),
+        api.getOMEProtocols(),
+        api.getSixSigmaMetrics('performance', '1h')
       ]);
 
-      setAnalyticsData(analyticsRes.data);
-      setMetrics(metricsRes.data);
+      // Handle analytics data
+      if (analyticsRes.status === 'fulfilled') {
+        setAnalyticsData(analyticsRes.value);
+      } else {
+        console.warn('Failed to fetch analytics data:', analyticsRes.reason);
+      }
+
+      // Handle metrics
+      if (metricsRes.status === 'fulfilled') {
+        setMetrics(metricsRes.value);
+      } else {
+        console.warn('Failed to fetch metrics:', metricsRes.reason);
+      }
+
+      // Handle system health
+      if (healthRes.status === 'fulfilled') {
+        setSystemHealth(healthRes.value);
+      } else {
+        console.warn('Failed to fetch system health:', healthRes.reason);
+      }
+
+      // Handle OME stats
+      if (omeStatsRes.status === 'fulfilled') {
+        setOMEStats(omeStatsRes.value);
+      } else {
+        console.warn('Failed to fetch OME stats:', omeStatsRes.reason);
+      }
+
+      // Handle protocols
+      if (protocolsRes.status === 'fulfilled') {
+        setProtocols(protocolsRes.value);
+      } else {
+        console.warn('Failed to fetch protocols:', protocolsRes.reason);
+      }
+
+      // Handle Six Sigma metrics
+      if (sixSigmaRes.status === 'fulfilled') {
+        setSixSigmaMetrics(sixSigmaRes.value);
+      } else {
+        console.warn('Failed to fetch Six Sigma metrics:', sixSigmaRes.reason);
+      }
       setSystemHealth(healthRes.data);
       setLoading(false);
     } catch (error) {

@@ -27,6 +27,10 @@ export interface Stream {
     hls?: string;
     llhls?: string;
   };
+  stream_key: string;
+  user_id: string;
+  resolution: string;
+  settings: any;
 }
 
 export interface CreateStreamRequest {
@@ -48,6 +52,41 @@ export interface AnalyticsData {
   memoryUsage: number;
   networkIn: number;
   networkOut: number;
+}
+
+export interface SixSigmaMetric {
+  id: string;
+  metric_name: string;
+  metric_value: number;
+  target_value?: number;
+  tolerance?: number;
+  sigma_level?: number;
+  timestamp: string;
+  category: string;
+}
+
+export interface OMEStats {
+  totalConnections: number;
+  inputConnections: any;
+  outputConnections: any;
+  cpuUsage: number;
+  memoryUsage: number;
+  networkSentBytes: number;
+  networkRecvBytes: number;
+}
+
+export interface ProtocolInfo {
+  name: string;
+  port?: number;
+  input_port?: number;
+  output_port?: number;
+  status: string;
+  description: string;
+  endpoint?: string;
+  input_endpoint?: string;
+  output_endpoint?: string;
+  connections: number;
+}
 }
 
 class ApiService {
@@ -198,18 +237,81 @@ class ApiService {
   }
 
   // OvenMediaEngine integration
-  async getOvenMediaEngineStats() {
-    const response = await this.get('/api/ovenmediaengine/stats');
+  async getOMEStats(): Promise<OMEStats> {
+    const response = await this.get('/api/ome/stats');
     return response.data;
   }
 
-  async getOvenMediaEngineApplications() {
-    const response = await this.get('/api/ovenmediaengine/applications');
+  async getOMEProtocols(): Promise<{ protocols: Record<string, ProtocolInfo> }> {
+    const response = await this.get('/api/ome/protocols');
     return response.data;
   }
 
-  async createOvenMediaEngineApplication(appData: any) {
-    const response = await this.post('/api/ovenmediaengine/applications', appData);
+  async getOMEVHosts() {
+    const response = await this.get('/api/ome/vhosts');
+    return response.data;
+  }
+
+  async getOMEApplications(vhost: string = 'default') {
+    const response = await this.get(`/api/ome/vhosts/${vhost}/apps`);
+    return response.data;
+  }
+
+  async getOMEStreams(vhost: string = 'default', app: string = 'app') {
+    const response = await this.get(`/api/ome/vhosts/${vhost}/apps/${app}/streams`);
+    return response.data;
+  }
+
+  async startOMERecording(vhost: string, app: string, stream: string, options: any) {
+    const response = await this.post(`/api/ome/vhosts/${vhost}/apps/${app}/streams/${stream}/start_recording`, options);
+    return response.data;
+  }
+
+  async stopOMERecording(vhost: string, app: string, stream: string, recordId: string) {
+    const response = await this.post(`/api/ome/vhosts/${vhost}/apps/${app}/streams/${stream}/stop_recording`, { recordId });
+    return response.data;
+  }
+
+  async startOMEPush(vhost: string, app: string, stream: string, rtmpUrl: string, streamKey: string) {
+    const response = await this.post(`/api/ome/vhosts/${vhost}/apps/${app}/streams/${stream}/push`, {
+      rtmpUrl,
+      streamKey
+    });
+    return response.data;
+  }
+
+  async stopOMEPush(vhost: string, app: string, stream: string, pushId: string) {
+    const response = await this.delete(`/api/ome/vhosts/${vhost}/apps/${app}/streams/${stream}/push/${pushId}`);
+    return response.data;
+  }
+
+  async getOMEHealth() {
+    const response = await this.get('/api/ome/health');
+    return response.data;
+  }
+
+  // Six Sigma Metrics
+  async getSixSigmaMetrics(category?: string, timeRange?: string): Promise<SixSigmaMetric[]> {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (timeRange) params.append('range', timeRange);
+    
+    const response = await this.get(`/api/six-sigma/metrics?${params.toString()}`);
+    return response.data;
+  }
+
+  async createSixSigmaMetric(metric: Partial<SixSigmaMetric>) {
+    const response = await this.post('/api/six-sigma/metrics', metric);
+    return response.data;
+  }
+
+  async getSixSigmaReport(timeRange: string = '24h') {
+    const response = await this.get(`/api/six-sigma/report?range=${timeRange}`);
+    return response.data;
+  }
+
+  async getQualityDashboard() {
+    const response = await this.get('/api/six-sigma/dashboard');
     return response.data;
   }
 
