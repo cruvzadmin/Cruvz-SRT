@@ -45,6 +45,44 @@ This production-ready deployment includes:
 - 🔒 **Production security** hardening and secrets management
 - 🚀 **High availability** with persistent storage
 - 📈 **Real-time metrics** and alerting
+- ⚡ **StatefulSet management** with forbidden update handling
+- 🔄 **Automatic data backup/restore** during StatefulSet recreation
+- 🛡️ **Deployment robustness** with comprehensive error handling
+
+### 🔧 Advanced StatefulSet Management
+
+The platform includes sophisticated StatefulSet management to handle Kubernetes forbidden updates automatically:
+
+```bash
+# Safe StatefulSet deployment with automatic forbidden update handling
+./scripts/statefulset-manager.sh apply k8s/postgres.yaml cruvz-srt true
+
+# Check for immutable field changes before deployment
+./scripts/statefulset-manager.sh check postgres cruvz-srt k8s/postgres.yaml
+
+# Force StatefulSet recreation with data preservation
+./scripts/statefulset-manager.sh recreate postgres cruvz-srt k8s/postgres.yaml
+```
+
+**Features:**
+- 🚫 **Forbidden Update Detection**: Automatically detects changes to immutable fields (volumeClaimTemplates, serviceName, selector)
+- 💾 **Data Preservation**: Automatic PostgreSQL backup before StatefulSet recreation
+- 🔄 **Safe Recreation**: Graceful StatefulSet deletion and recreation without data loss
+- ✅ **Health Verification**: Comprehensive health checks after recreation
+- 📦 **Backup Management**: Automated backup and restore workflows
+
+### 🧪 Comprehensive Testing & Validation
+
+```bash
+# Run complete deployment pipeline tests
+./test-deployment-pipeline.sh
+
+# Validate streaming protocols end-to-end
+./validate-streaming-protocols.sh
+
+# Run comprehensive production validation
+./validate-production-complete.sh
+```
 
 ### Development (Docker Compose)
 

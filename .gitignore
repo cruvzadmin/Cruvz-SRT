@@ -105,6 +105,13 @@ npm-debug.log*
 tmp/
 logs/
 
+# StatefulSet management and deployment testing
+/tmp/k8s-statefulset-backup/
+/tmp/k8s-test/
+scripts/logs/
+*.sql
+postgres_backup_*.sql
+
 # Old deployment scripts (moved to backup)
 deploy-old.sh
 deploy-production-old.sh
