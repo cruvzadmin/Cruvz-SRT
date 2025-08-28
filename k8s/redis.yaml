@@ -39,7 +39,9 @@ spec:
               --maxmemory-policy allkeys-lru \
               --tcp-keepalive 300 \
               --timeout 0 \
-              --databases 16
+              --databases 16 \
+              --appendonly yes \
+              --appendfsync everysec
           else
             exec redis-server \
               --save "900 1" \
@@ -51,7 +53,9 @@ spec:
               --requirepass "$REDIS_PASSWORD" \
               --tcp-keepalive 300 \
               --timeout 0 \
-              --databases 16
+              --databases 16 \
+              --appendonly yes \
+              --appendfsync everysec
           fi
         volumeMounts:
         - name: redis-storage
