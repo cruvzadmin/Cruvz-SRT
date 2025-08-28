@@ -96,7 +96,8 @@ packages/
 
 # Root level Node.js dependencies
 node_modules/
-package-lock.json
+# Only ignore root package-lock.json, NOT frontend/package-lock.json!
+/package-lock.json
 npm-debug.log*
 
 # Temporary and build files
