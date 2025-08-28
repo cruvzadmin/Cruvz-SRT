@@ -25,7 +25,6 @@ spec:
               name: cruvz-secrets
               key: REDIS_PASSWORD
               optional: true
-        # Redis doesn't need password if REDIS_PASSWORD is empty
         command: ["/bin/sh"]
         args:
         - -c
@@ -40,7 +39,8 @@ spec:
               --maxmemory-policy allkeys-lru \
               --tcp-keepalive 300 \
               --timeout 0 \
-              --databases 16
+              --databases 16 \
+              --no-auth-warning
           else
             exec redis-server \
               --save "900 1" \
@@ -71,13 +71,13 @@ spec:
             - -c
             - |
               if [ -z "$REDIS_PASSWORD" ]; then
-                redis-cli ping
+                redis-cli ping | grep PONG
               else
-                redis-cli -a "$REDIS_PASSWORD" ping
+                redis-cli -a "$REDIS_PASSWORD" ping | grep PONG
               fi
           initialDelaySeconds: 30
-          periodSeconds: 30
-          timeoutSeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 5
           failureThreshold: 3
         readinessProbe:
           exec:
@@ -86,13 +86,13 @@ spec:
             - -c
             - |
               if [ -z "$REDIS_PASSWORD" ]; then
-                redis-cli ping
+                redis-cli ping | grep PONG
               else
-                redis-cli -a "$REDIS_PASSWORD" ping
+                redis-cli -a "$REDIS_PASSWORD" ping | grep PONG
               fi
-          initialDelaySeconds: 10
+          initialDelaySeconds: 5
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 3
           failureThreshold: 3
       volumes:
       - name: redis-storage
