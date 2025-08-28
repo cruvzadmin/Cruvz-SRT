@@ -179,7 +179,7 @@ spec:
   - name: llhls
     port: 8088
     targetPort: 8088
-    nodePort: 38088
+    nodePort: 32088
 
 ---
 apiVersion: v1
