@@ -39,8 +39,7 @@ spec:
               --maxmemory-policy allkeys-lru \
               --tcp-keepalive 300 \
               --timeout 0 \
-              --databases 16 \
-              --no-auth-warning
+              --databases 16
           else
             exec redis-server \
               --save "900 1" \
