@@ -175,7 +175,7 @@ spec:
   - name: webrtc-signal
     port: 3333
     targetPort: 3333
-    nodePort: 33333
+    nodePort: 32333
   - name: llhls
     port: 8088
     targetPort: 8088
