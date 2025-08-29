@@ -189,11 +189,14 @@ metadata:
   namespace: cruvz-srt
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   storageClassName: cruvz-srt-storage
   resources:
     requests:
-      storage: 20Gi
+      storage: 50Gi
+  selector:
+    matchLabels:
+      name: ome-recordings-pv
 
 ---
 apiVersion: v1
