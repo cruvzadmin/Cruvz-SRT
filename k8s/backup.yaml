@@ -95,11 +95,14 @@ metadata:
     app: postgres-backup
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   storageClassName: cruvz-srt-storage
   resources:
     requests:
-      storage: 10Gi
+      storage: 20Gi
+  selector:
+    matchLabels:
+      name: postgres-pv
 
 ---
 # Manual backup job that can be triggered on-demand
