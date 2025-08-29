@@ -13,6 +13,12 @@ spec:
       labels:
         app: backend
     spec:
+      serviceAccountName: cruvz-srt-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       initContainers:
       - name: wait-for-postgres
         image: postgres:15-alpine
@@ -45,6 +51,15 @@ spec:
             name: cruvz-config
         - secretRef:
             name: cruvz-secrets
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
       containers:
       - name: backend
         image: cruvz-srt-backend:latest
@@ -66,21 +81,33 @@ spec:
           limits:
             memory: "2Gi"
             cpu: "2"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - NET_BIND_SERVICE
         livenessProbe:
           httpGet:
             path: /health
             port: 5000
-          initialDelaySeconds: 50
-          periodSeconds: 25
-          timeoutSeconds: 8
-          failureThreshold: 4
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /health
             port: 5000
-          initialDelaySeconds: 20
-          periodSeconds: 10
-          timeoutSeconds: 5
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 8
+          failureThreshold: 2
         volumeMounts:
         - name: logs
           mountPath: /app/logs

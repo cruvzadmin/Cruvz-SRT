@@ -1,0 +1,83 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cruvz-srt-network-policy
+  namespace: cruvz-srt
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress from within the same namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: cruvz-srt
+    - podSelector: {}
+  # Allow ingress from frontend to backend
+  - from:
+    - podSelector:
+        matchLabels:
+          app: frontend
+    ports:
+    - protocol: TCP
+      port: 5000
+  # Allow ingress from backend to database
+  - from:
+    - podSelector:
+        matchLabels:
+          app: backend
+    ports:
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 6379
+  # Allow ingress to OvenMediaEngine streaming ports
+  - ports:
+    - protocol: TCP
+      port: 1935  # RTMP
+    - protocol: TCP
+      port: 8088  # HLS/LLHLS
+    - protocol: TCP
+      port: 3333  # WebRTC signaling
+    - protocol: UDP
+      port: 9999  # SRT input
+    - protocol: UDP
+      port: 9998  # SRT output
+  egress:
+  # Allow all egress within namespace
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: cruvz-srt
+    - podSelector: {}
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow HTTPS for external dependencies (monitoring, etc.)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow HTTP for health checks and APIs
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-default
+  namespace: cruvz-srt
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress

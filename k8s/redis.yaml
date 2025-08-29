@@ -25,6 +25,15 @@ spec:
               name: cruvz-secrets
               key: REDIS_PASSWORD
               optional: true
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 999
+          runAsGroup: 999
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
         command: ["/bin/sh"]
         args:
         - -c
@@ -65,9 +74,24 @@ spec:
             memory: "512Mi"
             cpu: "200m"
           limits:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "2Gi"
+            cpu: "1"
         livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - |
+              if [ -z "$REDIS_PASSWORD" ]; then
+                redis-cli ping | grep PONG
+              else
+                redis-cli -a "$REDIS_PASSWORD" ping | grep PONG
+              fi
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
           exec:
             command:
             - /bin/sh
@@ -81,22 +105,7 @@ spec:
           initialDelaySeconds: 15
           periodSeconds: 15
           timeoutSeconds: 5
-          failureThreshold: 3
-        readinessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - |
-              if [ -z "$REDIS_PASSWORD" ]; then
-                redis-cli ping | grep PONG
-              else
-                redis-cli -a "$REDIS_PASSWORD" ping | grep PONG
-              fi
-          initialDelaySeconds: 5
-          periodSeconds: 10
-          timeoutSeconds: 3
-          failureThreshold: 3
+          failureThreshold: 2
       volumes:
       - name: redis-storage
         persistentVolumeClaim:

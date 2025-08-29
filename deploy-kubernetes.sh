@@ -202,6 +202,17 @@ deploy_kubernetes_robust() {
         return 1
     }
     
+    log "INFO" "Setting up RBAC..."
+    kubectl apply -f k8s/rbac.yaml || {
+        log "ERROR" "Failed to create RBAC"
+        return 1
+    }
+    
+    log "INFO" "Setting up network policies..."
+    kubectl apply -f k8s/network-policy.yaml || {
+        log "WARNING" "Failed to create network policies (may not be supported)"
+    }
+    
     # Deploy PostgreSQL using StatefulSet manager for safe updates
     log "INFO" "Deploying PostgreSQL with StatefulSet manager..."
     if [[ -x "$SCRIPT_DIR/scripts/statefulset-manager.sh" ]]; then
@@ -290,6 +301,11 @@ deploy_kubernetes_robust() {
     }
     kubectl apply -f k8s/grafana.yaml || {
         log "WARNING" "Failed to deploy Grafana, continuing"
+    }
+    
+    log "INFO" "Setting up backup jobs..."
+    kubectl apply -f k8s/backup.yaml || {
+        log "WARNING" "Failed to create backup jobs, continuing"
     }
     
     log "SUCCESS" "Kubernetes deployment completed successfully"

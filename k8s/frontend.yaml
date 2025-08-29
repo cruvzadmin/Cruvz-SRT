@@ -26,6 +26,15 @@ spec:
           value: "http://ovenmediaengine-service:8080"
         - name: NODE_ENV
           value: "production"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 101
+          runAsGroup: 101
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
         resources:
           requests:
             memory: "128Mi"
@@ -37,16 +46,18 @@ spec:
           httpGet:
             path: /
             port: 80
-          initialDelaySeconds: 40
-          periodSeconds: 30
-          timeoutSeconds: 10
+          initialDelaySeconds: 60
+          periodSeconds: 60
+          timeoutSeconds: 15
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /
             port: 80
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 5
+          initialDelaySeconds: 20
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 2
 
 ---
 apiVersion: v1
