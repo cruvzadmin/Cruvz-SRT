@@ -20,6 +20,7 @@ metadata:
     type: local
     app: redis
     tier: cache
+    name: redis-pv
 spec:
   storageClassName: cruvz-srt-storage
   capacity:
@@ -48,6 +49,7 @@ metadata:
     type: local
     app: postgres
     tier: database
+    name: postgres-pv
 spec:
   storageClassName: cruvz-srt-storage
   capacity:
@@ -76,6 +78,7 @@ metadata:
     type: local
     app: backend
     tier: application
+    name: backend-uploads-pv
 spec:
   storageClassName: cruvz-srt-storage
   capacity:
@@ -104,6 +107,7 @@ metadata:
     type: local
     app: ovenmediaengine
     tier: streaming
+    name: ome-recordings-pv
 spec:
   storageClassName: cruvz-srt-storage
   capacity:
