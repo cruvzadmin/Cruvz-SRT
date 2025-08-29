@@ -142,8 +142,11 @@ metadata:
   namespace: cruvz-srt
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   storageClassName: cruvz-srt-storage
   resources:
     requests:
-      storage: 5Gi
+      storage: 10Gi
+  selector:
+    matchLabels:
+      name: backend-uploads-pv
