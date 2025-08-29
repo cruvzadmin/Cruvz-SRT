@@ -36,8 +36,7 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - node1  # Replace with actual node name
-          - master # Alternative node name
+          - cruvzsrt
 
 ---
 # Production PersistentVolume for PostgreSQL with proper node affinity
@@ -65,8 +64,7 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - node1  # Replace with actual node name
-          - master # Alternative node name
+          - cruvzsrt
 
 ---
 # Production PersistentVolume for Backend uploads
@@ -94,8 +92,7 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - node1  # Replace with actual node name
-          - master # Alternative node name
+          - cruvzsrt
 
 ---
 # Production PersistentVolume for OvenMediaEngine recordings
@@ -123,5 +120,4 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - node1  # Replace with actual node name
-          - master # Alternative node name
+          - cruvzsrt
