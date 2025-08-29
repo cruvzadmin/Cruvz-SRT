@@ -6,9 +6,12 @@ provisioner: kubernetes.io/no-provisioner
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 reclaimPolicy: Retain
+parameters:
+  # Production-ready storage parameters
+  fsType: ext4
 
 ---
-# Local PersistentVolume for Redis (for testing/development)
+# Production PersistentVolume for Redis with proper node affinity
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -16,46 +19,7 @@ metadata:
   labels:
     type: local
     app: redis
-spec:
-  storageClassName: cruvz-srt-storage
-  capacity:
-    storage: 2Gi
-  accessModes:
-  - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  hostPath:
-    path: /tmp/cruvz-srt/redis
-    type: DirectoryOrCreate
-
----
-# Local PersistentVolume for PostgreSQL (for testing/development)
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: postgres-pv
-  labels:
-    type: local
-    app: postgres
-spec:
-  storageClassName: cruvz-srt-storage
-  capacity:
-    storage: 10Gi
-  accessModes:
-  - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  hostPath:
-    path: /tmp/cruvz-srt/postgres
-    type: DirectoryOrCreate
-
----
-# Local PersistentVolume for Backend uploads (for testing/development)
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: backend-uploads-pv
-  labels:
-    type: local
-    app: backend
+    tier: cache
 spec:
   storageClassName: cruvz-srt-storage
   capacity:
@@ -63,19 +27,28 @@ spec:
   accessModes:
   - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-  hostPath:
-    path: /tmp/cruvz-srt/uploads
-    type: DirectoryOrCreate
+  local:
+    path: /mnt/cruvz-srt/redis
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - node1  # Replace with actual node name
+          - master # Alternative node name
 
 ---
-# Local PersistentVolume for OvenMediaEngine recordings (for testing/development)
+# Production PersistentVolume for PostgreSQL with proper node affinity
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: ome-recordings-pv
+  name: postgres-pv
   labels:
     type: local
-    app: ovenmediaengine
+    app: postgres
+    tier: database
 spec:
   storageClassName: cruvz-srt-storage
   capacity:
@@ -83,6 +56,72 @@ spec:
   accessModes:
   - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-  hostPath:
-    path: /tmp/cruvz-srt/recordings
-    type: DirectoryOrCreate
+  local:
+    path: /mnt/cruvz-srt/postgres
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - node1  # Replace with actual node name
+          - master # Alternative node name
+
+---
+# Production PersistentVolume for Backend uploads
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backend-uploads-pv
+  labels:
+    type: local
+    app: backend
+    tier: application
+spec:
+  storageClassName: cruvz-srt-storage
+  capacity:
+    storage: 10Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  local:
+    path: /mnt/cruvz-srt/uploads
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - node1  # Replace with actual node name
+          - master # Alternative node name
+
+---
+# Production PersistentVolume for OvenMediaEngine recordings
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ome-recordings-pv
+  labels:
+    type: local
+    app: ovenmediaengine
+    tier: streaming
+spec:
+  storageClassName: cruvz-srt-storage
+  capacity:
+    storage: 50Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  local:
+    path: /mnt/cruvz-srt/recordings
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - node1  # Replace with actual node name
+          - master # Alternative node name

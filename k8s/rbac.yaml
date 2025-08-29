@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cruvz-srt-service-account
+  namespace: cruvz-srt
+  labels:
+    app: cruvz-srt
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: cruvz-srt
+  name: cruvz-srt-role
+rules:
+# Allow reading pods for health checks and service discovery
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+# Allow reading services for service discovery
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "watch"]
+# Allow reading configmaps for configuration updates
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+# Allow reading secrets for configuration (limited)
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+# Allow reading endpoints for load balancing
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cruvz-srt-role-binding
+  namespace: cruvz-srt
+subjects:
+- kind: ServiceAccount
+  name: cruvz-srt-service-account
+  namespace: cruvz-srt
+roleRef:
+  kind: Role
+  name: cruvz-srt-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Monitoring ServiceAccount for Prometheus
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-service-account
+  namespace: cruvz-srt
+  labels:
+    app: prometheus
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: cruvz-srt
+  name: prometheus-role
+rules:
+# Allow Prometheus to scrape metrics from all pods
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+# Allow reading nodes for node metrics
+- apiGroups: [""]
+  resources: ["nodes", "nodes/metrics"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-role-binding
+  namespace: cruvz-srt
+subjects:
+- kind: ServiceAccount
+  name: prometheus-service-account
+  namespace: cruvz-srt
+roleRef:
+  kind: Role
+  name: prometheus-role
+  apiGroup: rbac.authorization.k8s.io

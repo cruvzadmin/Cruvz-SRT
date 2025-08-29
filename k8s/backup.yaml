@@ -1,0 +1,173 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: cruvz-srt
+  labels:
+    app: postgres-backup
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  timeZone: "UTC"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600  # 1 hour timeout
+      template:
+        metadata:
+          labels:
+            app: postgres-backup
+        spec:
+          serviceAccountName: cruvz-srt-service-account
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+          restartPolicy: OnFailure
+          containers:
+          - name: postgres-backup
+            image: postgres:15-alpine
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Starting PostgreSQL backup at $(date)"
+              
+              # Create backup directory if it doesn't exist
+              mkdir -p /backup
+              
+              # Generate backup filename with timestamp
+              BACKUP_FILE="/backup/cruvzdb_$(date +%Y%m%d_%H%M%S).sql"
+              
+              # Create backup
+              pg_dump -h postgres-service -U cruvz -d cruvzdb > "$BACKUP_FILE"
+              
+              # Compress the backup
+              gzip "$BACKUP_FILE"
+              
+              # Keep only last 7 days of backups
+              find /backup -name "*.sql.gz" -mtime +7 -delete
+              
+              echo "Backup completed successfully: ${BACKUP_FILE}.gz"
+              echo "Backup size: $(du -h ${BACKUP_FILE}.gz | cut -f1)"
+              
+              # List all backups
+              echo "Available backups:"
+              ls -lah /backup/*.sql.gz
+            env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              capabilities:
+                drop:
+                - ALL
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "0.5"
+              limits:
+                memory: "1Gi"
+                cpu: "1"
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backup
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: postgres-backup-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backup-pvc
+  namespace: cruvz-srt
+  labels:
+    app: postgres-backup
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: cruvz-srt-storage
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# Manual backup job that can be triggered on-demand
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-manual-backup
+  namespace: cruvz-srt
+  labels:
+    app: postgres-backup
+    type: manual
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 1800  # 30 minutes timeout
+  template:
+    metadata:
+      labels:
+        app: postgres-backup
+        type: manual
+    spec:
+      serviceAccountName: cruvz-srt-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      restartPolicy: Never
+      containers:
+      - name: postgres-manual-backup
+        image: postgres:15-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Starting manual PostgreSQL backup at $(date)"
+          
+          mkdir -p /backup
+          BACKUP_FILE="/backup/cruvzdb_manual_$(date +%Y%m%d_%H%M%S).sql"
+          
+          pg_dump -h postgres-service -U cruvz -d cruvzdb > "$BACKUP_FILE"
+          gzip "$BACKUP_FILE"
+          
+          echo "Manual backup completed: ${BACKUP_FILE}.gz"
+          echo "Backup size: $(du -h ${BACKUP_FILE}.gz | cut -f1)"
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "0.5"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        volumeMounts:
+        - name: backup-storage
+          mountPath: /backup
+      volumes:
+      - name: backup-storage
+        persistentVolumeClaim:
+          claimName: postgres-backup-pvc

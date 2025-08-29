@@ -24,18 +24,28 @@ class CacheManager {
         port: process.env.REDIS_PORT || 6379,
         password: process.env.REDIS_PASSWORD,
         retryDelayOnFailover: 100,
-        maxRetriesPerRequest: 1, // Limit retries to prevent spam
+        maxRetriesPerRequest: 3, // Increased retries
         lazyConnect: true,
         enableAutoPipelining: true,
         keepAlive: 30000,
         family: 4,
         // Production optimizations for 1000+ users
-        connectTimeout: 5000, // Shorter timeout
-        commandTimeout: 5000,
-        maxLoadingTimeout: 5000, // Shorter timeout
+        connectTimeout: 10000, // Increased timeout
+        commandTimeout: 10000, // Increased timeout
+        maxLoadingTimeout: 10000, // Increased timeout
         db: 0,
-        // Disable auto-reconnect to prevent spam when Redis is unavailable
-        enableOfflineQueue: false
+        // Enable offline queue to prevent errors during reconnection
+        enableOfflineQueue: true,
+        // Retry strategy for production resilience
+        retryStrategy: (times) => {
+          const delay = Math.min(times * 50, 2000);
+          return delay;
+        },
+        // Connection pool settings
+        reconnectOnError: (err) => {
+          const targetError = 'READONLY';
+          return err.message.includes(targetError);
+        }
       };
 
       this.redis = new Redis(redisConfig);
