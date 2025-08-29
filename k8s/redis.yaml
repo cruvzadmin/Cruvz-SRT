@@ -133,8 +133,11 @@ metadata:
   namespace: cruvz-srt
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   storageClassName: cruvz-srt-storage
   resources:
     requests:
-      storage: 2Gi
+      storage: 5Gi
+  selector:
+    matchLabels:
+      name: redis-pv
