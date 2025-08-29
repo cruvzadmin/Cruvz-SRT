@@ -130,6 +130,9 @@ spec:
       resources:
         requests:
           storage: 10Gi
+      selector:
+        matchLabels:
+          name: backend-uploads-pv
 
 ---
 apiVersion: v1
